@@ -211,9 +211,98 @@ export async function registerUser(payload: {
   password: string;
   role?: string;
   grades?: string[];
-}): Promise<{ message?: string; user?: AuthUser }> {
-  return request('/api/auth/register', {
-    method: 'POST',
+}): Promise<{ accessToken: string; user: AuthUser }> {
+  const data = await request<{ accessToken: string; user: AuthUser }>(
+    '/api/auth/register',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (data.accessToken && data.user) {
+    setStoredAuth(data.accessToken, data.user);
+  }
+
+  return data;
+}
+
+export async function getCurrentUser(): Promise<AuthUser> {
+  const user = await request<AuthUser>('/api/auth/me');
+  const token = getStoredToken();
+  if (token && user) {
+    setStoredAuth(token, user);
+  }
+  return user;
+}
+
+export async function updateUserProfile(
+  id: string,
+  payload: {
+    name?: string;
+    phone?: string;
+    grades?: string[];
+  },
+): Promise<AuthUser> {
+  const updated = await request<AuthUser>(`/api/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+
+  const currentUser = getStoredUser();
+  const token = getStoredToken();
+  if (currentUser && currentUser.id === id && token) {
+    setStoredAuth(token, { ...currentUser, ...updated });
+  }
+
+  return updated;
+}
+
+export async function uploadUserAvatar(
+  id: string,
+  file: File,
+): Promise<{ message: string; avatar: string }> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const res = await request<{ message: string; avatar: string }>(
+    `/api/users/${id}/avatar`,
+    {
+      method: 'PATCH',
+      body: formData,
+    },
+  );
+
+  const currentUser = getStoredUser();
+  const token = getStoredToken();
+  if (currentUser && currentUser.id === id && token) {
+    setStoredAuth(token, { ...currentUser, avatar: res.avatar });
+  }
+
+  return res;
+}
+
+export async function deleteUserAvatar(
+  id: string,
+): Promise<{ message: string }> {
+  const res = await request<{ message: string }>(`/api/users/${id}/avatar`, {
+    method: 'DELETE',
+  });
+
+  const currentUser = getStoredUser();
+  const token = getStoredToken();
+  if (currentUser && currentUser.id === id && token) {
+    setStoredAuth(token, { ...currentUser, avatar: null });
+  }
+
+  return res;
+}
+
+export async function changeUserPassword(
+  id: string,
+  payload: { oldPassword: string; newPassword: string },
+): Promise<{ message: string }> {
+  return request(`/api/users/${id}/password`, {
+    method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
@@ -323,6 +412,24 @@ export async function deleteClass(id: string): Promise<void> {
   return request(`/api/classes/${id}`, { method: 'DELETE' });
 }
 
+export async function uploadClassImage(
+  id: string,
+  file: File,
+): Promise<{ message: string; image: string }> {
+  const formData = new FormData();
+  formData.append('image', file);
+  return request(`/api/classes/${id}/image`, {
+    method: 'PATCH',
+    body: formData,
+  });
+}
+
+export async function deleteClassImage(
+  id: string,
+): Promise<{ message: string }> {
+  return request(`/api/classes/${id}/image`, { method: 'DELETE' });
+}
+
 // ======================== CHILDREN ========================
 
 export async function getChildren(paramsObj?: {
@@ -422,6 +529,24 @@ export async function createServant(data: {
 
 export async function deleteServant(id: string): Promise<void> {
   return request(`/api/servants/${id}`, { method: 'DELETE' });
+}
+
+export async function uploadServantAvatar(
+  id: string,
+  file: File,
+): Promise<{ message: string; avatar: string }> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return request(`/api/servants/${id}/avatar`, {
+    method: 'PATCH',
+    body: formData,
+  });
+}
+
+export async function deleteServantAvatar(
+  id: string,
+): Promise<{ message: string }> {
+  return request(`/api/servants/${id}/avatar`, { method: 'DELETE' });
 }
 
 // ======================== ATTENDANCE ========================

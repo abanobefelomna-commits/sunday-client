@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
+import { toast } from "sonner";
 import {
   getClasses,
   createClass,
   updateClass,
   deleteClass,
+  uploadClassImage,
+  deleteClassImage,
+  getImageUrl,
   type ClassItem,
 } from "../lib/api";
 
@@ -43,6 +47,11 @@ export default function ClassesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Image upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -62,11 +71,22 @@ export default function ClassesPage() {
     fetchClasses();
   }, []);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setFilePreview(url);
+    }
+  };
+
   const openAddModal = () => {
     setEditingClass(null);
     setName("");
     setGrade("first");
     setAcademicYear("2026/2027");
+    setSelectedFile(null);
+    setFilePreview(null);
     setError(null);
     setShowModal(true);
   };
@@ -76,6 +96,8 @@ export default function ClassesPage() {
     setName(c.name);
     setGrade(c.grade);
     setAcademicYear(c.academicYear);
+    setSelectedFile(null);
+    setFilePreview(c.image ? getImageUrl(c.image) : null);
     setError(null);
     setShowModal(true);
   };
@@ -91,26 +113,45 @@ export default function ClassesPage() {
     setError(null);
 
     try {
+      let savedClass: ClassItem;
       if (editingClass) {
-        await updateClass(editingClass.id, {
+        savedClass = await updateClass(editingClass.id, {
           name: name.trim(),
           grade,
           academicYear,
         });
       } else {
-        await createClass({
+        savedClass = await createClass({
           name: name.trim(),
           grade,
           academicYear,
         });
       }
+
+      // Upload image if selected
+      if (selectedFile) {
+        await uploadClassImage(savedClass.id, selectedFile);
+      }
+
       setShowModal(false);
+      toast.success(editingClass ? "تم تعديل الفصل بنجاح ✓" : "تم إنشاء الفصل بنجاح ✓");
       fetchClasses();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "تعذر حفظ بيانات الفصل";
       setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveImage = async (classId: string) => {
+    try {
+      await deleteClassImage(classId);
+      toast.success("تم حذف صورة الفصل بنجاح ✓");
+      fetchClasses();
+    } catch {
+      toast.error("فشل حذف الصورة");
     }
   };
 
@@ -118,9 +159,10 @@ export default function ClassesPage() {
     try {
       await deleteClass(id);
       setDeletingId(null);
+      toast.success("تم حذف الفصل بنجاح ✓");
       fetchClasses();
     } catch {
-      alert("فشل حذف الفصل، يتطلب صلاحية مسؤول أو كاهن.");
+      toast.error("فشل حذف الفصل، يتطلب صلاحية مسؤول أو كاهن.");
     }
   };
 
@@ -158,15 +200,32 @@ export default function ClassesPage() {
           ) : classes.length > 0 ? (
             classes.map((c, idx) => {
               const bgGradient = GRADE_PALETTES[idx % GRADE_PALETTES.length];
+              const hasImage = !!c.image;
 
               return (
                 <article key={c.id} className="cc">
                   <Link
                     href={`/classes/${c.id}`}
                     className="cv text-white font-bold"
-                    style={{ background: bgGradient }}
+                    style={{
+                      background: hasImage ? undefined : bgGradient,
+                      padding: 0,
+                      overflow: "hidden",
+                    }}
                   >
-                    📖
+                    {hasImage ? (
+                      <img
+                        src={getImageUrl(c.image)}
+                        alt={c.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      "📖"
+                    )}
                   </Link>
 
                   <div className="ci2">
@@ -194,6 +253,17 @@ export default function ClassesPage() {
                     >
                       ✎
                     </button>
+                    {c.image && (
+                      <button
+                        type="button"
+                        className="ib hover:text-orange-500 hover:border-orange-500"
+                        onClick={() => handleRemoveImage(c.id)}
+                        aria-label="حذف صورة الفصل"
+                        title="حذف الصورة"
+                      >
+                        🖼
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="ib hover:text-red-500 hover:border-red-500"
@@ -282,6 +352,57 @@ export default function ClassesPage() {
                   onChange={(e) => setAcademicYear(e.target.value)}
                   disabled={saving}
                 />
+              </div>
+
+              {/* Image Upload Section */}
+              <div>
+                <label htmlFor="cl_img">صورة غلاف الفصل (اختياري)</label>
+                <div
+                  className="relative mt-1 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    id="cl_img"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileChange}
+                    disabled={saving}
+                    className="hidden"
+                  />
+
+                  {filePreview ? (
+                    <div className="relative">
+                      <img
+                        src={filePreview}
+                        alt="معاينة"
+                        className="w-full max-h-40 object-cover rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        className="absolute top-2 left-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-lg hover:bg-red-700 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFile(null);
+                          setFilePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="py-4">
+                      <span className="text-3xl block mb-2">📷</span>
+                      <p className="text-sm text-slate-500">
+                        اضغط لاختيار صورة غلاف للفصل
+                      </p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        JPG, PNG, WEBP · أقصى حجم 5 ميجا
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {error && <p className="msg err">{error}</p>}

@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { loginUser } from "../lib/api";
 import ThemeToggle from "../components/ThemeToggle";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
       setError("يرجى إدخال البريد الإلكتروني أو رقم الهاتف وكلمة السر.");
+      toast.error("يرجى إدخال بيانات الدخول كاملة.");
       return;
     }
 
@@ -24,12 +24,13 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      await loginUser(identifier.trim(), password);
-      router.push("/dashboard");
+      const res = await loginUser(identifier.trim(), password);
+      toast.success(`أهلاً بك يا ${res.user.name || "خادم المسيح"}! تم تسجيل الدخول بنجاح ✝`);
+      window.location.href = "/dashboard";
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "بيانات الدخول غير صحيحة، حاول مجدداً";
       setError(msg);
-    } finally {
+      toast.error(msg);
       setLoading(false);
     }
   };

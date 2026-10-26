@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
-import { registerUser } from "../lib/api";
+import { registerUser, uploadUserAvatar } from "../lib/api";
 import ThemeToggle from "../components/ThemeToggle";
+import { toast } from "sonner";
+import { Camera, X } from "lucide-react";
 
 const GRADES = [
   { value: "first", label: "سنة أولى ابتدائي" },
@@ -20,23 +22,43 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("حجم الصورة كبير جداً، الحد الأقصى ٥ ميجابايت");
+        return;
+      }
+      setSelectedFile(file);
+      setFilePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !phone.trim() || password.length < 8) {
       setError("يرجى ملء جميع الحقول وكلمة السر ٨ أحرف على الأقل.");
+      toast.error("يرجى ملء جميع الحقول المطلوبة بالشكل الصحيح.");
       return;
     }
 
     setLoading(true);
     setError(null);
-    setSuccess(false);
 
     try {
-      await registerUser({
+      const authData = await registerUser({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
@@ -44,11 +66,26 @@ export default function RegisterPage() {
         role: "servant",
         grades: [grade],
       });
-      setSuccess(true);
+
+      // رفع الصورة الشخصية تلقائياً إذا اختار صورة
+      if (selectedFile && authData?.user?.id) {
+        try {
+          await uploadUserAvatar(authData.user.id, selectedFile);
+        } catch {
+          // يمكن تعديلها لاحقاً من الملف الشخصي
+        }
+      }
+
+      toast.success(`أهلاً بك يا ${name.trim()}! تم إنشاء الحساب بنجاح ✝`, {
+        description: "جارٍ فتح لوحة الخدمة والفصل الخاص بك الآن...",
+      });
+
+      // دخول مباشر للوحة التحكم فور إتمام التسجيل
+      window.location.href = "/dashboard";
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "فشل إنشاء الحساب، يرجى المحاولة لاحقاً";
       setError(msg);
-    } finally {
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -62,17 +99,62 @@ export default function RegisterPage() {
         <ThemeToggle />
       </div>
 
-      <div className="auth-card w-full max-w-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 z-10">
+      <div className="auth-card w-full max-w-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 z-10 shadow-2xl">
         <div className="text-right mb-6">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">
             حساب خادم جديد
           </h2>
           <p className="hint text-slate-500">
-            للخدام والمشرفين فقط. الأطفال يتم تسجيلهم داخل التطبيق.
+            للخدام والمشرفين فقط. سيتم تسجيلك وربطك بفصلك والدخول مباشرة إلى لوحة التحكم.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="f text-right">
+          {/* Avatar Upload (اختياري) */}
+          <div className="flex flex-col items-center justify-center mb-6">
+            <div className="relative group">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="w-24 h-24 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden cursor-pointer bg-slate-50 dark:bg-slate-800/60 hover:border-blue-500 transition shadow-inner"
+              >
+                {filePreview ? (
+                  <img
+                    src={filePreview}
+                    alt="معاينة الصورة"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center text-slate-400 group-hover:text-blue-500 transition">
+                    <Camera className="w-8 h-8 mb-1" />
+                    <span className="text-[11px] font-medium">صورة خادم</span>
+                  </div>
+                )}
+              </div>
+
+              {filePreview && (
+                <button
+                  type="button"
+                  onClick={removeSelectedFile}
+                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition"
+                  title="إزالة الصورة"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+            <span className="text-xs text-slate-400 mt-2">
+              صورة شخصية (اختياري — يمكنك أيضاً رفعها أو تعديلها لاحقاً من بروفايلك)
+            </span>
+          </div>
+
           <label htmlFor="name">الاسم الكامل</label>
           <input
             id="name"
@@ -138,16 +220,11 @@ export default function RegisterPage() {
           />
 
           {error && <p className="msg err mt-3">{error}</p>}
-          {success && (
-            <p className="msg mt-3 text-center text-emerald-600 dark:text-emerald-400">
-              تم إنشاء الحساب بنجاح. يمكنك تسجيل الدخول الآن.
-            </p>
-          )}
 
           <button
             type="submit"
             className="btn big w-full mt-6 flex items-center justify-center gap-2"
-            disabled={loading || success}
+            disabled={loading}
           >
             {loading ? (
               <>
@@ -155,17 +232,15 @@ export default function RegisterPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
-                <span>جارٍ إنشاء الحساب...</span>
+                <span>جارٍ إنشاء الحساب والدخول المباشر...</span>
               </>
-            ) : success ? (
-              <span>تم إنشاء الحساب</span>
             ) : (
-              <span>إنشاء الحساب</span>
+              <span>إنشاء الحساب والدخول للرئيسية</span>
             )}
           </button>
 
           <p className="hint text-center mt-6">
-            {success ? "لديك حساب الآن؟ " : "لديك حساب بالفعل؟ "}
+            لديك حساب بالفعل؟{" "}
             <Link href="/login" className="auth-accent-link font-bold">
               سجّل دخولك الآن
             </Link>

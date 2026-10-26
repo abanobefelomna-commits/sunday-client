@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
 import "./globals.css";
 import BibleWidget from "./components/BibleWidget";
+import { Toaster } from "sonner";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" className={cairo.variable} suppressHydrationWarning>
       <body className="antialiased min-h-screen">
         {children}
+        <Toaster position="top-center" richColors closeButton duration={3500} />
         <BibleWidget />
       </body>
     </html>

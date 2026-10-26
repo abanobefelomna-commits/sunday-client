@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Home, Baby, CheckSquare, BookOpen, Users } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
 import {
@@ -72,10 +73,10 @@ export default function DashboardPage() {
   });
 
   const TILES = [
-    { href: "/children", icon: "🧒", title: "الأطفال", count: `${childrenCount} طفل`, color: "#3b6ff5" },
-    { href: "/classes", icon: "📚", title: "الفصول", count: `${classesCount} فصول`, color: "#2fa36b" },
-    { href: "/servants", icon: "🤝", title: "الخدام", count: `${servantsCount} خادم`, color: "#e8a317" },
-    { href: "/attendance", icon: "✅", title: "الحضور", count: `${presentToday} حاضر النهاردة`, color: "#8b5cf6" },
+    { href: "/children", icon: <Baby className="h-5 w-5" />, title: "الأطفال", count: `${childrenCount} طفل`, color: "#3b6ff5" },
+    { href: "/classes", icon: <BookOpen className="h-5 w-5" />, title: "الفصول", count: `${classesCount} فصول`, color: "#2fa36b" },
+    { href: "/servants", icon: <Users className="h-5 w-5" />, title: "الخدام", count: `${servantsCount} خادم`, color: "#e8a317" },
+    { href: "/attendance", icon: <CheckSquare className="h-5 w-5" />, title: "الحضور", count: `${presentToday} حاضر النهاردة`, color: "#8b5cf6" },
   ];
 
   return (

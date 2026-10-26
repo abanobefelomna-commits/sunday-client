@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Home, Baby, CheckSquare, BookOpen, Users } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", icon: "🏠", label: "الرئيسية" },
-  { href: "/children", icon: "🧒", label: "الأطفال" },
-  { href: "/attendance", icon: "✅", label: "الحضور" },
-  { href: "/classes", icon: "📚", label: "الفصول" },
-  { href: "/servants", icon: "🤝", label: "الخدام" },
+  { href: "/dashboard", icon: <Home className="h-5 w-5" />, label: "الرئيسية" },
+  { href: "/children", icon: <Baby className="h-5 w-5" />, label: "الأطفال" },
+  { href: "/attendance", icon: <CheckSquare className="h-5 w-5" />, label: "الحضور" },
+  { href: "/classes", icon: <BookOpen className="h-5 w-5" />, label: "الفصول" },
+  { href: "/servants", icon: <Users className="h-5 w-5" />, label: "الخدام" },
 ];
 
 export default function BottomNav() {

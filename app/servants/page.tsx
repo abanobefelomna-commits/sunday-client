@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
+import { toast } from "sonner";
 import {
   getServants,
   createServant,
   deleteServant,
+  uploadServantAvatar,
+  deleteServantAvatar,
+  getImageUrl,
   type ServantItem,
 } from "../lib/api";
 
@@ -32,6 +36,11 @@ export default function ServantsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Image upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -51,11 +60,22 @@ export default function ServantsPage() {
     fetchServants();
   }, [search]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setFilePreview(url);
+    }
+  };
+
   const openAddModal = () => {
     setName("");
     setPhone("");
     setEmail("");
     setRole("خادم");
+    setSelectedFile(null);
+    setFilePreview(null);
     setError(null);
     setShowModal(true);
   };
@@ -71,19 +91,37 @@ export default function ServantsPage() {
     setError(null);
 
     try {
-      await createServant({
+      const savedServant = await createServant({
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim() || undefined,
         role,
       });
+
+      // Upload avatar if selected
+      if (selectedFile) {
+        await uploadServantAvatar(savedServant.id, selectedFile);
+      }
+
       setShowModal(false);
+      toast.success("تم إضافة الخادم بنجاح ✓");
       fetchServants();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "تعذر حفظ بيانات الخادم";
       setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveAvatar = async (id: string) => {
+    try {
+      await deleteServantAvatar(id);
+      toast.success("تم حذف صورة الخادم بنجاح ✓");
+      fetchServants();
+    } catch {
+      toast.error("فشل حذف الصورة");
     }
   };
 
@@ -91,9 +129,10 @@ export default function ServantsPage() {
     try {
       await deleteServant(id);
       setDeletingId(null);
+      toast.success("تم حذف الخادم بنجاح ✓");
       fetchServants();
     } catch {
-      alert("فشل حذف الخادم، يتطلب صلاحية مسؤول أو كاهن.");
+      toast.error("فشل حذف الخادم، يتطلب صلاحية مسؤول أو كاهن.");
     }
   };
 
@@ -143,12 +182,26 @@ export default function ServantsPage() {
             servants.map((s) => {
               const color = ROLE_COLORS[s.role] || "#3b6ff5";
               const initial = s.name.replace(/^أ\. /, "").trim().charAt(0) || "خ";
+              const hasAvatar = !!s.avatar;
 
               return (
                 <article key={s.id} className="pc">
-                  <span className="av2" style={{ ["--c" as string]: color }}>
-                    {initial}
-                  </span>
+                  {hasAvatar ? (
+                    <img
+                      src={getImageUrl(s.avatar)}
+                      alt={s.name}
+                      className="av2"
+                      style={{
+                        ["--c" as string]: color,
+                        objectFit: "cover",
+                        borderRadius: "50%",
+                      }}
+                    />
+                  ) : (
+                    <span className="av2" style={{ ["--c" as string]: color }}>
+                      {initial}
+                    </span>
+                  )}
 
                   <div className="pi">
                     <small>
@@ -175,9 +228,32 @@ export default function ServantsPage() {
                         {s.email}
                       </span>
                     )}
+                    {s.classes && s.classes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {s.classes.map((c) => (
+                          <span
+                            key={c.id}
+                            className="text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md font-semibold"
+                          >
+                            🏫 {c.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="ac">
+                    {hasAvatar && (
+                      <button
+                        type="button"
+                        className="ib hover:text-orange-500 hover:border-orange-500"
+                        onClick={() => handleRemoveAvatar(s.id)}
+                        aria-label="حذف صورة الخادم"
+                        title="حذف الصورة"
+                      >
+                        🖼
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="ib hover:text-red-500 hover:border-red-500"
@@ -211,7 +287,7 @@ export default function ServantsPage() {
       {/* Add Servant Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 إضافة خادم جديد
@@ -227,6 +303,53 @@ export default function ServantsPage() {
             </div>
 
             <form onSubmit={handleSave} className="f text-right space-y-4">
+              {/* Avatar Upload Section */}
+              <div className="flex justify-center">
+                <div
+                  className="relative w-28 h-28 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center cursor-pointer hover:border-blue-400 dark:hover:border-blue-500 transition overflow-hidden group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleFileChange}
+                    disabled={saving}
+                    className="hidden"
+                  />
+
+                  {filePreview ? (
+                    <>
+                      <img
+                        src={filePreview}
+                        alt="معاينة"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">تغيير</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="absolute -top-1 -left-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-red-700 transition z-10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFile(null);
+                          setFilePreview(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center">
+                      <span className="text-2xl block">📷</span>
+                      <p className="text-xs text-slate-500 mt-1">صورة شخصية</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="s_name">اسم الخادم</label>
                 <input
