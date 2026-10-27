@@ -104,11 +104,15 @@ export interface AttendanceRecord {
   };
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL !== undefined ? process.env.NEXT_PUBLIC_API_URL : '';
 
 export function getImageUrl(imagePath?: string | null): string {
   if (!imagePath) return '';
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+  if (
+    imagePath.startsWith('http://') ||
+    imagePath.startsWith('https://') ||
+    imagePath.startsWith('data:')
+  ) {
     return imagePath;
   }
   return `${API_BASE}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
