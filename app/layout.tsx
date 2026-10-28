@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -15,6 +15,12 @@ const cairo = Cairo({
 export const metadata: Metadata = {
   title: "مدارس الأحد — مكان لأولادنا في المرحلة الابتدائية",
   description: "خدمة مدارس الأحد، نتعلّم فيها كلمة الله ونكبر معًا في المحبة. متابعة الحضور والغياب، الفصول، الأطفال، والافتقاد.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
