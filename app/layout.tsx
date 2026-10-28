@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cairo } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import BibleWidget from "./components/BibleWidget";
 import { Toaster } from "sonner";
@@ -25,6 +26,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" className={cairo.variable} suppressHydrationWarning>
       <body className="antialiased min-h-screen">
         {children}
+        <Analytics />
         <Toaster position="top-center" richColors closeButton duration={3500} />
         <BibleWidget />
       </body>
