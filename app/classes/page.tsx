@@ -42,7 +42,7 @@ export default function ClassesPage() {
             الفصول
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            الفصول السبعة ثابتة: ست مراحل دراسية والفقرة العامة.
+            الفصول الدراسية والفقرة العامة.
           </p>
         </div>
 

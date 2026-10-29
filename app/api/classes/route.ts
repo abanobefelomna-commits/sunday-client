@@ -45,7 +45,15 @@ export async function GET(req: Request) {
        LEFT JOIN "servants_classes" sc ON sc."classesId" = c."id"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR c."grade"::text = $2)
-       GROUP BY c."id"
+       GROUP BY
+         c."id",
+         c."name",
+         c."grade",
+         c."description",
+         c."academicYear",
+         c."image",
+         c."createdAt",
+         c."updatedAt"
        ORDER BY array_position($5::text[], c."grade"::text), c."createdAt" ASC
        LIMIT $3 OFFSET $4`,
       [search, grade, limit, offset, DEFAULT_CLASSES.map((item) => item.grade)],

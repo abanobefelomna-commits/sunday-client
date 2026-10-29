@@ -23,13 +23,4 @@ export async function ensureDefaultClasses(): Promise<void> {
      )`,
     [names, grades],
   );
-
-  await query(
-    `UPDATE "classes" AS existing
-     SET "name" = defaults.name, "updatedAt" = now()
-     FROM unnest($1::text[], $2::text[]) AS defaults(name, grade)
-     WHERE existing."grade"::text = defaults.grade
-       AND existing."name" IS DISTINCT FROM defaults.name`,
-    [names, grades],
-  );
 }
