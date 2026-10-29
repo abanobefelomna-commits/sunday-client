@@ -14,11 +14,13 @@ const GRADES = [
   { value: "fourth", label: "سنة رابعة ابتدائي" },
   { value: "fifth", label: "سنة خامسة ابتدائي" },
   { value: "sixth", label: "سنة سادسة ابتدائي" },
+  { value: "general", label: "فقرة عامة" },
 ];
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("first");
+  const [servantRole, setServantRole] = useState("servant");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -63,8 +65,8 @@ export default function RegisterPage() {
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password,
-        role: "servant",
-        grades: [grade],
+        servantRole,
+        grades: ["admin", "priest"].includes(servantRole) ? [] : [grade],
       });
 
       // رفع الصورة الشخصية تلقائياً إذا اختار صورة
@@ -105,7 +107,7 @@ export default function RegisterPage() {
             حساب خادم جديد
           </h2>
           <p className="hint text-slate-500">
-            للخدام والمشرفين فقط. سيتم تسجيلك وربطك بفصلك والدخول مباشرة إلى لوحة التحكم.
+            اختر دورك في الخدمة. الأدوار الإدارية هنا مسميات تعريفية فقط ولا تمنح صلاحيات إدارية.
           </p>
         </div>
 
@@ -167,19 +169,36 @@ export default function RegisterPage() {
             disabled={loading}
           />
 
-          <label htmlFor="grade">المرحلة أو الفصل الذي تخدم به</label>
+          <label htmlFor="servantRole">الدور في الخدمة</label>
           <select
-            id="grade"
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
+            id="servantRole"
+            value={servantRole}
+            onChange={(e) => setServantRole(e.target.value)}
             disabled={loading}
           >
-            {GRADES.map((g) => (
-              <option key={g.value} value={g.value}>
-                {g.label}
-              </option>
-            ))}
+            <option value="servant">خادم</option>
+            <option value="class_leader">قائد فصل</option>
+            <option value="admin">مسؤول</option>
+            <option value="priest">أب كاهن</option>
           </select>
+
+          {!["admin", "priest"].includes(servantRole) && (
+            <>
+              <label htmlFor="grade">الفصل أو القسم</label>
+              <select
+                id="grade"
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                disabled={loading}
+              >
+                {GRADES.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
           <label htmlFor="email">البريد الإلكتروني</label>
           <input

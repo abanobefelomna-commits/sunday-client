@@ -1,8 +1,10 @@
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { ensureGeneralClass } from '@/src/server/classes';
+import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
+    await ensureGeneralClass();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
     const grade = searchParams.get('grade') || null;
@@ -63,15 +65,16 @@ export async function GET(req: Request) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get classes error:', error);
-    return serverError(error.message || 'فشل جلب الفصول');
+    return serverError(
+      error instanceof Error ? error.message : 'فشل جلب الفصول',
+    );
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const auth = await getAuthUser(req);
     // Allow request (or require auth if desired)
     const body = await req.json();
     const { name, grade, description = '', academicYear = '' } = body;
@@ -97,8 +100,10 @@ export async function POST(req: Request) {
     );
 
     return jsonResponse(newClass, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create class error:', error);
-    return serverError(error.message || 'فشل إنشاء الفصل');
+    return serverError(
+      error instanceof Error ? error.message : 'فشل إنشاء الفصل',
+    );
   }
 }

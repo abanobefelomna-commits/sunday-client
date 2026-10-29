@@ -1,4 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
+import { ensureGeneralClass } from '@/src/server/classes';
 import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
@@ -57,7 +58,7 @@ export async function GET(req: Request) {
 
     // Attach classes to each servant
     const servantIds = servants.map((s) => s.id);
-    let classesMap: Record<string, Array<{ id: string; name: string; grade: string }>> = {};
+    const classesMap: Record<string, Array<{ id: string; name: string; grade: string }>> = {};
 
     if (servantIds.length > 0) {
       const classRows = await query<{
@@ -104,9 +105,11 @@ export async function GET(req: Request) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get servants error:', error);
-    return serverError(error.message || 'فشل جلب قائمة الخدام');
+    return serverError(
+      error instanceof Error ? error.message : 'فشل جلب قائمة الخدام',
+    );
   }
 }
 
@@ -139,8 +142,20 @@ export async function POST(req: Request) {
       return serverError('فشل إنشاء الخادم');
     }
 
-    if (Array.isArray(classIds) && classIds.length > 0) {
-      for (const cId of classIds) {
+    let assignedClassIds: string[] = Array.isArray(classIds) ? classIds : [];
+    if (role === 'خادم فقرة عامة') {
+      await ensureGeneralClass();
+      const generalClasses = await query<{ id: string }>(
+        `SELECT "id" FROM "classes" WHERE "grade"::text = 'general'`,
+      );
+      assignedClassIds = [...new Set([...assignedClassIds, ...generalClasses.map((cls) => cls.id)])];
+    }
+    if (role === 'مسؤول' || role === 'أب كاهن') {
+      assignedClassIds = [];
+    }
+
+    if (assignedClassIds.length > 0) {
+      for (const cId of assignedClassIds) {
         await query(
           `INSERT INTO "servants_classes" ("servantsId", "classesId")
            VALUES ($1, $2)
@@ -151,8 +166,10 @@ export async function POST(req: Request) {
     }
 
     return jsonResponse(newServant, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create servant error:', error);
-    return serverError(error.message || 'فشل إضافة الخادم');
+    return serverError(
+      error instanceof Error ? error.message : 'فشل إضافة الخادم',
+    );
   }
 }

@@ -16,10 +16,12 @@ import {
 
 const ROLE_COLORS: Record<string, string> = {
   "خادم": "#3b6ff5",
+  "خادم فقرة عامة": "#0ea5b7",
+  "قائد فصل": "#e8a317",
+  "مسؤول": "#d64545",
+  "أب كاهن": "#8b5cf6",
   "خادم رئيسي": "#e8a317",
   "مشرف": "#2fa36b",
-  "admin": "#d64545",
-  "priest": "#8b5cf6",
 };
 
 export default function ServantsPage() {
@@ -183,9 +185,21 @@ export default function ServantsPage() {
               const color = ROLE_COLORS[s.role] || "#3b6ff5";
               const initial = s.name.replace(/^أ\. /, "").trim().charAt(0) || "خ";
               const hasAvatar = !!s.avatar;
+              const featuredRole = ["قائد فصل", "مسؤول", "أب كاهن"].includes(s.role);
 
               return (
-                <article key={s.id} className="pc">
+                <article
+                  key={s.id}
+                  className={`pc ${
+                    s.role === "قائد فصل"
+                      ? "border-2 border-amber-400 bg-amber-50/70 dark:bg-amber-950/20"
+                      : s.role === "مسؤول"
+                        ? "border-2 border-rose-400 bg-rose-50/70 dark:bg-rose-950/20"
+                        : s.role === "أب كاهن"
+                          ? "border-2 border-violet-400 bg-violet-50/70 dark:bg-violet-950/20 shadow-lg"
+                          : ""
+                  }`}
+                >
                   {hasAvatar ? (
                     <img
                       src={getImageUrl(s.avatar)}
@@ -205,7 +219,13 @@ export default function ServantsPage() {
 
                   <div className="pi">
                     <small>
-                      <span className="cb" style={{ ["--c" as string]: color }}>
+                      <span
+                        className="cb"
+                        style={{
+                          ["--c" as string]: color,
+                          ...(featuredRole ? { fontWeight: 800, padding: "4px 10px" } : {}),
+                        }}
+                      >
                         {s.role}
                       </span>
                     </small>
@@ -399,6 +419,10 @@ export default function ServantsPage() {
                   disabled={saving}
                 >
                   <option value="خادم">خادم فصل</option>
+                  <option value="خادم فقرة عامة">خادم فقرة عامة</option>
+                  <option value="قائد فصل">قائد فصل</option>
+                  <option value="مسؤول">مسؤول</option>
+                  <option value="أب كاهن">أب كاهن</option>
                   <option value="خادم رئيسي">خادم رئيسي (أمين أسرة)</option>
                   <option value="مشرف">مشرف عام</option>
                 </select>

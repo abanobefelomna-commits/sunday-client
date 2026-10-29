@@ -61,7 +61,11 @@ export default function ClassDetailsPage({
 
         {/* Cover Header */}
         <div className="cover bg-gradient-to-tr from-blue-700 to-indigo-500 min-h-44 rounded-3xl p-6 text-white flex flex-col justify-end shadow-xl">
-          <small className="opacity-80">فصل مدارس الأحد · {classData.grade}</small>
+          <small className="opacity-80">
+            {classData.grade === "general"
+              ? "قسم الفقرة العامة"
+              : `فصل مدارس الأحد · ${classData.grade}`}
+          </small>
           <h1 className="text-3xl font-extrabold mt-1">{classData.name}</h1>
           <p className="text-sm opacity-90 mt-1">السنة الدراسية: {classData.academicYear}</p>
         </div>
@@ -129,22 +133,43 @@ export default function ClassDetailsPage({
           </div>
 
           {servants.length > 0 ? (
-            servants.map((s) => (
-              <div key={s.id} className="row">
-                <b className="text-slate-900 dark:text-slate-100">{s.name}</b>
-                {s.phone ? (
-                  <a
-                    href={`tel:${s.phone}`}
-                    className="text-sm text-amber-600 dark:text-amber-400 hover:underline"
-                    dir="ltr"
-                  >
-                    {s.phone}
-                  </a>
-                ) : (
-                  <span className="text-xs text-slate-400">الهاتف غير متوفر</span>
-                )}
-              </div>
-            ))
+            servants.map((s) => {
+              const isLeader = s.role === "قائد فصل";
+              return (
+                <div
+                  key={s.id}
+                  className={`row ${
+                    isLeader
+                      ? "rounded-2xl border-2 border-amber-400 bg-amber-50/70 px-4 dark:bg-amber-950/20"
+                      : ""
+                  }`}
+                >
+                  <div>
+                    <b className="text-slate-900 dark:text-slate-100">{s.name}</b>
+                    {s.role && (
+                      <span
+                        className={`block text-xs font-bold ${
+                          isLeader ? "text-amber-700 dark:text-amber-300" : "text-slate-500"
+                        }`}
+                      >
+                        {s.role}
+                      </span>
+                    )}
+                  </div>
+                  {s.phone ? (
+                    <a
+                      href={`tel:${s.phone}`}
+                      className="text-sm text-amber-600 dark:text-amber-400 hover:underline"
+                      dir="ltr"
+                    >
+                      {s.phone}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-slate-400">الهاتف غير متوفر</span>
+                  )}
+                </div>
+              );
+            })
           ) : (
             <div className="text-center py-8 text-slate-400">
               لا يوجد خدام معينين لهذا الفصل حتى الآن.

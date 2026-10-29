@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, queryOne } from '@/src/server/db';
+import { queryOne } from '@/src/server/db';
 import {
   hashPassword,
   issueRefreshToken,
@@ -11,11 +11,41 @@ import { badRequest, conflict, serverError } from '@/src/server/middleware';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, phone, password, role = 'servant', grades = [] } = body;
+    const {
+      name,
+      email,
+      phone,
+      password,
+      servantRole = 'servant',
+      grades = [],
+    } = body;
+
+    const servantRoles = ['servant', 'class_leader', 'admin', 'priest'];
+    const validGrades = [
+      'first',
+      'second',
+      'third',
+      'fourth',
+      'fifth',
+      'sixth',
+      'general',
+    ];
 
     if (!name || !email || !phone || !password) {
       return badRequest('الاسم، البريد الإلكتروني، رقم الهاتف، وكلمة المرور مطلوبة');
     }
+    if (!servantRoles.includes(servantRole)) {
+      return badRequest('الدور المختار غير صالح');
+    }
+    if (
+      !Array.isArray(grades) ||
+      grades.some((grade: unknown) => typeof grade !== 'string' || !validGrades.includes(grade))
+    ) {
+      return badRequest('الفصل أو القسم المختار غير صالح');
+    }
+
+    const accountRole = 'servant';
+    const assignedGrades = ['admin', 'priest'].includes(servantRole) ? [] : grades;
 
     // Check existing email or phone
     const existing = await queryOne<{ email: string; phone: string }>(
@@ -45,7 +75,7 @@ export async function POST(req: Request) {
       `INSERT INTO "users" ("id", "name", "email", "emailVerified", "phone", "password", "role", "grades", "createdAt", "updatedAt")
        VALUES (uuid_generate_v4(), $1, $2, true, $3, $4, $5, $6, now(), now())
        RETURNING "id", "name", "email", "phone", "role", "grades", "avatar"`,
-      [name, email, phone, hashedPassword, role, grades],
+      [name, email, phone, hashedPassword, accountRole, assignedGrades],
     );
 
     if (!user) {
@@ -58,6 +88,7 @@ export async function POST(req: Request) {
       phone: user.phone,
       email: user.email,
       role: user.role,
+      servantRole,
       avatar: user.avatar,
       grades: user.grades,
     });
@@ -86,8 +117,10 @@ export async function POST(req: Request) {
     });
 
     return res;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration error:', error);
-    return serverError(error.message || 'حدث خطأ أثناء إنشاء الحساب');
+    return serverError(
+      error instanceof Error ? error.message : 'حدث خطأ أثناء إنشاء الحساب',
+    );
   }
 }
