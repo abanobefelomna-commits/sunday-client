@@ -1,9 +1,10 @@
 import { query, queryOne } from '@/src/server/db';
-import { ensureGeneralClass } from '@/src/server/classes';
+import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
 import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
+    await ensureDefaultClasses();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
     const role = searchParams.get('role') || null;
@@ -122,6 +123,41 @@ export async function POST(req: Request) {
       return badRequest('الاسم ورقم الهاتف مطلوبان');
     }
 
+    await ensureDefaultClasses();
+    let assignedClassIds: string[] = [];
+
+    if (role === 'خادم فقرة عامة') {
+      const generalClass = await queryOne<{ id: string }>(
+        `SELECT "id" FROM "classes" WHERE "grade"::text = 'general' LIMIT 1`,
+      );
+      if (!generalClass) {
+        return serverError('فشل تجهيز فصل الفقرة العامة');
+      }
+      assignedClassIds = [generalClass.id];
+    } else if (role === 'خادم' || role === 'قائد فصل') {
+      const requestedClassIds = Array.isArray(classIds)
+        ? [...new Set(classIds.filter(
+            (id: unknown): id is string =>
+              typeof id === 'string' &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+          ))]
+        : [];
+      if (requestedClassIds.length !== 1) {
+        return badRequest('اختر فصلًا واحدًا للخادم');
+      }
+
+      const selectedClass = await queryOne<{ id: string }>(
+        `SELECT "id" FROM "classes"
+         WHERE "id" = $1 AND "grade"::text = ANY($2::text[])
+         LIMIT 1`,
+        [requestedClassIds[0], DEFAULT_CLASSES.map((item) => item.grade)],
+      );
+      if (!selectedClass) {
+        return badRequest('الفصل المختار غير صالح');
+      }
+      assignedClassIds = [selectedClass.id];
+    }
+
     const newServant = await queryOne<{
       id: string;
       name: string;
@@ -142,14 +178,6 @@ export async function POST(req: Request) {
       return serverError('فشل إنشاء الخادم');
     }
 
-    let assignedClassIds: string[] = Array.isArray(classIds) ? classIds : [];
-    if (role === 'خادم فقرة عامة') {
-      await ensureGeneralClass();
-      const generalClasses = await query<{ id: string }>(
-        `SELECT "id" FROM "classes" WHERE "grade"::text = 'general'`,
-      );
-      assignedClassIds = [...new Set([...assignedClassIds, ...generalClasses.map((cls) => cls.id)])];
-    }
     if (role === 'مسؤول' || role === 'أب كاهن') {
       assignedClassIds = [];
     }

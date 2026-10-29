@@ -1,10 +1,10 @@
 import { query, queryOne } from '@/src/server/db';
-import { ensureGeneralClass } from '@/src/server/classes';
-import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
+import { jsonResponse, serverError } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
-    await ensureGeneralClass();
+    await ensureDefaultClasses();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
     const grade = searchParams.get('grade') || null;
@@ -35,23 +35,29 @@ export async function GET(req: Request) {
          c."updatedAt",
          COUNT(DISTINCT ch."id")::int AS "childrenCount",
          COUNT(DISTINCT sc."servantsId")::int AS "servantsCount"
-       FROM "classes" c
+       FROM (
+         SELECT DISTINCT ON (source."grade"::text) source.*
+         FROM "classes" source
+         WHERE source."grade"::text = ANY($5::text[])
+         ORDER BY source."grade"::text, source."createdAt" ASC, source."id" ASC
+       ) c
        LEFT JOIN "children" ch ON ch."classId" = c."id"
        LEFT JOIN "servants_classes" sc ON sc."classesId" = c."id"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR c."grade"::text = $2)
        GROUP BY c."id"
-       ORDER BY c."createdAt" ASC
+       ORDER BY array_position($5::text[], c."grade"::text), c."createdAt" ASC
        LIMIT $3 OFFSET $4`,
-      [search, grade, limit, offset],
+      [search, grade, limit, offset, DEFAULT_CLASSES.map((item) => item.grade)],
     );
 
     const countRow = await queryOne<{ total: number }>(
-      `SELECT COUNT(*)::int AS total
+      `      SELECT COUNT(DISTINCT c."grade"::text)::int AS total
        FROM "classes" c
-       WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
+       WHERE c."grade"::text = ANY($3::text[])
+         AND ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR c."grade"::text = $2)`,
-      [search, grade],
+      [search, grade, DEFAULT_CLASSES.map((item) => item.grade)],
     );
 
     const total = countRow?.total || 0;
@@ -73,37 +79,9 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
-  try {
-    // Allow request (or require auth if desired)
-    const body = await req.json();
-    const { name, grade, description = '', academicYear = '' } = body;
-
-    if (!name || !grade) {
-      return badRequest('اسم الفصل والدرجة مطلوبة');
-    }
-
-    const newClass = await queryOne<{
-      id: string;
-      name: string;
-      grade: string;
-      description: string | null;
-      academicYear: string | null;
-      image: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-    }>(
-      `INSERT INTO "classes" ("id", "name", "grade", "description", "academicYear", "createdAt", "updatedAt")
-       VALUES (uuid_generate_v4(), $1, $2, $3, $4, now(), now())
-       RETURNING *`,
-      [name, grade, description, academicYear],
-    );
-
-    return jsonResponse(newClass, 201);
-  } catch (error: unknown) {
-    console.error('Create class error:', error);
-    return serverError(
-      error instanceof Error ? error.message : 'فشل إنشاء الفصل',
-    );
-  }
+export async function POST() {
+  return jsonResponse(
+    { message: 'الفصول ثابتة ولا يمكن إضافة فصول جديدة' },
+    405,
+  );
 }

@@ -24,7 +24,7 @@ const GRADES = [
   { value: "fourth", label: "سنة رابعة ابتدائي" },
   { value: "fifth", label: "سنة خامسة ابتدائي" },
   { value: "sixth", label: "سنة سادسة ابتدائي" },
-  { value: "general", label: "فقرة عامة" },
+  { value: "general", label: "الفقرة العامة" },
 ];
 
 export default function ProfilePage() {

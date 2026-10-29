@@ -8,9 +8,11 @@ import {
   getServants,
   createServant,
   deleteServant,
+  getClasses,
   uploadServantAvatar,
   deleteServantAvatar,
   getImageUrl,
+  type ClassItem,
   type ServantItem,
 } from "../lib/api";
 
@@ -26,6 +28,7 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function ServantsPage() {
   const [servants, setServants] = useState<ServantItem[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +38,7 @@ export default function ServantsPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("خادم");
+  const [classId, setClassId] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +66,17 @@ export default function ServantsPage() {
     fetchServants();
   }, [search]);
 
+  useEffect(() => {
+    getClasses()
+      .then((items) => {
+        setClasses(items);
+        setClassId(items[0]?.id || "");
+      })
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : "تعذر تحميل الفصول");
+      });
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -76,6 +91,7 @@ export default function ServantsPage() {
     setPhone("");
     setEmail("");
     setRole("خادم");
+    setClassId(classes[0]?.id || "");
     setSelectedFile(null);
     setFilePreview(null);
     setError(null);
@@ -98,6 +114,7 @@ export default function ServantsPage() {
         phone: phone.trim(),
         email: email.trim() || undefined,
         role,
+        classIds: ["خادم", "قائد فصل"].includes(role) ? [classId] : [],
       });
 
       // Upload avatar if selected
@@ -427,6 +444,25 @@ export default function ServantsPage() {
                   <option value="مشرف">مشرف عام</option>
                 </select>
               </div>
+
+              {["خادم", "قائد فصل"].includes(role) && (
+                <div>
+                  <label htmlFor="s_class">الفصل</label>
+                  <select
+                    id="s_class"
+                    value={classId}
+                    onChange={(e) => setClassId(e.target.value)}
+                    disabled={saving || classes.length === 0}
+                    required
+                  >
+                    {classes.map((classItem) => (
+                      <option key={classItem.id} value={classItem.id}>
+                        {classItem.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {error && <p className="msg err">{error}</p>}
 

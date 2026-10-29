@@ -68,55 +68,16 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const { id } = await params;
-    const body = await req.json();
-    const { name, grade, description, academicYear } = body;
-
-    const updated = await queryOne(
-      `UPDATE "classes"
-       SET "name" = COALESCE($1, "name"),
-           "grade" = COALESCE($2, "grade"),
-           "description" = COALESCE($3, "description"),
-           "academicYear" = COALESCE($4, "academicYear"),
-           "updatedAt" = now()
-       WHERE "id" = $5
-       RETURNING *`,
-      [name || null, grade || null, description || null, academicYear || null, id],
-    );
-
-    if (!updated) {
-      return notFound('الفصل غير موجود');
-    }
-
-    return jsonResponse(updated);
-  } catch (error: any) {
-    console.error('Update class error:', error);
-    return serverError(error.message || 'فشل تعديل الفصل');
-  }
+export async function PATCH() {
+  return jsonResponse(
+    { message: 'الفصول ثابتة ولا يمكن تعديلها' },
+    405,
+  );
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  try {
-    const { id } = await params;
-
-    // Remove join relations
-    await query(`DELETE FROM "servants_classes" WHERE "classesId" = $1`, [id]);
-    // Set children classId to null
-    await query(`UPDATE "children" SET "classId" = NULL WHERE "classId" = $1`, [id]);
-    // Delete class
-    await query(`DELETE FROM "classes" WHERE "id" = $1`, [id]);
-
-    return jsonResponse({ message: 'تم حذف الفصل بنجاح' });
-  } catch (error: any) {
-    console.error('Delete class error:', error);
-    return serverError(error.message || 'فشل حذف الفصل');
-  }
+export async function DELETE() {
+  return jsonResponse(
+    { message: 'الفصول ثابتة ولا يمكن حذفها' },
+    405,
+  );
 }

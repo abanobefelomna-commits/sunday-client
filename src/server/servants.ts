@@ -1,5 +1,5 @@
 import { query, queryOne } from './db';
-import { ensureGeneralClass } from './classes';
+import { ensureDefaultClasses } from './classes';
 
 export async function syncServantFromUser(data: {
   name: string;
@@ -69,15 +69,18 @@ export async function syncServantFromUser(data: {
     (!data.servantRole && ['مسؤول', 'أب كاهن'].includes(servant?.role || ''))
     ? []
     : data.grades || [];
+  if (assignedGrades.length > 0) {
+    await ensureDefaultClasses();
+  }
+
   await query(`DELETE FROM "servants_classes" WHERE "servantsId" = $1`, [servantId]);
 
   if (assignedGrades.length > 0) {
-    if (assignedGrades.includes('general')) {
-      await ensureGeneralClass();
-    }
-
     const classes = await query<{ id: string }>(
-      `SELECT "id" FROM "classes" WHERE "grade" = ANY($1::classes_grade_enum[])`,
+      `SELECT DISTINCT ON ("grade"::text) "id"
+       FROM "classes"
+       WHERE "grade" = ANY($1::classes_grade_enum[])
+       ORDER BY "grade"::text, "createdAt" ASC, "id" ASC`,
       [assignedGrades],
     );
 

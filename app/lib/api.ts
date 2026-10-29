@@ -526,6 +526,7 @@ export async function createServant(data: {
   phone: string;
   email?: string;
   role?: string;
+  classIds?: string[];
 }): Promise<ServantItem> {
   return request('/api/servants', {
     method: 'POST',
