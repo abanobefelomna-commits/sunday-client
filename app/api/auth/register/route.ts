@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       avatar: string | null;
     }>(
       `INSERT INTO "users" ("id", "name", "email", "emailVerified", "phone", "password", "role", "grades", "createdAt", "updatedAt")
-       VALUES (uuid_generate_v4(), $1, $2, true, $3, $4, $5, $6, now(), now())
+       VALUES (uuid_generate_v4(), $1, $2, true, $3, $4, $5, $6::users_grades_enum[], now(), now())
        RETURNING "id", "name", "email", "phone", "role", "grades", "avatar"`,
       [name, email, phone, hashedPassword, accountRole, assignedGrades],
     );

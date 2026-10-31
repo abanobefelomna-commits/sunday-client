@@ -33,7 +33,7 @@ export async function GET(req: Request) {
          c."image",
          c."createdAt",
          c."updatedAt",
-         COUNT(DISTINCT ch."id")::int AS "childrenCount",
+         CASE WHEN c."grade"::text = 'general' THEN (SELECT COUNT(*)::int FROM "children") ELSE COUNT(DISTINCT ch."id")::int END AS "childrenCount",
          COUNT(DISTINCT sc."servantsId")::int AS "servantsCount"
        FROM (
          SELECT DISTINCT ON (source."grade"::text) source.*

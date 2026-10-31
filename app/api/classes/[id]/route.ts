@@ -39,6 +39,7 @@ export async function GET(
       [id],
     );
 
+    const isGeneral = cls.grade === 'general';
     const children = await query<{
       id: string;
       name: string;
@@ -48,11 +49,15 @@ export async function GET(
       phone: string | null;
       avatar: string | null;
     }>(
-      `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
-       FROM "children"
-       WHERE "classId" = $1
-       ORDER BY "name" ASC`,
-      [id],
+      isGeneral
+        ? `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
+           FROM "children"
+           ORDER BY "name" ASC`
+        : `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
+           FROM "children"
+           WHERE "classId" = $1
+           ORDER BY "name" ASC`,
+      isGeneral ? [] : [id],
     );
 
     return jsonResponse({

@@ -78,7 +78,7 @@ export async function PATCH(
       `UPDATE "users"
        SET "name" = COALESCE($1, "name"),
            "phone" = COALESCE($2, "phone"),
-           "grades" = COALESCE($3, "grades"),
+           "grades" = COALESCE($3::users_grades_enum[], "grades"),
            "updatedAt" = now()
        WHERE "id" = $4
        RETURNING "id", "name", "email", "phone", "role", "grades", "avatar", "createdAt", "updatedAt"`,

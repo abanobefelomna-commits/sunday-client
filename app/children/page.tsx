@@ -20,6 +20,7 @@ const GRADE_COLORS: Record<string, string> = {
   fourth: "#d64545",
   fifth: "#8b5cf6",
   sixth: "#0ea5b7",
+  general: "#06b6d4",
 };
 
 export default function ChildrenPage() {
