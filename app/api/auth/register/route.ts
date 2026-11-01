@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { queryOne } from '@/src/server/db';
+import { query, queryOne } from '@/src/server/db';
 import {
   hashPassword,
   issueRefreshToken,
@@ -102,9 +102,22 @@ export async function POST(req: Request) {
 
     const refreshToken = await issueRefreshToken(user.id);
 
+    const userClasses = user.grades && user.grades.length > 0
+      ? await query<{ id: string }>(
+          `SELECT "id" FROM "classes" WHERE "grade" = ANY($1::classes_grade_enum[])`,
+          [user.grades],
+        )
+      : [];
+
+    const fullUser = {
+      ...user,
+      servantRole,
+      classIds: userClasses.map((c) => c.id),
+    };
+
     const res = NextResponse.json({
       accessToken,
-      user,
+      user: fullUser,
       refreshToken,
     });
 

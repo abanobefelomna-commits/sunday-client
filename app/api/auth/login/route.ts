@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { queryOne } from '@/src/server/db';
+import { query, queryOne } from '@/src/server/db';
 import {
   verifyPassword,
   issueRefreshToken,
@@ -47,6 +47,34 @@ export async function POST(req: Request) {
 
     const { password: _pw, ...safeUser } = user;
 
+    const servant = await queryOne<{ id: string; role: string }>(
+      `SELECT "id", "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`,
+      [user.phone, user.email],
+    );
+
+    let classIds: string[] = [];
+    if (servant) {
+      const sc = await query<{ classesId: string }>(
+        `SELECT "classesId" FROM "servants_classes" WHERE "servantsId" = $1`,
+        [servant.id],
+      );
+      classIds.push(...sc.map((r) => r.classesId));
+    }
+    if (user.grades && user.grades.length > 0) {
+      const gc = await query<{ id: string }>(
+        `SELECT "id" FROM "classes" WHERE "grade" = ANY($1::classes_grade_enum[])`,
+        [user.grades],
+      );
+      classIds.push(...gc.map((r) => r.id));
+    }
+    classIds = [...new Set(classIds)];
+
+    const safeUserWithRole = {
+      ...safeUser,
+      servantRole: servant?.role || null,
+      classIds,
+    };
+
     const accessToken = await signAccessToken({
       sub: user.id,
       role: user.role,
@@ -58,7 +86,7 @@ export async function POST(req: Request) {
 
     const res = NextResponse.json({
       accessToken,
-      user: safeUser,
+      user: safeUserWithRole,
       refreshToken,
     });
 

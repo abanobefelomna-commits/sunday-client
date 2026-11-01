@@ -32,6 +32,7 @@ export interface AuthUser {
   role: string;
   grades?: string[];
   servantRole?: string;
+  classIds?: string[];
   avatar?: string | null;
 }
 
@@ -216,6 +217,7 @@ export async function registerUser(payload: {
   phone: string;
   password: string;
   servantRole?: string;
+  classIds?: string[];
   grades?: string[];
 }): Promise<{ accessToken: string; user: AuthUser }> {
   const data = await request<{ accessToken: string; user: AuthUser }>(

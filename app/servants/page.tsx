@@ -12,6 +12,8 @@ import {
   uploadServantAvatar,
   deleteServantAvatar,
   getImageUrl,
+  getStoredUser,
+  type AuthUser,
   type ClassItem,
   type ServantItem,
 } from "../lib/api";
@@ -49,6 +51,17 @@ export default function ServantsPage() {
 
   // Delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+  }, []);
+
+  const isAdminOrPriest =
+    currentUser?.role === "admin" ||
+    currentUser?.role === "priest" ||
+    currentUser?.servantRole === "مسؤول" ||
+    currentUser?.servantRole === "أب كاهن";
 
   const fetchServants = async () => {
     try {
@@ -145,13 +158,19 @@ export default function ServantsPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdminOrPriest) {
+      toast.error("غير مسموح بحذف الخدام، الصلاحية للمسؤول أو الكاهن فقط.");
+      setDeletingId(null);
+      return;
+    }
     try {
       await deleteServant(id);
       setDeletingId(null);
       toast.success("تم حذف الخادم بنجاح ✓");
       fetchServants();
-    } catch {
-      toast.error("فشل حذف الخادم، يتطلب صلاحية مسؤول أو كاهن.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "فشل حذف الخادم، يتطلب صلاحية مسؤول أو كاهن.";
+      toast.error(msg);
     }
   };
 
@@ -291,15 +310,17 @@ export default function ServantsPage() {
                         🖼
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className="ib hover:text-red-500 hover:border-red-500"
-                      onClick={() => setDeletingId(s.id)}
-                      aria-label="حذف الخادم"
-                      title="حذف"
-                    >
-                      🗑
-                    </button>
+                    {isAdminOrPriest && (
+                      <button
+                        type="button"
+                        className="ib hover:text-red-500 hover:border-red-500"
+                        onClick={() => setDeletingId(s.id)}
+                        aria-label="حذف الخادم"
+                        title="حذف الخادم"
+                      >
+                        🗑
+                      </button>
+                    )}
                   </div>
                 </article>
               );

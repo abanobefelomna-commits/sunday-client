@@ -1,8 +1,11 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, getAccessContext, jsonResponse, badRequest, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    const access = await getAccessContext(auth);
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
     const gender = searchParams.get('gender') || null;
@@ -50,6 +53,7 @@ export async function GET(req: Request) {
        FROM "children" c
        LEFT JOIN "classes" cls ON cls."id" = c."classId"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
+         AND ($7::boolean OR c."classId" = ANY($9::uuid[]))
          AND ($2::text IS NULL OR c."gender"::text = $2)
          AND ($3::uuid IS NULL OR c."classId" = $3)
          AND ($4::text IS NULL OR cls."grade"::text = $4)
@@ -57,7 +61,7 @@ export async function GET(req: Request) {
          AND ($6::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) <= $6)
        ORDER BY c."createdAt" DESC
        LIMIT $7 OFFSET $8`,
-      [search, gender, classId, grade, minAge, maxAge, limit, offset],
+      [search, gender, classId, grade, minAge, maxAge, limit, offset, access.privileged, access.classIds],
     );
 
     const countRow = await queryOne<{ total: number }>(
@@ -65,12 +69,13 @@ export async function GET(req: Request) {
        FROM "children" c
        LEFT JOIN "classes" cls ON cls."id" = c."classId"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
+         AND ($7::boolean OR c."classId" = ANY($8::uuid[]))
          AND ($2::text IS NULL OR c."gender"::text = $2)
          AND ($3::uuid IS NULL OR c."classId" = $3)
          AND ($4::text IS NULL OR cls."grade"::text = $4)
          AND ($5::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) >= $5)
          AND ($6::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) <= $6)`,
-      [search, gender, classId, grade, minAge, maxAge],
+      [search, gender, classId, grade, minAge, maxAge, access.privileged, access.classIds],
     );
 
     const total = countRow?.total || 0;
@@ -116,6 +121,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
     const body = await req.json();
     const {
       name,
@@ -130,9 +137,15 @@ export async function POST(req: Request) {
       avatar,
     } = body;
 
-    if (!name || !birthDate) {
-      return badRequest('اسم الطفل وتاريخ الميلاد مطلوبان');
+    if (!name || !name.trim()) {
+      return badRequest('اسم الطفل مطلوب');
     }
+    const access = await getAccessContext(auth);
+    if (!access.privileged && (!classId || !access.classIds.includes(classId))) return forbidden();
+
+    const effectiveBirthDate =
+      birthDate ||
+      new Date(Date.now() - 8 * 365.25 * 24 * 3600 * 1000).toISOString().slice(0, 10);
 
     const newChild = await queryOne(
       `INSERT INTO "children" (
@@ -141,8 +154,8 @@ export async function POST(req: Request) {
        VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now())
        RETURNING *`,
       [
-        name,
-        birthDate,
+        name.trim(),
+        effectiveBirthDate,
         gender,
         parentPhone,
         parentName || null,

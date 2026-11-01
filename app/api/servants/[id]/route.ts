@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, serverError } from '@/src/server/middleware';
+import { getAuthUser, jsonResponse, notFound, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 
 export async function GET(
   req: Request,
@@ -94,6 +94,37 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) {
+      return unauthorized('لازم تسجّل الدخول الأول');
+    }
+
+    const currentUser = await queryOne<{ id: string; role: string; phone: string; email: string }>(
+      `SELECT "id", "role", "phone", "email" FROM "users" WHERE "id" = $1 LIMIT 1`,
+      [auth.sub],
+    );
+
+    const servant = currentUser
+      ? await queryOne<{ role: string }>(
+          `SELECT "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`,
+          [currentUser.phone, currentUser.email],
+        )
+      : null;
+
+    const isAdminOrPriest =
+      auth.role === 'admin' ||
+      auth.role === 'priest' ||
+      currentUser?.role === 'admin' ||
+      currentUser?.role === 'priest' ||
+      servant?.role === 'مسؤول' ||
+      servant?.role === 'أب كاهن' ||
+      servant?.role === 'admin' ||
+      servant?.role === 'priest';
+
+    if (!isAdminOrPriest) {
+      return forbidden('غير مسموح لك بحذف الخدام. الحذف مقتصر على المسؤول والكاهن فقط.');
+    }
+
     const { id } = await params;
 
     await query(`DELETE FROM "servants_classes" WHERE "servantsId" = $1`, [id]);

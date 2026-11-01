@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, serverError } from '@/src/server/middleware';
+import { getAuthUser, getAccessContext, authorizeClass, jsonResponse, notFound, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 
 export async function GET(
   req: Request,
@@ -88,10 +88,14 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
 
-    const existing = await queryOne(`SELECT "id" FROM "children" WHERE "id" = $1 LIMIT 1`, [id]);
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    const existing = await queryOne<{ id: string; classId: string | null }>(`SELECT "id", "classId" FROM "children" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!existing) {
       return notFound('الطفل غير موجود');
     }
+    const access = await getAccessContext(auth);
+    if (!access.privileged && (!await authorizeClass(auth, existing.classId) || (body.classId !== undefined && body.classId !== existing.classId && !await authorizeClass(auth, body.classId)))) return forbidden();
 
     const updated = await queryOne(
       `UPDATE "children"
@@ -135,7 +139,38 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) {
+      return unauthorized('لازم تسجّل الدخول الأول');
+    }
+
     const { id } = await params;
+
+    const child = await queryOne<{ id: string; name: string; classId: string | null }>(
+      `SELECT "id", "name", "classId" FROM "children" WHERE "id" = $1 LIMIT 1`,
+      [id],
+    );
+
+    if (!child) {
+      return notFound('الطفل غير موجود');
+    }
+
+    const currentUser = await queryOne<{ id: string; role: string; phone: string; email: string; grades: string[] }>(
+      `SELECT "id", "role", "phone", "email", "grades" FROM "users" WHERE "id" = $1 LIMIT 1`,
+      [auth.sub],
+    );
+
+    const servant = currentUser
+      ? await queryOne<{ id: string; role: string }>(
+          `SELECT "id", "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`,
+          [currentUser.phone, currentUser.email],
+        )
+      : null;
+
+    const isAdminOrPriest = (await getAccessContext(auth)).privileged;
+
+    if (!isAdminOrPriest) return forbidden();
+
     await query(`DELETE FROM "children" WHERE "id" = $1`, [id]);
     return jsonResponse({ message: 'تم حذف الطفل بنجاح' });
   } catch (error: any) {
