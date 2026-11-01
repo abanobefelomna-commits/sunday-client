@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { requestPasswordReset } from "../lib/api";
-import ThemeToggle from "../components/ThemeToggle";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -40,7 +39,6 @@ export default function ForgotPasswordPage() {
         <Link href="/" className="btn ghost sm">
           الرئيسية
         </Link>
-        <ThemeToggle />
       </div>
 
       <div className="auth-card w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 text-center z-10">

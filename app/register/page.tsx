@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import { registerUser, uploadUserAvatar } from "../lib/api";
-import ThemeToggle from "../components/ThemeToggle";
 import { toast } from "sonner";
 import { Camera, X } from "lucide-react";
 
@@ -98,7 +97,6 @@ export default function RegisterPage() {
         <Link href="/" className="btn ghost sm">
           الرئيسية
         </Link>
-        <ThemeToggle />
       </div>
 
       <div className="auth-card w-full max-w-lg bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 z-10 shadow-2xl">

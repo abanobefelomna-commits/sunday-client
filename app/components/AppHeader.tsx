@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import ThemeToggle from "./ThemeToggle";
 import CommandPalette from "./CommandPalette";
 import { getStoredUser, clearStoredAuth, getImageUrl, type AuthUser } from "../lib/api";
 
@@ -42,8 +41,6 @@ export default function AppHeader() {
           >
             🔍
           </button>
-
-          <ThemeToggle />
 
           <div className="relative">
             <button

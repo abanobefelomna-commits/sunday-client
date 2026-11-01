@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { loginUser } from "../lib/api";
-import ThemeToggle from "../components/ThemeToggle";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -42,7 +41,6 @@ export default function LoginPage() {
         <Link href="/" className="btn ghost sm">
           الرئيسية
         </Link>
-        <ThemeToggle />
       </div>
 
       <div className="auth-card w-full max-w-md bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-10 text-center z-10">

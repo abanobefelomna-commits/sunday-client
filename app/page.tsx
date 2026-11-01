@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import HeroCanvas from "./components/HeroCanvas";
-import ThemeToggle from "./components/ThemeToggle";
 import { getStoredToken } from "./lib/api";
 
 export default function LandingPage() {
@@ -46,7 +45,6 @@ export default function LandingPage() {
               </Link>
             </>
           )}
-          <ThemeToggle />
         </nav>
       </header>
 

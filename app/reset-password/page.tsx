@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { requestPasswordReset, resetPassword } from "../lib/api";
-import ThemeToggle from "../components/ThemeToggle";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -190,7 +189,6 @@ export default function ResetPasswordPage() {
         <Link href="/" className="btn ghost sm">
           الرئيسية
         </Link>
-        <ThemeToggle />
       </div>
 
       <Suspense fallback={<div className="text-center py-10">جارٍ التحميل...</div>}>

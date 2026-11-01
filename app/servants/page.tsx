@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
 import { toast } from "sonner";
-import { CalendarCheck2 } from "lucide-react";
+import { CalendarPlus } from "lucide-react";
 import {
   getServants,
   createServant,
@@ -55,7 +55,8 @@ export default function ServantsPage() {
   // Delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [bookingServant, setBookingServant] = useState<ServantItem | null>(null);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingServantId, setBookingServantId] = useState("");
   const [bookingChildren, setBookingChildren] = useState<Array<{ id: string; name: string }>>([]);
   const [bookingChildId, setBookingChildId] = useState("");
   const [bookingDate, setBookingDate] = useState("");
@@ -71,13 +72,14 @@ export default function ServantsPage() {
     currentUser?.servantRole === "مسؤول" ||
     currentUser?.servantRole === "أب كاهن";
 
-  const openBooking = async (servant: ServantItem) => {
+  const openBooking = async () => {
     try {
       const result = await getChildren({ limit: 100 });
       setBookingChildren(result.data.map(({ id, name }) => ({ id, name })));
       setBookingChildId(result.data[0]?.id || "");
+      setBookingServantId(servants[0]?.id || "");
       setBookingDate(new Date().toISOString().slice(0, 10));
-      setBookingServant(servant);
+      setBookingOpen(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not load children");
     }
@@ -85,12 +87,12 @@ export default function ServantsPage() {
 
   const handleBooking = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!bookingServant || !bookingChildId || !bookingDate) return;
+    if (!bookingServantId || !bookingChildId || !bookingDate) return;
     setBookingSaving(true);
     try {
-      await bookServantVisitation({ childId: bookingChildId, servantId: bookingServant.id, date: bookingDate });
-      toast.success("Visitation booked successfully");
-      setBookingServant(null);
+      await bookServantVisitation({ childId: bookingChildId, servantId: bookingServantId, date: bookingDate });
+      toast.success("تم حجز الزيارة بنجاح");
+      setBookingOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not book visitation");
     } finally {
@@ -214,7 +216,7 @@ export default function ServantsPage() {
       <AppHeader />
 
       <main className="pg">
-        {/* Header with Title and Add Button */}
+        {/* Header with title and management actions */}
         <div className="flex justify-between items-start gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -225,15 +227,25 @@ export default function ServantsPage() {
             </p>
           </div>
 
-          {isAdminOrPriest && <button
-            type="button"
-            className="fab2"
-            onClick={openAddModal}
-            aria-label="إضافة خادم جديد"
-            title="إضافة خادم جديد"
-          >
-            +
-          </button>}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {isAdminOrPriest && (
+              <button
+                type="button"
+                onClick={openBooking}
+                disabled={!servants.length}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-bold text-white shadow-md shadow-red-900/15 transition hover:bg-red-700 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="حجز زيارة"
+              >
+                <CalendarPlus size={18} aria-hidden="true" />
+                <span>حجز</span>
+              </button>
+            )}
+            {isAdminOrPriest && (
+              <button type="button" className="fab2" onClick={openAddModal} aria-label="إضافة خادم جديد" title="إضافة خادم جديد">
+                +
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Search Input */}
@@ -334,18 +346,6 @@ export default function ServantsPage() {
                   </div>
 
                   <div className="ac">
-                    {isAdminOrPriest && (
-                      <button
-                        type="button"
-                        className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-indigo-600 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-                        onClick={() => openBooking(s)}
-                        aria-label={`Book a visitation with ${s.name}`}
-                        title="Book a visitation"
-                      >
-                        <CalendarCheck2 size={17} aria-hidden="true" />
-                        <span>Book</span>
-                      </button>
-                    )}
                     {hasAvatar && isAdminOrPriest && (
                       <button
                         type="button"
@@ -389,26 +389,32 @@ export default function ServantsPage() {
         </div>
       </main>
 
-      {bookingServant && (
+      {bookingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <form onSubmit={handleBooking} className="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <form onSubmit={handleBooking} className="f text-right w-full max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Book a visitation</h3>
-              <button type="button" className="ib" onClick={() => setBookingServant(null)} aria-label="Close">×</button>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">حجز زيارة</h3>
+              <button type="button" className="ib" onClick={() => setBookingOpen(false)} aria-label="إغلاق">×</button>
             </div>
-            <p className="text-sm text-slate-500">Assign {bookingServant.name} to a child visitation.</p>
+            <p className="text-sm text-slate-500">اختر الخادم والطفل وموعد الزيارة.</p>
             <div>
-              <label htmlFor="booking-child">Child</label>
+              <label htmlFor="booking-servant">الخادم</label>
+              <select id="booking-servant" required value={bookingServantId} onChange={(event) => setBookingServantId(event.target.value)}>
+                {servants.map((servant) => <option key={servant.id} value={servant.id}>{servant.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="booking-child">الطفل</label>
               <select id="booking-child" required value={bookingChildId} onChange={(event) => setBookingChildId(event.target.value)} disabled={!bookingChildren.length}>
                 {bookingChildren.length ? bookingChildren.map((child) => <option key={child.id} value={child.id}>{child.name}</option>) : <option value="">No children available</option>}
               </select>
             </div>
             <div>
-              <label htmlFor="booking-date">Date</label>
+              <label htmlFor="booking-date">التاريخ</label>
               <input id="booking-date" type="date" required min={new Date().toISOString().slice(0, 10)} value={bookingDate} onChange={(event) => setBookingDate(event.target.value)} />
             </div>
             <button type="submit" className="btn big w-full" disabled={bookingSaving || !bookingChildId}>
-              {bookingSaving ? "Booking…" : "Confirm booking"}
+              {bookingSaving ? "جارٍ الحجز…" : "تأكيد الحجز"}
             </button>
           </form>
         </div>
