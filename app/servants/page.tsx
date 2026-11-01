@@ -71,13 +71,14 @@ export default function ServantsPage() {
     currentUser?.role === "priest" ||
     currentUser?.servantRole === "مسؤول" ||
     currentUser?.servantRole === "أب كاهن";
+  const bookingServantName = servants.find((servant) => servant.id === bookingServantId)?.name;
 
-  const openBooking = async () => {
+  const openBooking = async (servant: ServantItem) => {
     try {
       const result = await getChildren({ limit: 100 });
       setBookingChildren(result.data.map(({ id, name }) => ({ id, name })));
       setBookingChildId(result.data[0]?.id || "");
-      setBookingServantId(servants[0]?.id || "");
+      setBookingServantId(servant.id);
       setBookingDate(new Date().toISOString().slice(0, 10));
       setBookingOpen(true);
     } catch (err) {
@@ -229,18 +230,6 @@ export default function ServantsPage() {
 
           <div className="flex flex-wrap items-center justify-end gap-2">
             {isAdminOrPriest && (
-              <button
-                type="button"
-                onClick={openBooking}
-                disabled={!servants.length}
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-2 text-sm font-bold text-white shadow-md shadow-red-900/15 transition hover:bg-red-700 active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="حجز زيارة"
-              >
-                <CalendarPlus size={18} aria-hidden="true" />
-                <span>حجز</span>
-              </button>
-            )}
-            {isAdminOrPriest && (
               <button type="button" className="fab2" onClick={openAddModal} aria-label="إضافة خادم جديد" title="إضافة خادم جديد">
                 +
               </button>
@@ -345,7 +334,19 @@ export default function ServantsPage() {
                     )}
                   </div>
 
-                  <div className="ac">
+                  <div className="ac flex-row flex-wrap items-center justify-end">
+                    {isAdminOrPriest && (
+                      <button
+                        type="button"
+                        onClick={() => openBooking(s)}
+                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-md shadow-red-900/15 transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 active:scale-[.98] dark:focus-visible:ring-offset-slate-950"
+                        aria-label={`حجز زيارة مع ${s.name}`}
+                        title="حجز زيارة"
+                      >
+                        <CalendarPlus size={17} aria-hidden="true" />
+                        <span>حجز</span>
+                      </button>
+                    )}
                     {hasAvatar && isAdminOrPriest && (
                       <button
                         type="button"
@@ -396,12 +397,10 @@ export default function ServantsPage() {
               <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">حجز زيارة</h3>
               <button type="button" className="ib" onClick={() => setBookingOpen(false)} aria-label="إغلاق">×</button>
             </div>
-            <p className="text-sm text-slate-500">اختر الخادم والطفل وموعد الزيارة.</p>
-            <div>
-              <label htmlFor="booking-servant">الخادم</label>
-              <select id="booking-servant" required value={bookingServantId} onChange={(event) => setBookingServantId(event.target.value)}>
-                {servants.map((servant) => <option key={servant.id} value={servant.id}>{servant.name}</option>)}
-              </select>
+            <p className="text-sm text-slate-500">أكمل بيانات حجز الزيارة للخادم المحدد.</p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-800">
+              <span className="text-slate-500">الخادم: </span>
+              <strong className="text-slate-900 dark:text-slate-100">{bookingServantName}</strong>
             </div>
             <div>
               <label htmlFor="booking-child">الطفل</label>
