@@ -1,11 +1,13 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, serverError } from '@/src/server/middleware';
+import { authorizeClass, getAuthUser, jsonResponse, notFound, forbidden, serverError, unauthorized } from '@/src/server/middleware';
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) return unauthorized();
     const { id } = await params;
 
     const cls = await queryOne<{
@@ -22,6 +24,8 @@ export async function GET(
     if (!cls) {
       return notFound('الفصل غير موجود');
     }
+
+    if (!await authorizeClass(user, id)) return forbidden();
 
     const servants = await query<{
       id: string;

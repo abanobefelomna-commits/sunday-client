@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, badRequest, serverError } from '@/src/server/middleware';
+import { getAccessContext, getAuthUser, jsonResponse, notFound, badRequest, forbidden, serverError, unauthorized } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 
 export async function PATCH(
@@ -7,6 +7,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) return unauthorized();
+    if (!(await getAccessContext(user)).privileged) return forbidden('Only administrators and priests can update class images');
     const { id } = await params;
     const cls = await queryOne(`SELECT "id" FROM "classes" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!cls) {
@@ -41,6 +44,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const user = await getAuthUser(req);
+    if (!user) return unauthorized();
+    if (!(await getAccessContext(user)).privileged) return forbidden('Only administrators and priests can update class images');
     const { id } = await params;
     const cls = await queryOne(`SELECT "id" FROM "classes" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!cls) {
