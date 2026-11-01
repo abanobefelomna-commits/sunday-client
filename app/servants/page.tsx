@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
 import { toast } from "sonner";
+import { CalendarCheck2 } from "lucide-react";
 import {
   getServants,
   createServant,
@@ -13,6 +14,8 @@ import {
   deleteServantAvatar,
   getImageUrl,
   getStoredUser,
+  getChildren,
+  bookServantVisitation,
   type AuthUser,
   type ClassItem,
   type ServantItem,
@@ -52,6 +55,11 @@ export default function ServantsPage() {
   // Delete
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [bookingServant, setBookingServant] = useState<ServantItem | null>(null);
+  const [bookingChildren, setBookingChildren] = useState<Array<{ id: string; name: string }>>([]);
+  const [bookingChildId, setBookingChildId] = useState("");
+  const [bookingDate, setBookingDate] = useState("");
+  const [bookingSaving, setBookingSaving] = useState(false);
 
   useEffect(() => {
     setCurrentUser(getStoredUser());
@@ -62,6 +70,33 @@ export default function ServantsPage() {
     currentUser?.role === "priest" ||
     currentUser?.servantRole === "مسؤول" ||
     currentUser?.servantRole === "أب كاهن";
+
+  const openBooking = async (servant: ServantItem) => {
+    try {
+      const result = await getChildren({ limit: 100 });
+      setBookingChildren(result.data.map(({ id, name }) => ({ id, name })));
+      setBookingChildId(result.data[0]?.id || "");
+      setBookingDate(new Date().toISOString().slice(0, 10));
+      setBookingServant(servant);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not load children");
+    }
+  };
+
+  const handleBooking = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!bookingServant || !bookingChildId || !bookingDate) return;
+    setBookingSaving(true);
+    try {
+      await bookServantVisitation({ childId: bookingChildId, servantId: bookingServant.id, date: bookingDate });
+      toast.success("Visitation booked successfully");
+      setBookingServant(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not book visitation");
+    } finally {
+      setBookingSaving(false);
+    }
+  };
 
   const fetchServants = async () => {
     try {
@@ -190,7 +225,7 @@ export default function ServantsPage() {
             </p>
           </div>
 
-          <button
+          {isAdminOrPriest && <button
             type="button"
             className="fab2"
             onClick={openAddModal}
@@ -198,7 +233,7 @@ export default function ServantsPage() {
             title="إضافة خادم جديد"
           >
             +
-          </button>
+          </button>}
         </div>
 
         {/* Search Input */}
@@ -299,7 +334,19 @@ export default function ServantsPage() {
                   </div>
 
                   <div className="ac">
-                    {hasAvatar && (
+                    {isAdminOrPriest && (
+                      <button
+                        type="button"
+                        className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-indigo-600 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                        onClick={() => openBooking(s)}
+                        aria-label={`Book a visitation with ${s.name}`}
+                        title="Book a visitation"
+                      >
+                        <CalendarCheck2 size={17} aria-hidden="true" />
+                        <span>Book</span>
+                      </button>
+                    )}
+                    {hasAvatar && isAdminOrPriest && (
                       <button
                         type="button"
                         className="ib hover:text-orange-500 hover:border-orange-500"
@@ -341,6 +388,31 @@ export default function ServantsPage() {
           )}
         </div>
       </main>
+
+      {bookingServant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <form onSubmit={handleBooking} className="w-full max-w-md space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Book a visitation</h3>
+              <button type="button" className="ib" onClick={() => setBookingServant(null)} aria-label="Close">×</button>
+            </div>
+            <p className="text-sm text-slate-500">Assign {bookingServant.name} to a child visitation.</p>
+            <div>
+              <label htmlFor="booking-child">Child</label>
+              <select id="booking-child" required value={bookingChildId} onChange={(event) => setBookingChildId(event.target.value)} disabled={!bookingChildren.length}>
+                {bookingChildren.length ? bookingChildren.map((child) => <option key={child.id} value={child.id}>{child.name}</option>) : <option value="">No children available</option>}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="booking-date">Date</label>
+              <input id="booking-date" type="date" required min={new Date().toISOString().slice(0, 10)} value={bookingDate} onChange={(event) => setBookingDate(event.target.value)} />
+            </div>
+            <button type="submit" className="btn big w-full" disabled={bookingSaving || !bookingChildId}>
+              {bookingSaving ? "Booking…" : "Confirm booking"}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Add Servant Modal */}
       {showModal && (

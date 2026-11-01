@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, canManageServants, jsonResponse, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
@@ -110,6 +110,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    if (!await canManageServants(auth)) return forbidden('حجز الزيارات متاح للمسؤول والكاهن فقط');
     const body = await req.json();
     const {
       childId,

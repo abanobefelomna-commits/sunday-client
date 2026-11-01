@@ -1,9 +1,10 @@
 import { query, queryOne } from '@/src/server/db';
 import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
-import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, canManageServants, jsonResponse, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
+    if (!await getAuthUser(req)) return unauthorized();
     await ensureDefaultClasses();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
@@ -116,6 +117,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    if (!await canManageServants(auth)) return forbidden('إدارة الخدام متاحة للمسؤول والكاهن فقط');
     const body = await req.json();
     const { name, phone, email, role = 'خادم', classIds = [] } = body;
 

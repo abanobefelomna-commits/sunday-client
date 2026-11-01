@@ -558,6 +558,17 @@ export async function deleteServantAvatar(
   return request(`/api/servants/${id}/avatar`, { method: 'DELETE' });
 }
 
+export async function bookServantVisitation(data: {
+  childId: string;
+  servantId: string;
+  date: string;
+}): Promise<{ id: string }> {
+  return request('/api/visitations', {
+    method: 'POST',
+    body: JSON.stringify({ ...data, type: 'home_visit', status: 'scheduled' }),
+  });
+}
+
 // ======================== ATTENDANCE ========================
 
 export async function getAttendance(

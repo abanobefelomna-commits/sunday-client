@@ -17,6 +17,21 @@ export async function getAccessContext(user: JwtUserPayload): Promise<AccessCont
   return { privileged, classIds: [...new Set(assigned.map(x => x.classesId))] };
 }
 
+export async function canManageServants(user: JwtUserPayload): Promise<boolean> {
+  if (['admin', 'priest'].includes(user.role)) return true;
+  const account = await queryOne<{ role: string; phone: string; email: string | null }>(
+    `SELECT "role", "phone", "email" FROM "users" WHERE "id" = $1`,
+    [user.sub],
+  );
+  if (!account) return false;
+  if (['admin', 'priest'].includes(account.role)) return true;
+  const servant = await queryOne<{ role: string }>(
+    `SELECT "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`,
+    [account.phone, account.email],
+  );
+  return ['مسؤول', 'أب كاهن', 'admin', 'priest'].includes(servant?.role || '');
+}
+
 export async function authorizeClass(user: JwtUserPayload, classId: string | null | undefined, allowPrivileged = true) {
   const access = await getAccessContext(user);
   return (allowPrivileged && access.privileged) || (!!classId && access.classIds.includes(classId));
