@@ -167,9 +167,7 @@ export async function DELETE(
         )
       : null;
 
-    const isAdminOrPriest = (await getAccessContext(auth)).privileged;
-
-    if (!isAdminOrPriest) return forbidden();
+    if (!await authorizeClass(auth, child.classId)) return forbidden();
 
     await query(`DELETE FROM "children" WHERE "id" = $1`, [id]);
     return jsonResponse({ message: 'تم حذف الطفل بنجاح' });

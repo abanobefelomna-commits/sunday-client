@@ -1,12 +1,11 @@
 import { query, queryOne } from '@/src/server/db';
 import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
-import { getAccessContext, getAuthUser, jsonResponse, serverError, unauthorized } from '@/src/server/middleware';
+import { getAuthUser, jsonResponse, serverError, unauthorized } from '@/src/server/middleware';
 
 export async function GET(req: Request) {
   try {
     const user = await getAuthUser(req);
     if (!user) return unauthorized();
-    const access = await getAccessContext(user);
     await ensureDefaultClasses();
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
@@ -48,7 +47,6 @@ export async function GET(req: Request) {
        LEFT JOIN "servants_classes" sc ON sc."classesId" = c."id"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR c."grade"::text = $2)
-         AND ($6::boolean OR c."id" = ANY($7::uuid[]))
        GROUP BY
          c."id",
          c."name",
@@ -60,7 +58,7 @@ export async function GET(req: Request) {
          c."updatedAt"
        ORDER BY array_position($5::text[], c."grade"::text), c."createdAt" ASC
        LIMIT $3 OFFSET $4`,
-      [search, grade, limit, offset, DEFAULT_CLASSES.map((item) => item.grade), access.privileged, access.classIds],
+      [search, grade, limit, offset, DEFAULT_CLASSES.map((item) => item.grade)],
     );
 
     const countRow = await queryOne<{ total: number }>(
@@ -68,9 +66,8 @@ export async function GET(req: Request) {
        FROM "classes" c
        WHERE c."grade"::text = ANY($3::text[])
          AND ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
-         AND ($2::text IS NULL OR c."grade"::text = $2)
-         AND ($4::boolean OR c."id" = ANY($5::uuid[]))`,
-      [search, grade, DEFAULT_CLASSES.map((item) => item.grade), access.privileged, access.classIds],
+         AND ($2::text IS NULL OR c."grade"::text = $2)`,
+      [search, grade, DEFAULT_CLASSES.map((item) => item.grade)],
     );
 
     const total = countRow?.total || 0;

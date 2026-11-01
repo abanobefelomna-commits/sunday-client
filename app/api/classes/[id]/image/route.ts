@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { getAccessContext, getAuthUser, jsonResponse, notFound, badRequest, forbidden, serverError, unauthorized } from '@/src/server/middleware';
+import { authorizeClass, getAuthUser, jsonResponse, notFound, badRequest, forbidden, serverError, unauthorized } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 
 export async function PATCH(
@@ -9,8 +9,8 @@ export async function PATCH(
   try {
     const user = await getAuthUser(req);
     if (!user) return unauthorized();
-    if (!(await getAccessContext(user)).privileged) return forbidden('Only administrators and priests can update class images');
     const { id } = await params;
+    if (!(await authorizeClass(user, id))) return forbidden('You can only update the cover image of your assigned class');
     const cls = await queryOne(`SELECT "id" FROM "classes" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!cls) {
       return notFound('الفصل غير موجود');
@@ -46,8 +46,8 @@ export async function DELETE(
   try {
     const user = await getAuthUser(req);
     if (!user) return unauthorized();
-    if (!(await getAccessContext(user)).privileged) return forbidden('Only administrators and priests can update class images');
     const { id } = await params;
+    if (!(await authorizeClass(user, id))) return forbidden('You can only update the cover image of your assigned class');
     const cls = await queryOne(`SELECT "id" FROM "classes" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!cls) {
       return notFound('الفصل غير موجود');

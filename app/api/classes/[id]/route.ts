@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { authorizeClass, getAuthUser, jsonResponse, notFound, forbidden, serverError, unauthorized } from '@/src/server/middleware';
+import { getAuthUser, jsonResponse, notFound, serverError, unauthorized } from '@/src/server/middleware';
 
 export async function GET(
   req: Request,
@@ -24,8 +24,6 @@ export async function GET(
     if (!cls) {
       return notFound('الفصل غير موجود');
     }
-
-    if (!await authorizeClass(user, id)) return forbidden();
 
     const servants = await query<{
       id: string;

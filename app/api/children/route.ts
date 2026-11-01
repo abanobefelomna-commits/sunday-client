@@ -5,7 +5,6 @@ export async function GET(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
-    const access = await getAccessContext(auth);
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || searchParams.get('name') || null;
     const gender = searchParams.get('gender') || null;
@@ -53,7 +52,6 @@ export async function GET(req: Request) {
        FROM "children" c
        LEFT JOIN "classes" cls ON cls."id" = c."classId"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
-         AND ($7::boolean OR c."classId" = ANY($9::uuid[]))
          AND ($2::text IS NULL OR c."gender"::text = $2)
          AND ($3::uuid IS NULL OR c."classId" = $3)
          AND ($4::text IS NULL OR cls."grade"::text = $4)
@@ -61,7 +59,7 @@ export async function GET(req: Request) {
          AND ($6::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) <= $6)
        ORDER BY c."createdAt" DESC
        LIMIT $7 OFFSET $8`,
-      [search, gender, classId, grade, minAge, maxAge, limit, offset, access.privileged, access.classIds],
+      [search, gender, classId, grade, minAge, maxAge, limit, offset],
     );
 
     const countRow = await queryOne<{ total: number }>(
@@ -69,13 +67,12 @@ export async function GET(req: Request) {
        FROM "children" c
        LEFT JOIN "classes" cls ON cls."id" = c."classId"
        WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%')
-         AND ($7::boolean OR c."classId" = ANY($8::uuid[]))
          AND ($2::text IS NULL OR c."gender"::text = $2)
          AND ($3::uuid IS NULL OR c."classId" = $3)
          AND ($4::text IS NULL OR cls."grade"::text = $4)
          AND ($5::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) >= $5)
          AND ($6::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) <= $6)`,
-      [search, gender, classId, grade, minAge, maxAge, access.privileged, access.classIds],
+      [search, gender, classId, grade, minAge, maxAge],
     );
 
     const total = countRow?.total || 0;

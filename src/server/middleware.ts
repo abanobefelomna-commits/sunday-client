@@ -12,11 +12,9 @@ export async function getAccessContext(user: JwtUserPayload): Promise<AccessCont
     `SELECT "id", "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`,
     [account.phone, account.email],
   ) : null;
-  const privileged = ['admin', 'priest'].includes(user.role) || ['admin', 'priest'].includes(account?.role || '') || ['مسؤول', 'كاهن', 'أب كاهن'].includes(servant?.role || '');
-  if (privileged) return { privileged, classIds: [] };
+  const privileged = user.role === 'admin' || account?.role === 'admin' || servant?.role === 'مسؤول';
   const assigned = servant ? await query<{ classesId: string }>(`SELECT "classesId" FROM "servants_classes" WHERE "servantsId" = $1`, [servant.id]) : [];
-  const graded = account?.grades?.length ? await query<{ id: string }>(`SELECT "id" FROM "classes" WHERE "grade" = ANY($1::classes_grade_enum[])`, [account.grades]) : [];
-  return { privileged: false, classIds: [...new Set([...assigned.map(x => x.classesId), ...graded.map(x => x.id)])] };
+  return { privileged, classIds: [...new Set(assigned.map(x => x.classesId))] };
 }
 
 export async function authorizeClass(user: JwtUserPayload, classId: string | null | undefined, allowPrivileged = true) {
