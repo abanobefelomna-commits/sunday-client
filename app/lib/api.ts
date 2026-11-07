@@ -473,7 +473,7 @@ export async function createChild(data: {
   name: string;
   birthDate?: string;
   gender?: 'male' | 'female';
-  parentPhone: string;
+  parentPhone?: string | null;
   address?: string;
   parentName?: string;
   notes?: string;
