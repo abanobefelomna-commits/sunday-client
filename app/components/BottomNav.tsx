@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Baby, CheckSquare, BookOpen, Users, ClipboardCheck } from "lucide-react";
+import { getStoredUser } from "../lib/api";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: <Home className="h-5 w-5" />, label: "الرئيسية" },
@@ -15,6 +17,11 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [isManager, setIsManager] = useState(false);
+  useEffect(() => {
+    const user = getStoredUser();
+    setIsManager(!!user && (["admin", "priest"].includes(user.role) || ["مسؤول", "أب كاهن"].includes(user.servantRole || "")));
+  }, []);
 
   return (
     <nav className="tb2" aria-label="التنقل السريع">
@@ -32,7 +39,7 @@ export default function BottomNav() {
             aria-current={isActive ? "page" : undefined}
           >
             <span aria-hidden="true" className="text-xl">{item.icon}</span>
-            <span>{item.label}</span>
+            <span>{item.href === "/friday-prep" && isManager ? "لوحة متابعة التحضير" : item.label}</span>
           </Link>
         );
       })}
