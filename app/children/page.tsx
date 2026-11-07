@@ -98,8 +98,8 @@ export default function ChildrenPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formPhone.trim()) {
-      setFormError("يرجى إدخال اسم الطفل ورقم هاتف ولي الأمر.");
+    if (!formName.trim()) {
+      setFormError("يرجى إدخال اسم الطفل.");
       return;
     }
 
@@ -111,7 +111,7 @@ export default function ChildrenPage() {
         await updateChild(editingChild.id, {
           name: formName.trim(),
           classId: formClassId || undefined,
-          parentPhone: formPhone.trim(),
+          parentPhone: formPhone.trim() || undefined,
           parentName: formParentName.trim() || undefined,
           address: formAddress.trim() || undefined,
           notes: formNotes.trim() || undefined,
@@ -121,7 +121,7 @@ export default function ChildrenPage() {
         await createChild({
           name: formName.trim(),
           classId: formClassId || undefined,
-          parentPhone: formPhone.trim(),
+          parentPhone: formPhone.trim() || undefined,
           parentName: formParentName.trim() || undefined,
           address: formAddress.trim() || undefined,
           notes: formNotes.trim() || undefined,
@@ -345,11 +345,10 @@ export default function ChildrenPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="c_phone">رقم هاتف ولي الأمر</label>
+                  <label htmlFor="c_phone">رقم هاتف ولي الأمر (اختياري)</label>
                   <input
                     id="c_phone"
                     type="tel"
-                    required
                     dir="ltr"
                     placeholder="010..."
                     value={formPhone}
