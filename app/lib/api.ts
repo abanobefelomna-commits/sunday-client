@@ -80,6 +80,8 @@ export interface ChildItem {
     name: string;
     grade?: string;
   } | null;
+  assignedServantId?: string | null;
+  assignedServant?: { id: string; name: string | null } | null;
   createdAt?: string;
 }
 
@@ -478,6 +480,8 @@ export async function createChild(data: {
   parentName?: string;
   notes?: string;
   classId?: string;
+  phone?: string;
+  assignedServantId?: string | null;
 }): Promise<ChildItem> {
   return request('/api/children', {
     method: 'POST',
@@ -496,6 +500,8 @@ export async function updateChild(
     parentName: string;
     notes: string;
     classId: string;
+    phone: string;
+    assignedServantId: string | null;
   }>,
 ): Promise<ChildItem> {
   return request(`/api/children/${id}`, {
@@ -565,7 +571,7 @@ export async function bookServantVisitation(data: {
 }): Promise<{ id: string }> {
   return request('/api/visitations', {
     method: 'POST',
-    body: JSON.stringify({ ...data, type: 'home_visit', status: 'scheduled' }),
+    body: JSON.stringify({ ...data, type: 'home_visit', status: 'planned' }),
   });
 }
 
@@ -589,12 +595,14 @@ export async function getAttendance(
 export async function recordAttendanceBulk(data: {
   classId: string;
   date: string;
+  status?: 'present' | 'absent' | 'late' | 'excused';
   records: Array<{
     childId: string;
     status: 'present' | 'absent' | 'late' | 'excused';
     notes?: string;
   }>;
-}): Promise<{ count: number }> {
+  notes?: string;
+}): Promise<{ count: number; sessionId?: string; alerts?: number }> {
   return request('/api/attendance/bulk', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -608,5 +616,604 @@ export async function getAttendanceSummary(
   const params = new URLSearchParams({ classId, date });
   return request(`/api/attendance/summary?${params.toString()}`, {
     cache: 'no-store',
+  });
+}
+
+// ======================== STUDENT 360 ========================
+
+export interface ResponsibleServant {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  role: string;
+  avatar?: string | null;
+}
+
+export interface StudentStats {
+  attendanceRate: number | null;
+  totalSessions: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  absencesLast30: number;
+  currentStreak: number;
+  lastAttendanceDate: string | null;
+  lastVisitDate: string | null;
+  openFollowUps: number;
+  progressAverage: number | null;
+  progressEntries: number;
+}
+
+export interface TimelineItem {
+  id: string;
+  type: 'attendance' | 'visitation' | 'follow_up' | 'activity' | 'progress' | 'note';
+  title: string;
+  description: string | null;
+  date: string;
+  status?: string | null;
+  href?: string | null;
+}
+
+export interface StudentProfile {
+  student: {
+    id: string;
+    name: string;
+    birthDate: string;
+    gender: string;
+    parentPhone: string | null;
+    parentName: string | null;
+    address: string | null;
+    notes: string | null;
+    phone: string | null;
+    avatar: string | null;
+    classId: string | null;
+    assignedServantId: string | null;
+    createdAt: string;
+    updatedAt: string;
+    class: { id: string; name: string | null; grade: string | null } | null;
+    assignedServant: { id: string; name: string | null } | null;
+    responsibleServants: ResponsibleServant[];
+  };
+  stats: StudentStats;
+  attendance: Array<{
+    id: string;
+    date: string;
+    status: 'present' | 'absent' | 'late' | 'excused';
+    notes: string | null;
+    classId: string;
+    className: string | null;
+  }>;
+  progress: Array<{
+    id: string;
+    subject: string;
+    level: string;
+    score: string | number | null;
+    notes: string | null;
+    assessedAt: string;
+    assessorName: string | null;
+  }>;
+  visitations: Array<{
+    id: string;
+    date: string;
+    type: string;
+    status: string;
+    notes: string | null;
+    followUpDate: string | null;
+    servantName: string | null;
+    servantId: string | null;
+  }>;
+  followUps: FollowUpCase[];
+  notes: StudentNote[];
+  activities: Array<{
+    id: string;
+    followUpId: string;
+    type: string;
+    title: string;
+    notes: string | null;
+    occurredAt: string;
+    actorName: string | null;
+  }>;
+  timeline: TimelineItem[];
+  permissions: { canWrite: boolean; canViewPrivateNotes: boolean; manager: boolean };
+}
+
+export async function getStudentProfile(
+  id: string,
+  options?: { timelineLimit?: number; historyDays?: number },
+): Promise<StudentProfile> {
+  const params = new URLSearchParams();
+  if (options?.timelineLimit) params.append('timelineLimit', String(options.timelineLimit));
+  if (options?.historyDays) params.append('historyDays', String(options.historyDays));
+  return request(`/api/children/${id}/profile?${params.toString()}`, { cache: 'no-store' });
+}
+
+// ======================== STUDENT NOTES ========================
+
+export interface StudentNote {
+  id: string;
+  visibility: 'class' | 'leaders' | 'private';
+  body: string;
+  authorId: string | null;
+  authorName?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export async function getStudentNotes(childId: string): Promise<{ data: StudentNote[] }> {
+  return request(`/api/children/${childId}/notes`, { cache: 'no-store' });
+}
+
+export async function createStudentNote(
+  childId: string,
+  data: { body: string; visibility?: 'class' | 'leaders' | 'private' },
+): Promise<StudentNote> {
+  return request(`/api/children/${childId}/notes`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateStudentNote(
+  childId: string,
+  noteId: string,
+  data: { body?: string; visibility?: 'class' | 'leaders' | 'private' },
+): Promise<StudentNote> {
+  return request(`/api/children/${childId}/notes/${noteId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteStudentNote(childId: string, noteId: string): Promise<void> {
+  return request(`/api/children/${childId}/notes/${noteId}`, { method: 'DELETE' });
+}
+
+// ======================== EDUCATIONAL PROGRESS ========================
+
+export interface EducationalProgress {
+  id: string;
+  subject: string;
+  level: 'beginner' | 'growing' | 'proficient' | 'advanced';
+  score: string | number | null;
+  notes: string | null;
+  assessedAt: string;
+  assessorName?: string | null;
+  createdAt?: string;
+}
+
+export async function getEducationalProgress(
+  childId: string,
+): Promise<{ data: EducationalProgress[] }> {
+  return request(`/api/children/${childId}/progress`, { cache: 'no-store' });
+}
+
+export async function createEducationalProgress(
+  childId: string,
+  data: {
+    subject: string;
+    level: EducationalProgress['level'];
+    score?: number | null;
+    notes?: string | null;
+    assessedAt?: string;
+  },
+): Promise<EducationalProgress> {
+  return request(`/api/children/${childId}/progress`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateEducationalProgress(
+  childId: string,
+  progressId: string,
+  data: Partial<{
+    subject: string;
+    level: EducationalProgress['level'];
+    score: number | null;
+    notes: string | null;
+    assessedAt: string;
+  }>,
+): Promise<EducationalProgress> {
+  return request(`/api/children/${childId}/progress/${progressId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEducationalProgress(
+  childId: string,
+  progressId: string,
+): Promise<void> {
+  return request(`/api/children/${childId}/progress/${progressId}`, { method: 'DELETE' });
+}
+
+// ======================== FOLLOW-UPS ========================
+
+export type FollowUpStatus = 'open' | 'in_progress' | 'resolved' | 'dismissed';
+export type FollowUpPriority = 'low' | 'medium' | 'high';
+
+export interface FollowUpCase {
+  id: string;
+  childId: string;
+  classId: string | null;
+  servantId: string | null;
+  ruleId: string | null;
+  visitationId: string | null;
+  status: FollowUpStatus;
+  priority: FollowUpPriority;
+  source: 'rule' | 'manual' | 'visitation';
+  reason: string;
+  dueDate: string | null;
+  resolvedAt: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isOverdue: boolean;
+  child: { id: string; name: string };
+  class: { id: string; name: string | null } | null;
+  servant: { id: string; name: string | null } | null;
+  activityCount: number;
+  lastActivityAt: string | null;
+}
+
+export interface FollowUpSummary {
+  open: number;
+  inProgress: number;
+  overdue: number;
+  resolved: number;
+  total: number;
+}
+
+export interface FollowUpListResponse {
+  data: FollowUpCase[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    summary: FollowUpSummary;
+  };
+}
+
+export async function getFollowUps(paramsObj?: {
+  status?: FollowUpStatus | 'active';
+  classId?: string;
+  servantId?: string;
+  priority?: FollowUpPriority;
+  search?: string;
+  overdue?: boolean;
+  page?: number;
+  limit?: number;
+}): Promise<FollowUpListResponse> {
+  const params = new URLSearchParams();
+  if (paramsObj?.status) params.append('status', paramsObj.status);
+  if (paramsObj?.classId) params.append('classId', paramsObj.classId);
+  if (paramsObj?.servantId) params.append('servantId', paramsObj.servantId);
+  if (paramsObj?.priority) params.append('priority', paramsObj.priority);
+  if (paramsObj?.search) params.append('search', paramsObj.search);
+  if (paramsObj?.overdue) params.append('overdue', 'true');
+  if (paramsObj?.page) params.append('page', String(paramsObj.page));
+  if (paramsObj?.limit) params.append('limit', String(paramsObj.limit));
+  return request(`/api/follow-ups?${params.toString()}`, { cache: 'no-store' });
+}
+
+export interface FollowUpActivity {
+  id: string;
+  type: string;
+  title: string;
+  notes: string | null;
+  occurredAt: string;
+  actorName: string | null;
+  actorId: string | null;
+}
+
+export interface FollowUpDetail {
+  followUp: FollowUpCase;
+  child: { id: string; name: string; classId: string | null; className: string | null };
+  activities: FollowUpActivity[];
+}
+
+export async function getFollowUp(id: string): Promise<FollowUpDetail> {
+  return request(`/api/follow-ups/${id}`, { cache: 'no-store' });
+}
+
+export async function createFollowUp(data: {
+  childId: string;
+  servantId?: string | null;
+  priority?: FollowUpPriority;
+  reason: string;
+  dueDate?: string | null;
+}): Promise<{ followUp: FollowUpCase }> {
+  return request('/api/follow-ups', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFollowUp(
+  id: string,
+  data: Partial<{
+    status: FollowUpStatus;
+    priority: FollowUpPriority;
+    servantId: string | null;
+    dueDate: string | null;
+    resolutionNotes: string | null;
+  }>,
+): Promise<{ followUp: FollowUpCase }> {
+  return request(`/api/follow-ups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function addFollowUpActivity(
+  id: string,
+  data: { type: 'note' | 'call' | 'message' | 'visit'; title: string; notes?: string },
+): Promise<{ activity: FollowUpActivity }> {
+  return request(`/api/follow-ups/${id}/activities`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export interface FollowUpRule {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  ruleType: 'repeated_absence' | 'declining_attendance' | 'overdue_visitation' | 'pending_follow_up';
+  threshold: number;
+  windowDays: number;
+  priority: FollowUpPriority;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function getFollowUpRules(): Promise<{ data: FollowUpRule[] }> {
+  return request('/api/follow-ups/rules', { cache: 'no-store' });
+}
+
+export async function updateFollowUpRule(
+  id: string,
+  data: Partial<{ threshold: number; windowDays: number; isActive: boolean; priority: FollowUpPriority }>,
+): Promise<{ rule: FollowUpRule }> {
+  return request(`/api/follow-ups/rules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export interface EvaluationAlert {
+  childId: string;
+  childName: string;
+  ruleCode: string;
+  reason: string;
+  action: 'create' | 'notify';
+  created: boolean;
+}
+
+export async function evaluateFollowUps(data?: {
+  classId?: string;
+  childId?: string;
+  dryRun?: boolean;
+}): Promise<{
+  rules: number;
+  evaluatedStudents: number;
+  created: number;
+  flagged: number;
+  skipped: number;
+  alerts: EvaluationAlert[];
+  dryRun?: boolean;
+}> {
+  return request('/api/follow-ups/evaluate', {
+    method: 'POST',
+    body: JSON.stringify(data ?? {}),
+  });
+}
+
+// ======================== ANALYTICS ========================
+
+export interface AnalyticsBucket {
+  bucket: string;
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  rate?: number | null;
+}
+
+export interface AnalyticsOverview {
+  filters: { from: string; to: string; classId: string | null };
+  totals: {
+    students: number;
+    activeClasses: number;
+    attendanceSessions: number;
+    childrenWithAttendance: number;
+    recordedRecords: number;
+    attendanceRate: number | null;
+  };
+  distribution: {
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    total: number;
+  };
+  weekly: AnalyticsBucket[];
+  monthly: AnalyticsBucket[];
+  classes: Array<{
+    id: string;
+    name: string;
+    grade: string;
+    students: number;
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    openFollowUps: number;
+    rate: number | null;
+  }>;
+  followUps: {
+    openCases: number;
+    inProgressCases: number;
+    overdueCases: number;
+    assignedCases: number;
+    unassignedCases: number;
+    resolvedInRange: number;
+    childrenWithOpenCases: number;
+    activitiesInRange: number;
+    workload: number;
+  };
+}
+
+export async function getAnalyticsOverview(paramsObj?: {
+  from?: string;
+  to?: string;
+  classId?: string;
+}): Promise<AnalyticsOverview> {
+  const params = new URLSearchParams();
+  if (paramsObj?.from) params.append('from', paramsObj.from);
+  if (paramsObj?.to) params.append('to', paramsObj.to);
+  if (paramsObj?.classId) params.append('classId', paramsObj.classId);
+  return request(`/api/analytics/overview?${params.toString()}`, { cache: 'no-store' });
+}
+
+// ======================== ATTENDANCE REPORTS & SESSIONS ========================
+
+export interface AttendanceReport {
+  range: { from: string; to: string };
+  totals: {
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    students: number;
+    rate: number | null;
+  };
+  weekly: AnalyticsBucket[];
+  monthly: AnalyticsBucket[];
+  classes: Array<{
+    id: string;
+    name: string;
+    grade: string;
+    students: number;
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    rate: number | null;
+  }>;
+}
+
+export async function getAttendanceReport(paramsObj?: {
+  from?: string;
+  to?: string;
+  classId?: string;
+}): Promise<AttendanceReport> {
+  const params = new URLSearchParams();
+  if (paramsObj?.from) params.append('from', paramsObj.from);
+  if (paramsObj?.to) params.append('to', paramsObj.to);
+  if (paramsObj?.classId) params.append('classId', paramsObj.classId);
+  return request(`/api/attendance/report?${params.toString()}`, { cache: 'no-store' });
+}
+
+export interface AttendanceSession {
+  id: string;
+  classId: string;
+  date: string;
+  notes: string | null;
+  className: string | null;
+  total: number;
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  rate?: number | null;
+  recordedBy: string | null;
+  createdAt: string;
+}
+
+export async function getAttendanceSessions(paramsObj?: {
+  classId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+}): Promise<{ data: AttendanceSession[]; meta: { total: number } }> {
+  const params = new URLSearchParams();
+  if (paramsObj?.classId) params.append('classId', paramsObj.classId);
+  if (paramsObj?.dateFrom) params.append('dateFrom', paramsObj.dateFrom);
+  if (paramsObj?.dateTo) params.append('dateTo', paramsObj.dateTo);
+  if (paramsObj?.limit) params.append('limit', String(paramsObj.limit));
+  return request(`/api/attendance/sessions?${params.toString()}`, { cache: 'no-store' });
+}
+
+export async function createAttendanceSession(data: {
+  classId: string;
+  date: string;
+  notes?: string;
+}): Promise<{ id: string; classId: string; date: string; notes: string | null }> {
+  return request('/api/attendance/sessions', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+// ======================== NOTIFICATIONS ========================
+
+export interface AppNotification {
+  id: string;
+  type: 'follow_up_assigned' | 'follow_up_overdue' | 'follow_up_completed' | 'attendance_alert';
+  title: string;
+  body: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export async function getNotifications(paramsObj?: {
+  unread?: boolean;
+  limit?: number;
+}): Promise<{ data: AppNotification[]; meta: { total: number; unread: number; limit: number } }> {
+  const params = new URLSearchParams();
+  if (paramsObj?.unread) params.append('unread', 'true');
+  if (paramsObj?.limit) params.append('limit', String(paramsObj.limit));
+  return request(`/api/notifications?${params.toString()}`, { cache: 'no-store' });
+}
+
+export async function markNotificationsRead(data: {
+  ids?: string[];
+  all?: boolean;
+  read?: boolean;
+}): Promise<{ message: string }> {
+  return request('/api/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export interface NotificationPreferences {
+  followUpAssigned: boolean;
+  followUpOverdue: boolean;
+  followUpCompleted: boolean;
+  attendanceAlert: boolean;
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  return request('/api/notifications/preferences', { cache: 'no-store' });
+}
+
+export async function updateNotificationPreferences(
+  data: Partial<NotificationPreferences>,
+): Promise<NotificationPreferences> {
+  return request('/api/notifications/preferences', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
   });
 }

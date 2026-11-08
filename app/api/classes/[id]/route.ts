@@ -1,5 +1,16 @@
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, notFound, serverError, unauthorized } from '@/src/server/middleware';
+import {
+  getAuthUser,
+  getAccessContext,
+  canReadClass,
+  jsonResponse,
+  notFound,
+  forbidden,
+  serverError,
+  unauthorized,
+  badRequest,
+} from '@/src/server/middleware';
+import { isUuid } from '@/src/server/validation';
 
 export async function GET(
   req: Request,
@@ -9,6 +20,10 @@ export async function GET(
     const user = await getAuthUser(req);
     if (!user) return unauthorized();
     const { id } = await params;
+    if (!isUuid(id)) return badRequest('معرّف الفصل غير صالح');
+
+    const access = await getAccessContext(user);
+    if (!canReadClass(access, id)) return forbidden();
 
     const cls = await queryOne<{
       id: string;
@@ -33,7 +48,7 @@ export async function GET(
       role: string;
       avatar: string | null;
     }>(
-      `SELECT s."id", s."name", s."phone", s."email", s."role", s."avatar"
+      `SELECT s."id", s."name", s."phone", s."email", s."role"::text AS "role", s."avatar"
        FROM "servants" s
        JOIN "servants_classes" sc ON sc."servantsId" = s."id"
        WHERE sc."classesId" = $1
@@ -53,12 +68,9 @@ export async function GET(
     }>(
       isGeneral
         ? `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
-           FROM "children"
-           ORDER BY "name" ASC`
+           FROM "children" WHERE "deletedAt" IS NULL ORDER BY "name" ASC`
         : `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
-           FROM "children"
-           WHERE "classId" = $1
-           ORDER BY "name" ASC`,
+           FROM "children" WHERE "classId" = $1 AND "deletedAt" IS NULL ORDER BY "name" ASC`,
       isGeneral ? [] : [id],
     );
 
@@ -69,22 +81,16 @@ export async function GET(
       childrenCount: children.length,
       servantsCount: servants.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get class details error:', error);
-    return serverError(error.message || 'فشل جلب تفاصيل الفصل');
+    return serverError(error instanceof Error ? error.message : 'فشل جلب تفاصيل الفصل');
   }
 }
 
 export async function PATCH() {
-  return jsonResponse(
-    { message: 'الفصول ثابتة ولا يمكن تعديلها' },
-    405,
-  );
+  return jsonResponse({ message: 'الفصول ثابتة ولا يمكن تعديلها' }, 405);
 }
 
 export async function DELETE() {
-  return jsonResponse(
-    { message: 'الفصول ثابتة ولا يمكن حذفها' },
-    405,
-  );
+  return jsonResponse({ message: 'الفصول ثابتة ولا يمكن حذفها' }, 405);
 }

@@ -50,3 +50,35 @@ export async function queryOne<T = any>(
   const rows = await query<T>(sqlText, params);
   return rows.length > 0 ? rows[0] : null;
 }
+
+export interface TransactionStatement {
+  text: string;
+  params?: any[];
+}
+
+/**
+ * Run multiple parameterized statements atomically using Neon's HTTP
+ * transaction API. Returns one result array per statement, in order.
+ */
+export async function transaction<T = any>(
+  statements: TransactionStatement[],
+  retries = 1,
+): Promise<T[][]> {
+  if (statements.length === 0) return [];
+  const sql = getDb();
+  let attempt = 0;
+
+  while (true) {
+    try {
+      const queries = statements.map((statement) =>
+        sql.query(statement.text, statement.params ?? []),
+      );
+      const results = await (sql as any).transaction(queries);
+      return results as T[][];
+    } catch (err) {
+      attempt++;
+      if (attempt > retries) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+}

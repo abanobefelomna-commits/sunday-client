@@ -1,15 +1,31 @@
 import { query } from '@/src/server/db';
-import { jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import {
+  getAuthUser,
+  getAccessContext,
+  canReadClass,
+  jsonResponse,
+  badRequest,
+  forbidden,
+  unauthorized,
+  serverError,
+} from '@/src/server/middleware';
+import { isIsoDate, isUuid } from '@/src/server/validation';
 
 export async function GET(req: Request) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+
     const { searchParams } = new URL(req.url);
     const classId = searchParams.get('classId');
     const date = searchParams.get('date');
 
-    if (!classId || !date) {
+    if (!isUuid(classId) || !isIsoDate(date)) {
       return badRequest('معرف الفصل والتاريخ مطلوبان');
     }
+
+    const access = await getAccessContext(auth);
+    if (!canReadClass(access, classId)) return forbidden();
 
     const records = await query<{
       id: string;
@@ -20,17 +36,11 @@ export async function GET(req: Request) {
       notes: string | null;
       childName: string | null;
     }>(
-      `SELECT
-         a."id",
-         a."childId",
-         a."classId",
-         a."date",
-         a."status",
-         a."notes",
-         c."name" AS "childName"
+      `SELECT a."id", a."childId", a."classId", a."date"::text AS "date",
+              a."status"::text AS "status", a."notes", c."name" AS "childName"
        FROM "attendance" a
        JOIN "children" c ON c."id" = a."childId"
-       WHERE a."classId" = $1 AND a."date" = $2
+       WHERE a."classId" = $1 AND a."date" = $2 AND c."deletedAt" IS NULL
        ORDER BY c."name" ASC`,
       [classId, date],
     );
@@ -50,16 +60,13 @@ export async function GET(req: Request) {
         date: r.date,
         status: r.status,
         notes: r.notes,
-        child: {
-          id: r.childId,
-          name: r.childName,
-        },
+        child: { id: r.childId, name: r.childName },
       })),
     };
 
     return jsonResponse(summary);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Attendance summary error:', error);
-    return serverError(error.message || 'فشل جلب ملخص الحضور');
+    return serverError(error instanceof Error ? error.message : 'فشل جلب ملخص الحضور');
   }
 }
