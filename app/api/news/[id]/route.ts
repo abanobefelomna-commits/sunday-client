@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, serverError } from '@/src/server/middleware';
+import { getAuthUser, canManageServants, jsonResponse, notFound, serverError, unauthorized, forbidden } from '@/src/server/middleware';
 
 export async function GET(
   req: Request,
@@ -61,6 +61,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    if (!await canManageServants(auth)) return forbidden('تعديل الأخبار متاح للمسؤول والكاهن فقط');
     const { id } = await params;
     const body = await req.json();
 

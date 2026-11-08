@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, canManageServants, jsonResponse, badRequest, serverError, forbidden, unauthorized } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 
 export async function GET(req: Request) {
@@ -93,6 +93,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    if (!await canManageServants(auth)) return forbidden('إضافة الأخبار متاحة للمسؤول والكاهن فقط');
     let content = '';
     let title: string | null = null;
     let isPinned = false;

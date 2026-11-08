@@ -3,14 +3,28 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import HeroCanvas from "./components/HeroCanvas";
-import { getStoredToken } from "./lib/api";
+import { getStoredToken, getNews, getImageUrl, type NewsItem } from "./lib/api";
 
 export default function LandingPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [news, setNews] = useState<NewsItem[]>([]);
 
   useEffect(() => {
     setIsLoggedIn(!!getStoredToken());
+    let cancelled = false;
+    (async () => {
+      try {
+        const first = await getNews(undefined, 1, 100);
+        const all = [...first.data];
+        for (let page = 2; page <= first.totalPages; page++) {
+          const next = await getNews(undefined, page, 100);
+          all.push(...next.data);
+        }
+        if (!cancelled) setNews(all.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)));
+      } catch { if (!cancelled) setNews([]); }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -214,6 +228,25 @@ export default function LandingPage() {
             </Link>
           </div>
         </div>
+      </section>
+
+      <section className="s home-news" id="news" aria-labelledby="home-news-title">
+        <div className="home-news-heading">
+          <div><span className="home-news-kicker">أخبار الخدمة</span><h2 id="home-news-title">آخر أخبار مدارس الأحد</h2></div>
+          {isLoggedIn && <Link className="btn" href="/news/create">إضافة خبر</Link>}
+        </div>
+        {news.length === 0 ? <p className="home-news-empty">لا توجد أخبار منشورة حالياً.</p> : (
+          <div className="home-news-list">
+            {news.map((item) => <article key={item.id} className="home-news-card">
+              {item.image && <img src={getImageUrl(item.image)} alt="" loading="lazy" />}
+              <div className="home-news-copy">
+                <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" })}</time>
+                {item.title && <h3>{item.title}</h3>}
+                <p>{item.content}</p>
+              </div>
+            </article>)}
+          </div>
+        )}
       </section>
 
       <footer className="text-center text-slate-400 py-10 text-sm">

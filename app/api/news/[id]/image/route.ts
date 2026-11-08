@@ -1,5 +1,5 @@
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, canManageServants, jsonResponse, notFound, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 
 export async function PATCH(
@@ -7,6 +7,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    if (!await canManageServants(auth)) return forbidden('تعديل الأخبار متاح للمسؤول والكاهن فقط');
     const { id } = await params;
     const news = await queryOne(`SELECT "id" FROM "news" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!news) {
@@ -41,6 +44,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+    if (!await canManageServants(auth)) return forbidden('تعديل الأخبار متاح للمسؤول والكاهن فقط');
     const { id } = await params;
     const news = await queryOne(`SELECT "id" FROM "news" WHERE "id" = $1 LIMIT 1`, [id]);
     if (!news) {
