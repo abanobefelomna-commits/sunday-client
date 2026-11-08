@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="680" viewBox="0 0 1600 680" fill="none">
+  <defs>
+    <linearGradient id="wall" x1="0" y1="0" x2="1600" y2="680" gradientUnits="userSpaceOnUse"><stop stop-color="#F7E9D6"/><stop offset=".52" stop-color="#E9D8C1"/><stop offset="1" stop-color="#C8D6D4"/></linearGradient>
+    <linearGradient id="sun" x1="430" y1="80" x2="900" y2="520" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF5D9" stop-opacity=".92"/><stop offset="1" stop-color="#F3C982" stop-opacity="0"/></linearGradient>
+    <linearGradient id="glass" x1="160" y1="40" x2="460" y2="440" gradientUnits="userSpaceOnUse"><stop stop-color="#94B5B2"/><stop offset="1" stop-color="#D0C39F"/></linearGradient>
+    <linearGradient id="pages" x1="290" y1="480" x2="640" y2="650" gradientUnits="userSpaceOnUse"><stop stop-color="#FFFCF3"/><stop offset="1" stop-color="#EADFCB"/></linearGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="35"/></filter>
+  </defs>
+  <path fill="url(#wall)" d="M0 0h1600v680H0z"/>
+  <ellipse cx="720" cy="275" rx="370" ry="250" fill="url(#sun)" filter="url(#blur)"/>
+  <!-- soft morning light from an arched classroom window -->
+  <path d="M390 70 1050 0h275L602 520l-245 42L0 470V285z" fill="#FFF5DA" fill-opacity=".2"/>
+  <path d="M85 400V210C85 96 169 20 274 20s189 76 189 190v190H85Z" fill="#F4EBDD" fill-opacity=".76"/>
+  <path d="M113 386V210c0-95 68-160 161-160s161 65 161 160v176H113Z" fill="url(#glass)"/>
+  <path d="M274 51v335M115 219h318M194 63l80 156 80-156M194 376l80-157 80 157" stroke="#F6E8CD" stroke-width="9" stroke-linecap="round" opacity=".9"/>
+  <path d="M94 401h356" stroke="#B9A78D" stroke-width="14" stroke-linecap="round"/>
+  <!-- quiet shelf with a few books -->
+  <path d="M0 492h520v22H0z" fill="#967A60" opacity=".72"/>
+  <path d="M67 410h43v78H67zM117 389h39v99h-39zM163 422h47v66h-47z" fill="#6F8E83"/>
+  <path d="M74 419h8v57h-8zM126 398h7v78h-7zM173 430h8v48h-8z" fill="#D8C5A4" opacity=".8"/>
+  <path d="M225 450c16-31 35-46 59-47 20 0 35 12 46 31-12 20-29 35-51 36-21 0-39-7-54-20Z" fill="#879B79"/>
+  <path d="M280 444c-5-23-2-42 11-58M286 450c18-23 36-34 58-34" stroke="#667C65" stroke-width="5" stroke-linecap="round"/>
+  <!-- open Bible on a simple reading table -->
+  <path d="M180 590h620v90H180z" fill="#A98567" opacity=".78"/>
+  <path d="m292 540 154-37c22-5 42 0 62 13l16 11v93c-26-17-49-22-76-15l-156 40V540Z" fill="url(#pages)" stroke="#C5B69F" stroke-width="5"/>
+  <path d="m524 527 22-12c19-11 38-15 59-10l153 37v105l-150-40c-29-8-55-4-84 13V527Z" fill="url(#pages)" stroke="#C5B69F" stroke-width="5"/>
+  <path d="M522 529v90M326 554l133-30M326 574l133-31M326 594l117-26M578 535l135 32M578 556l135 32M578 577l119 28" stroke="#C7BBA6" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+  <path d="M507 520v95" stroke="#B89064" stroke-width="5"/>
+  <!-- restrained community silhouettes far in the distance -->
+  <path d="M1080 444c34-64 82-95 144-95 49 0 89 21 122 64 31-34 68-51 113-51 54 0 100 28 138 83v92h-517v-93Z" fill="#738D83" fill-opacity=".27"/>
+  <circle cx="1190" cy="370" r="23" fill="#9D7359" fill-opacity=".48"/><path d="M1150 432c8-38 21-57 40-57s33 19 41 57" fill="#657E78" fill-opacity=".5"/>
+  <circle cx="1392" cy="370" r="22" fill="#8F6551" fill-opacity=".45"/><path d="M1352 432c8-38 21-57 40-57s33 19 41 57" fill="#B88D62" fill-opacity=".5"/>
+  <path d="M1040 546h510" stroke="#8B9B88" stroke-opacity=".32" stroke-width="3"/>
+</svg>
