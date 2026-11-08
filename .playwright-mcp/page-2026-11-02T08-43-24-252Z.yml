@@ -1,0 +1,88 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - navigation "التنقل الرئيسي" [ref=f2e4]:
+        - link "✝ مدارس الأحد" [ref=f2e5] [cursor=pointer]:
+          - /url: /
+        - link "الفكرة" [ref=f2e6] [cursor=pointer]:
+          - /url: "#idea"
+        - link "دخول" [ref=f2e7] [cursor=pointer]:
+          - /url: /login
+        - link "حساب جديد" [ref=f2e8] [cursor=pointer]:
+          - /url: /register
+    - generic [ref=f2e11]:
+      - heading "مدارس الأحد" [level=1] [ref=f2e12]
+      - paragraph [ref=f2e13]: مكان لأولادنا في المرحلة الابتدائية، نتعلّم فيه كلمة الله ونكبر معًا في المحبة.
+      - generic [ref=f2e14]:
+        - link "إنشاء حساب خادم" [ref=f2e15] [cursor=pointer]:
+          - /url: /register
+        - link "تسجيل الدخول" [ref=f2e16] [cursor=pointer]:
+          - /url: /login
+      - paragraph [ref=f2e17]: بفضل ربنا يسوع وبقوة صليبه ✝
+    - generic [ref=f2e19]:
+      - generic [ref=f2e20]:
+        - heading "إزاي تستخدم التطبيق؟" [level=2] [ref=f2e21]
+        - paragraph [ref=f2e22]: خطوات سريعة توضّح لك إزاي تبدأ من أول التسجيل لحد تسجيل ومتابعة الحضور.
+        - list [ref=f2e23]:
+          - listitem [ref=f2e24]:
+            - generic [ref=f2e26]:
+              - generic [ref=f2e27]: أنشئ حسابك
+              - text: اكتب اسمك واختار المرحلة أو السنة اللي بتخدم فيها.
+          - listitem [ref=f2e28]:
+            - generic [ref=f2e30]:
+              - generic [ref=f2e31]: سجّل الحضور
+              - text: دوس حاضر أو غايب لكل طفل في ثانية واحدة.
+          - listitem [ref=f2e32]:
+            - generic [ref=f2e34]:
+              - generic [ref=f2e35]: تابع اللوحة
+              - text: شوف عدد الأطفال، نسب الحضور، والافتقاد من مكان واحد.
+      - generic [ref=f2e36]:
+        - generic "تجربة توضيحية للتطبيق" [ref=f2e37]:
+          - generic [ref=f2e38]:
+            - generic [ref=f2e39]: الخطوة ١ — حساب الخادم
+            - generic [ref=f2e40]: أ. مينا سامي
+            - generic [ref=f2e41]: سنة ثالثة ابتدائي
+            - generic [ref=f2e42]: mina@church.org
+            - generic [ref=f2e43]: تم إنشاء الحساب بنجاح ✓
+          - generic:
+            - generic: الخطوة ٢ — سجل الحضور
+            - generic:
+              - generic: مينا جورج
+              - generic: حاضر
+            - generic:
+              - generic: مريم سمير
+              - generic: حاضر
+            - generic:
+              - generic: كيرلس مجدي
+              - generic: حاضر
+            - generic:
+              - generic: مارينا عادل
+              - generic: غايب
+          - generic:
+            - generic: الخطوة ٣ — المتابعة والنسب
+            - generic:
+              - generic:
+                - generic: ٢٤
+                - text: طفل بالفصل
+              - generic:
+                - generic: ٢١
+                - text: حاضر اليوم
+            - generic: حضور آخر ٤ أسابيع
+        - tablist [ref=f2e44]:
+          - tab "١ الحساب" [selected] [ref=f2e45] [cursor=pointer]
+          - tab "٢ الحضور" [ref=f2e47] [cursor=pointer]
+          - tab "٣ المتابعة" [ref=f2e48] [cursor=pointer]
+    - generic [ref=f2e50]:
+      - generic [ref=f2e51]:
+        - heading "جاهز تبدأ الخدمة؟" [level=2] [ref=f2e52]
+        - paragraph [ref=f2e53]: أنشئ حساب خادم، واختار مرحلتك وفصلك، وابدأ متابعة أطفالك في دقيقة واحدة.
+      - generic [ref=f2e54]:
+        - link "إنشاء حساب خادم" [ref=f2e55] [cursor=pointer]:
+          - /url: /register
+        - link "تسجيل الدخول" [ref=f2e56] [cursor=pointer]:
+          - /url: /login
+    - contentinfo [ref=f2e57]: © مدارس الأحد — كنيسة السيدة العذراء مريم
+  - region "Notifications alt+T"
+  - button "الكتاب المقدس" [ref=f2e58] [cursor=pointer]:
+    - generic [aria-hidden] [ref=f2e60]: 📖
+  - button "Open Next.js Dev Tools" [ref=f2e66] [cursor=pointer]

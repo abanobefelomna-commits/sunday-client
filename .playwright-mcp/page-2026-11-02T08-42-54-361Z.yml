@@ -1,0 +1,1280 @@
+- generic [active] [ref=f1e1]:
+  - main:
+    - generic [ref=f1e2]:
+      - generic [ref=f1e4]:
+        - link "Google Antigravity" [ref=f1e6] [cursor=pointer]:
+          - /url: /
+        - generic [ref=f1e49]:
+          - navigation [ref=f1e50] [cursor=pointer]:
+            - button "Products" [ref=f1e52]
+            - button "Use Cases" [ref=f1e58]
+            - link "Pricing" [ref=f1e64]:
+              - /url: /pricing
+            - link "Enterprise" [ref=f1e67]:
+              - /url: /use-cases/enterprise
+            - button "Resources" [ref=f1e70]
+          - generic [ref=f1e75]:
+            - link "Launch Remote Control" [ref=f1e76] [cursor=pointer]:
+              - /url: https://antigravity.google.com
+              - text: 🚀
+            - link "Download" [ref=f1e77] [cursor=pointer]:
+              - /url: /download
+        - combobox "Select language" [ref=f1e83] [cursor=pointer]:
+          - generic [aria-hidden]: EN
+          - combobox "Select language":
+            - option "English (United States)" [selected]
+            - option "Bahasa Indonesia (Indonesia)"
+            - option "Deutsch (Deutschland)"
+            - option "English (Canada)"
+            - option "English (United Kingdom)"
+            - option "Español (España)"
+            - option "Español (México)"
+            - option "Français (France)"
+            - option "Italiano (Italia)"
+            - option "Polski (Polska)"
+            - option "Português (Brasil)"
+            - option "हिन्दी (भारत)"
+            - option "ไทย (ประเทศไทย)"
+            - option "日本語 (日本)"
+            - option "简体中文 (中国)"
+            - option "繁體中文 (台灣)"
+            - option "한국어 (대한민국)"
+      - region "New announcement" [ref=f1e85] [cursor=pointer]:
+        - link "New Introducing the Plugin Marketplace in Google Antigravity Read post" [ref=f1e86]:
+          - /url: /blog/plugin-marketplace-in-antigravity
+          - generic [ref=f1e87]: New
+          - generic [ref=f1e92]: Introducing the Plugin Marketplace in Google Antigravity
+          - generic [ref=f1e93]: Read post
+        - button "Dismiss New announcement" [ref=f1e97]
+    - generic [ref=f1e101]:
+      - main [ref=f1e102]:
+        - generic [ref=f1e106]:
+          - heading "Experience liftoff with the next-gen agent platform" [level=1] [ref=f1e151]:
+            - generic [ref=f1e152]:
+              - generic [ref=f1e153]: Experience liftoff with the next-gen agent platform
+              - generic [aria-hidden] [ref=f1e154]:
+                - generic [aria-hidden] [ref=f1e155]:
+                  - generic [aria-hidden] [ref=f1e156]: E
+                  - generic [aria-hidden] [ref=f1e157]: x
+                  - generic [aria-hidden] [ref=f1e158]: p
+                  - generic [aria-hidden] [ref=f1e159]: e
+                  - generic [aria-hidden] [ref=f1e160]: r
+                  - generic [aria-hidden] [ref=f1e161]: i
+                  - generic [aria-hidden] [ref=f1e162]: e
+                  - generic [aria-hidden] [ref=f1e163]: "n"
+                  - generic [aria-hidden] [ref=f1e164]: c
+                  - generic [aria-hidden] [ref=f1e165]: e
+                - generic [aria-hidden] [ref=f1e166]:
+                  - generic [aria-hidden] [ref=f1e167]: l
+                  - generic [aria-hidden] [ref=f1e168]: i
+                  - generic [aria-hidden] [ref=f1e169]: f
+                  - generic [aria-hidden] [ref=f1e170]: t
+                  - generic [aria-hidden] [ref=f1e171]: o
+                  - generic [aria-hidden] [ref=f1e172]: f
+                  - generic [aria-hidden] [ref=f1e173]: f
+                - generic [aria-hidden] [ref=f1e174]:
+                  - generic [aria-hidden] [ref=f1e175]: w
+                  - generic [aria-hidden] [ref=f1e176]: i
+                  - generic [aria-hidden] [ref=f1e177]: t
+                  - generic [aria-hidden] [ref=f1e178]: h
+                - generic [aria-hidden] [ref=f1e179]:
+                  - generic [aria-hidden] [ref=f1e180]: t
+                  - generic [aria-hidden] [ref=f1e181]: h
+                  - generic [aria-hidden] [ref=f1e182]: e
+                - generic [aria-hidden] [ref=f1e183]:
+                  - generic [aria-hidden] [ref=f1e184]: "n"
+                  - generic [aria-hidden] [ref=f1e185]: e
+                  - generic [aria-hidden] [ref=f1e186]: x
+                  - generic [aria-hidden] [ref=f1e187]: t
+                  - generic [aria-hidden] [ref=f1e188]: "-"
+                  - generic [aria-hidden] [ref=f1e189]: g
+                  - generic [aria-hidden] [ref=f1e190]: e
+                  - generic [aria-hidden] [ref=f1e191]: "n"
+                - generic [aria-hidden] [ref=f1e192]:
+                  - generic [aria-hidden] [ref=f1e193]: a
+                  - generic [aria-hidden] [ref=f1e194]: g
+                  - generic [aria-hidden] [ref=f1e195]: e
+                  - generic [aria-hidden] [ref=f1e196]: "n"
+                  - generic [aria-hidden] [ref=f1e197]: t
+                - generic [aria-hidden] [ref=f1e198]:
+                  - generic [aria-hidden] [ref=f1e199]: p
+                  - generic [aria-hidden] [ref=f1e200]: l
+                  - generic [aria-hidden] [ref=f1e201]: a
+                  - generic [aria-hidden] [ref=f1e202]: t
+                  - generic [aria-hidden] [ref=f1e203]: f
+                  - generic [aria-hidden] [ref=f1e204]: o
+                  - generic [aria-hidden] [ref=f1e205]: r
+                  - generic [aria-hidden] [ref=f1e206]: m
+          - link "Download" [ref=f1e210] [cursor=pointer]:
+            - /url: /download
+        - button "Play intro" [ref=f1e216] [cursor=pointer]
+        - generic [ref=f1e221]:
+          - list [ref=f1e222]:
+            - listitem [ref=f1e223]
+            - listitem [ref=f1e227]
+            - listitem [ref=f1e231]
+            - listitem [ref=f1e235]
+            - listitem [ref=f1e239]
+            - listitem [ref=f1e243]
+            - listitem [ref=f1e247]
+            - listitem [ref=f1e251]
+            - listitem [ref=f1e255]
+            - listitem [ref=f1e259]
+            - listitem [ref=f1e263]
+            - listitem [ref=f1e267]
+            - listitem [ref=f1e271]
+            - listitem [ref=f1e275]
+            - listitem [ref=f1e279]
+            - listitem [ref=f1e283]
+            - listitem [ref=f1e287]
+            - listitem [ref=f1e291]
+            - listitem [ref=f1e295]
+            - listitem [ref=f1e299]
+            - listitem [ref=f1e303]
+            - listitem [ref=f1e307]
+          - generic [ref=f1e314]:
+            - generic [ref=f1e315]: Google Antigravity is our agentic development platform, allowing anyone to build in the agent-first era.
+            - generic [aria-hidden] [ref=f1e316]:
+              - generic [aria-hidden] [ref=f1e317]:
+                - generic [aria-hidden] [ref=f1e318]: G
+                - generic [aria-hidden] [ref=f1e319]: o
+                - generic [aria-hidden] [ref=f1e320]: o
+                - generic [aria-hidden] [ref=f1e321]: g
+                - generic [aria-hidden] [ref=f1e322]: l
+                - generic [aria-hidden] [ref=f1e323]: e
+              - generic [aria-hidden] [ref=f1e324]:
+                - generic [aria-hidden] [ref=f1e325]: A
+                - generic [aria-hidden] [ref=f1e326]: "n"
+                - generic [aria-hidden] [ref=f1e327]: t
+                - generic [aria-hidden] [ref=f1e328]: i
+                - generic [aria-hidden] [ref=f1e329]: g
+                - generic [aria-hidden] [ref=f1e330]: r
+                - generic [aria-hidden] [ref=f1e331]: a
+                - generic [aria-hidden] [ref=f1e332]: v
+                - generic [aria-hidden] [ref=f1e333]: i
+                - generic [aria-hidden] [ref=f1e334]: t
+                - generic [aria-hidden] [ref=f1e335]: "y"
+              - generic [aria-hidden] [ref=f1e336]:
+                - generic [aria-hidden] [ref=f1e337]: i
+                - generic [aria-hidden] [ref=f1e338]: s
+              - generic [aria-hidden] [ref=f1e339]:
+                - generic [aria-hidden] [ref=f1e340]: o
+                - generic [aria-hidden] [ref=f1e341]: u
+                - generic [aria-hidden] [ref=f1e342]: r
+              - generic [aria-hidden] [ref=f1e343]:
+                - generic [aria-hidden] [ref=f1e344]: a
+                - generic [aria-hidden] [ref=f1e345]: g
+                - generic [aria-hidden] [ref=f1e346]: e
+                - generic [aria-hidden] [ref=f1e347]: "n"
+                - generic [aria-hidden] [ref=f1e348]: t
+                - generic [aria-hidden] [ref=f1e349]: i
+                - generic [aria-hidden] [ref=f1e350]: c
+              - generic [aria-hidden] [ref=f1e351]:
+                - generic [aria-hidden] [ref=f1e352]: d
+                - generic [aria-hidden] [ref=f1e353]: e
+                - generic [aria-hidden] [ref=f1e354]: v
+                - generic [aria-hidden] [ref=f1e355]: e
+                - generic [aria-hidden] [ref=f1e356]: l
+                - generic [aria-hidden] [ref=f1e357]: o
+                - generic [aria-hidden] [ref=f1e358]: p
+                - generic [aria-hidden] [ref=f1e359]: m
+                - generic [aria-hidden] [ref=f1e360]: e
+                - generic [aria-hidden] [ref=f1e361]: "n"
+                - generic [aria-hidden] [ref=f1e362]: t
+              - generic [aria-hidden] [ref=f1e363]:
+                - generic [aria-hidden] [ref=f1e364]: p
+                - generic [aria-hidden] [ref=f1e365]: l
+                - generic [aria-hidden] [ref=f1e366]: a
+                - generic [aria-hidden] [ref=f1e367]: t
+                - generic [aria-hidden] [ref=f1e368]: f
+                - generic [aria-hidden] [ref=f1e369]: o
+                - generic [aria-hidden] [ref=f1e370]: r
+                - generic [aria-hidden] [ref=f1e371]: m
+                - generic [aria-hidden] [ref=f1e372]: ","
+              - generic [aria-hidden] [ref=f1e373]:
+                - generic [aria-hidden] [ref=f1e374]: a
+                - generic [aria-hidden] [ref=f1e375]: l
+                - generic [aria-hidden] [ref=f1e376]: l
+                - generic [aria-hidden] [ref=f1e377]: o
+                - generic [aria-hidden] [ref=f1e378]: w
+                - generic [aria-hidden] [ref=f1e379]: i
+                - generic [aria-hidden] [ref=f1e380]: "n"
+                - generic [aria-hidden] [ref=f1e381]: g
+              - generic [aria-hidden] [ref=f1e382]:
+                - generic [aria-hidden] [ref=f1e383]: a
+                - generic [aria-hidden] [ref=f1e384]: "n"
+                - generic [aria-hidden] [ref=f1e385]: "y"
+                - generic [aria-hidden] [ref=f1e386]: o
+                - generic [aria-hidden] [ref=f1e387]: "n"
+                - generic [aria-hidden] [ref=f1e388]: e
+              - generic [aria-hidden] [ref=f1e389]:
+                - generic [aria-hidden] [ref=f1e390]: t
+                - generic [aria-hidden] [ref=f1e391]: o
+              - generic [aria-hidden] [ref=f1e392]:
+                - generic [aria-hidden] [ref=f1e393]: b
+                - generic [aria-hidden] [ref=f1e394]: u
+                - generic [aria-hidden] [ref=f1e395]: i
+                - generic [aria-hidden] [ref=f1e396]: l
+                - generic [aria-hidden] [ref=f1e397]: d
+              - generic [aria-hidden] [ref=f1e398]:
+                - generic [aria-hidden] [ref=f1e399]: i
+                - generic [aria-hidden] [ref=f1e400]: "n"
+              - generic [aria-hidden] [ref=f1e401]:
+                - generic [aria-hidden] [ref=f1e402]: t
+                - generic [aria-hidden] [ref=f1e403]: h
+                - generic [aria-hidden] [ref=f1e404]: e
+              - generic [aria-hidden] [ref=f1e405]:
+                - generic [aria-hidden] [ref=f1e406]: a
+                - generic [aria-hidden] [ref=f1e407]: g
+                - generic [aria-hidden] [ref=f1e408]: e
+                - generic [aria-hidden] [ref=f1e409]: "n"
+                - generic [aria-hidden] [ref=f1e410]: t
+                - generic [aria-hidden] [ref=f1e411]: "-"
+                - generic [aria-hidden] [ref=f1e412]: f
+                - generic [aria-hidden] [ref=f1e413]: i
+                - generic [aria-hidden] [ref=f1e414]: r
+                - generic [aria-hidden] [ref=f1e415]: s
+                - generic [aria-hidden] [ref=f1e416]: t
+              - generic [aria-hidden] [ref=f1e417]:
+                - generic [aria-hidden] [ref=f1e418]: e
+                - generic [aria-hidden] [ref=f1e419]: r
+                - generic [aria-hidden] [ref=f1e420]: a
+                - generic [aria-hidden] [ref=f1e421]: .
+        - generic [ref=f1e424]:
+          - generic [ref=f1e426]:
+            - generic [ref=f1e428]:
+              - link "Antigravity App" [ref=f1e429] [cursor=pointer]:
+                - /url: /product/antigravity-2
+              - paragraph [ref=f1e430]:
+                - generic [aria-hidden] [ref=f1e431]:
+                  - generic [aria-hidden] [ref=f1e432]: "Y"
+                  - generic [aria-hidden] [ref=f1e433]: o
+                  - generic [aria-hidden] [ref=f1e434]: u
+                  - generic [aria-hidden] [ref=f1e435]: r
+                - generic [aria-hidden] [ref=f1e436]:
+                  - generic [aria-hidden] [ref=f1e437]: c
+                  - generic [aria-hidden] [ref=f1e438]: o
+                  - generic [aria-hidden] [ref=f1e439]: m
+                  - generic [aria-hidden] [ref=f1e440]: m
+                  - generic [aria-hidden] [ref=f1e441]: a
+                  - generic [aria-hidden] [ref=f1e442]: "n"
+                  - generic [aria-hidden] [ref=f1e443]: d
+                - generic [aria-hidden] [ref=f1e444]:
+                  - generic [aria-hidden] [ref=f1e445]: c
+                  - generic [aria-hidden] [ref=f1e446]: e
+                  - generic [aria-hidden] [ref=f1e447]: "n"
+                  - generic [aria-hidden] [ref=f1e448]: t
+                  - generic [aria-hidden] [ref=f1e449]: e
+                  - generic [aria-hidden] [ref=f1e450]: r
+                - generic [aria-hidden] [ref=f1e451]:
+                  - generic [aria-hidden] [ref=f1e452]: t
+                  - generic [aria-hidden] [ref=f1e453]: o
+                - generic [aria-hidden] [ref=f1e454]:
+                  - generic [aria-hidden] [ref=f1e455]: m
+                  - generic [aria-hidden] [ref=f1e456]: a
+                  - generic [aria-hidden] [ref=f1e457]: "n"
+                  - generic [aria-hidden] [ref=f1e458]: a
+                  - generic [aria-hidden] [ref=f1e459]: g
+                  - generic [aria-hidden] [ref=f1e460]: e
+                - generic [aria-hidden] [ref=f1e461]:
+                  - generic [aria-hidden] [ref=f1e462]: m
+                  - generic [aria-hidden] [ref=f1e463]: u
+                  - generic [aria-hidden] [ref=f1e464]: l
+                  - generic [aria-hidden] [ref=f1e465]: t
+                  - generic [aria-hidden] [ref=f1e466]: i
+                  - generic [aria-hidden] [ref=f1e467]: p
+                  - generic [aria-hidden] [ref=f1e468]: l
+                  - generic [aria-hidden] [ref=f1e469]: e
+                - generic [aria-hidden] [ref=f1e470]:
+                  - generic [aria-hidden] [ref=f1e471]: l
+                  - generic [aria-hidden] [ref=f1e472]: o
+                  - generic [aria-hidden] [ref=f1e473]: c
+                  - generic [aria-hidden] [ref=f1e474]: a
+                  - generic [aria-hidden] [ref=f1e475]: l
+                - generic [aria-hidden] [ref=f1e476]:
+                  - generic [aria-hidden] [ref=f1e477]: a
+                  - generic [aria-hidden] [ref=f1e478]: g
+                  - generic [aria-hidden] [ref=f1e479]: e
+                  - generic [aria-hidden] [ref=f1e480]: "n"
+                  - generic [aria-hidden] [ref=f1e481]: t
+                  - generic [aria-hidden] [ref=f1e482]: s
+                - generic [aria-hidden] [ref=f1e483]:
+                  - generic [aria-hidden] [ref=f1e484]: i
+                  - generic [aria-hidden] [ref=f1e485]: "n"
+                - generic [aria-hidden] [ref=f1e486]:
+                  - generic [aria-hidden] [ref=f1e487]: p
+                  - generic [aria-hidden] [ref=f1e488]: a
+                  - generic [aria-hidden] [ref=f1e489]: r
+                  - generic [aria-hidden] [ref=f1e490]: a
+                  - generic [aria-hidden] [ref=f1e491]: l
+                  - generic [aria-hidden] [ref=f1e492]: l
+                  - generic [aria-hidden] [ref=f1e493]: e
+                  - generic [aria-hidden] [ref=f1e494]: l
+                  - generic [aria-hidden] [ref=f1e495]: .
+                - generic [aria-hidden] [ref=f1e496]:
+                  - generic [aria-hidden] [ref=f1e497]: G
+                  - generic [aria-hidden] [ref=f1e498]: r
+                  - generic [aria-hidden] [ref=f1e499]: o
+                  - generic [aria-hidden] [ref=f1e500]: u
+                  - generic [aria-hidden] [ref=f1e501]: p
+                - generic [aria-hidden] [ref=f1e502]:
+                  - generic [aria-hidden] [ref=f1e503]: c
+                  - generic [aria-hidden] [ref=f1e504]: o
+                  - generic [aria-hidden] [ref=f1e505]: "n"
+                  - generic [aria-hidden] [ref=f1e506]: v
+                  - generic [aria-hidden] [ref=f1e507]: e
+                  - generic [aria-hidden] [ref=f1e508]: r
+                  - generic [aria-hidden] [ref=f1e509]: s
+                  - generic [aria-hidden] [ref=f1e510]: a
+                  - generic [aria-hidden] [ref=f1e511]: t
+                  - generic [aria-hidden] [ref=f1e512]: i
+                  - generic [aria-hidden] [ref=f1e513]: o
+                  - generic [aria-hidden] [ref=f1e514]: "n"
+                  - generic [aria-hidden] [ref=f1e515]: s
+                - generic [aria-hidden] [ref=f1e516]:
+                  - generic [aria-hidden] [ref=f1e517]: i
+                  - generic [aria-hidden] [ref=f1e518]: "n"
+                  - generic [aria-hidden] [ref=f1e519]: t
+                  - generic [aria-hidden] [ref=f1e520]: o
+                - generic [aria-hidden] [ref=f1e521]:
+                  - generic [aria-hidden] [ref=f1e522]: P
+                  - generic [aria-hidden] [ref=f1e523]: r
+                  - generic [aria-hidden] [ref=f1e524]: o
+                  - generic [aria-hidden] [ref=f1e525]: j
+                  - generic [aria-hidden] [ref=f1e526]: e
+                  - generic [aria-hidden] [ref=f1e527]: c
+                  - generic [aria-hidden] [ref=f1e528]: t
+                  - generic [aria-hidden] [ref=f1e529]: s
+                  - generic [aria-hidden] [ref=f1e530]: ","
+                - generic [aria-hidden] [ref=f1e531]:
+                  - generic [aria-hidden] [ref=f1e532]: o
+                  - generic [aria-hidden] [ref=f1e533]: p
+                  - generic [aria-hidden] [ref=f1e534]: e
+                  - generic [aria-hidden] [ref=f1e535]: r
+                  - generic [aria-hidden] [ref=f1e536]: a
+                  - generic [aria-hidden] [ref=f1e537]: t
+                  - generic [aria-hidden] [ref=f1e538]: e
+                - generic [aria-hidden] [ref=f1e539]:
+                  - generic [aria-hidden] [ref=f1e540]: a
+                  - generic [aria-hidden] [ref=f1e541]: c
+                  - generic [aria-hidden] [ref=f1e542]: r
+                  - generic [aria-hidden] [ref=f1e543]: o
+                  - generic [aria-hidden] [ref=f1e544]: s
+                  - generic [aria-hidden] [ref=f1e545]: s
+                - generic [aria-hidden] [ref=f1e546]:
+                  - generic [aria-hidden] [ref=f1e547]: m
+                  - generic [aria-hidden] [ref=f1e548]: u
+                  - generic [aria-hidden] [ref=f1e549]: l
+                  - generic [aria-hidden] [ref=f1e550]: t
+                  - generic [aria-hidden] [ref=f1e551]: i
+                  - generic [aria-hidden] [ref=f1e552]: p
+                  - generic [aria-hidden] [ref=f1e553]: l
+                  - generic [aria-hidden] [ref=f1e554]: e
+                - generic [aria-hidden] [ref=f1e555]:
+                  - generic [aria-hidden] [ref=f1e556]: w
+                  - generic [aria-hidden] [ref=f1e557]: o
+                  - generic [aria-hidden] [ref=f1e558]: r
+                  - generic [aria-hidden] [ref=f1e559]: k
+                  - generic [aria-hidden] [ref=f1e560]: s
+                  - generic [aria-hidden] [ref=f1e561]: p
+                  - generic [aria-hidden] [ref=f1e562]: a
+                  - generic [aria-hidden] [ref=f1e563]: c
+                  - generic [aria-hidden] [ref=f1e564]: e
+                  - generic [aria-hidden] [ref=f1e565]: s
+                  - generic [aria-hidden] [ref=f1e566]: ","
+                - generic [aria-hidden] [ref=f1e567]:
+                  - generic [aria-hidden] [ref=f1e568]: a
+                  - generic [aria-hidden] [ref=f1e569]: "n"
+                  - generic [aria-hidden] [ref=f1e570]: d
+                - generic [aria-hidden] [ref=f1e571]:
+                  - generic [aria-hidden] [ref=f1e572]: a
+                  - generic [aria-hidden] [ref=f1e573]: u
+                  - generic [aria-hidden] [ref=f1e574]: t
+                  - generic [aria-hidden] [ref=f1e575]: o
+                  - generic [aria-hidden] [ref=f1e576]: m
+                  - generic [aria-hidden] [ref=f1e577]: a
+                  - generic [aria-hidden] [ref=f1e578]: t
+                  - generic [aria-hidden] [ref=f1e579]: e
+                - generic [aria-hidden] [ref=f1e580]:
+                  - generic [aria-hidden] [ref=f1e581]: r
+                  - generic [aria-hidden] [ref=f1e582]: o
+                  - generic [aria-hidden] [ref=f1e583]: u
+                  - generic [aria-hidden] [ref=f1e584]: t
+                  - generic [aria-hidden] [ref=f1e585]: i
+                  - generic [aria-hidden] [ref=f1e586]: "n"
+                  - generic [aria-hidden] [ref=f1e587]: e
+                - generic [aria-hidden] [ref=f1e588]:
+                  - generic [aria-hidden] [ref=f1e589]: t
+                  - generic [aria-hidden] [ref=f1e590]: a
+                  - generic [aria-hidden] [ref=f1e591]: s
+                  - generic [aria-hidden] [ref=f1e592]: k
+                  - generic [aria-hidden] [ref=f1e593]: s
+                - generic [aria-hidden] [ref=f1e594]:
+                  - generic [aria-hidden] [ref=f1e595]: w
+                  - generic [aria-hidden] [ref=f1e596]: i
+                  - generic [aria-hidden] [ref=f1e597]: t
+                  - generic [aria-hidden] [ref=f1e598]: h
+                - generic [aria-hidden] [ref=f1e599]:
+                  - generic [aria-hidden] [ref=f1e600]: s
+                  - generic [aria-hidden] [ref=f1e601]: c
+                  - generic [aria-hidden] [ref=f1e602]: h
+                  - generic [aria-hidden] [ref=f1e603]: e
+                  - generic [aria-hidden] [ref=f1e604]: d
+                  - generic [aria-hidden] [ref=f1e605]: u
+                  - generic [aria-hidden] [ref=f1e606]: l
+                  - generic [aria-hidden] [ref=f1e607]: e
+                  - generic [aria-hidden] [ref=f1e608]: d
+                - generic [aria-hidden] [ref=f1e609]:
+                  - generic [aria-hidden] [ref=f1e610]: m
+                  - generic [aria-hidden] [ref=f1e611]: e
+                  - generic [aria-hidden] [ref=f1e612]: s
+                  - generic [aria-hidden] [ref=f1e613]: s
+                  - generic [aria-hidden] [ref=f1e614]: a
+                  - generic [aria-hidden] [ref=f1e615]: g
+                  - generic [aria-hidden] [ref=f1e616]: e
+                  - generic [aria-hidden] [ref=f1e617]: s
+                  - generic [aria-hidden] [ref=f1e618]: .
+            - img "Your command center to manage multiple local agents in parallel. Group conversations into Projects, operate across multiple workspaces, and automate routine tasks with scheduled messages." [ref=f1e621]
+          - generic [ref=f1e623]:
+            - generic [ref=f1e625]:
+              - link "Antigravity CLI" [ref=f1e626] [cursor=pointer]:
+                - /url: /product/antigravity-cli
+              - paragraph [ref=f1e627]:
+                - generic [aria-hidden] [ref=f1e628]:
+                  - generic [aria-hidden] [ref=f1e629]: T
+                  - generic [aria-hidden] [ref=f1e630]: h
+                  - generic [aria-hidden] [ref=f1e631]: e
+                - generic [aria-hidden] [ref=f1e632]:
+                  - generic [aria-hidden] [ref=f1e633]: l
+                  - generic [aria-hidden] [ref=f1e634]: i
+                  - generic [aria-hidden] [ref=f1e635]: g
+                  - generic [aria-hidden] [ref=f1e636]: h
+                  - generic [aria-hidden] [ref=f1e637]: t
+                  - generic [aria-hidden] [ref=f1e638]: w
+                  - generic [aria-hidden] [ref=f1e639]: e
+                  - generic [aria-hidden] [ref=f1e640]: i
+                  - generic [aria-hidden] [ref=f1e641]: g
+                  - generic [aria-hidden] [ref=f1e642]: h
+                  - generic [aria-hidden] [ref=f1e643]: t
+                  - generic [aria-hidden] [ref=f1e644]: ","
+                - generic [aria-hidden] [ref=f1e645]:
+                  - generic [aria-hidden] [ref=f1e646]: f
+                  - generic [aria-hidden] [ref=f1e647]: a
+                  - generic [aria-hidden] [ref=f1e648]: s
+                  - generic [aria-hidden] [ref=f1e649]: t
+                  - generic [aria-hidden] [ref=f1e650]: ","
+                - generic [aria-hidden] [ref=f1e651]:
+                  - generic [aria-hidden] [ref=f1e652]: t
+                  - generic [aria-hidden] [ref=f1e653]: e
+                  - generic [aria-hidden] [ref=f1e654]: r
+                  - generic [aria-hidden] [ref=f1e655]: m
+                  - generic [aria-hidden] [ref=f1e656]: i
+                  - generic [aria-hidden] [ref=f1e657]: "n"
+                  - generic [aria-hidden] [ref=f1e658]: a
+                  - generic [aria-hidden] [ref=f1e659]: l
+                  - generic [aria-hidden] [ref=f1e660]: "-"
+                  - generic [aria-hidden] [ref=f1e661]: f
+                  - generic [aria-hidden] [ref=f1e662]: i
+                  - generic [aria-hidden] [ref=f1e663]: r
+                  - generic [aria-hidden] [ref=f1e664]: s
+                  - generic [aria-hidden] [ref=f1e665]: t
+                - generic [aria-hidden] [ref=f1e666]:
+                  - generic [aria-hidden] [ref=f1e667]: s
+                  - generic [aria-hidden] [ref=f1e668]: u
+                  - generic [aria-hidden] [ref=f1e669]: r
+                  - generic [aria-hidden] [ref=f1e670]: f
+                  - generic [aria-hidden] [ref=f1e671]: a
+                  - generic [aria-hidden] [ref=f1e672]: c
+                  - generic [aria-hidden] [ref=f1e673]: e
+                - generic [aria-hidden] [ref=f1e674]:
+                  - generic [aria-hidden] [ref=f1e675]: t
+                  - generic [aria-hidden] [ref=f1e676]: o
+                - generic [aria-hidden] [ref=f1e677]:
+                  - generic [aria-hidden] [ref=f1e678]: w
+                  - generic [aria-hidden] [ref=f1e679]: o
+                  - generic [aria-hidden] [ref=f1e680]: r
+                  - generic [aria-hidden] [ref=f1e681]: k
+                - generic [aria-hidden] [ref=f1e682]:
+                  - generic [aria-hidden] [ref=f1e683]: w
+                  - generic [aria-hidden] [ref=f1e684]: i
+                  - generic [aria-hidden] [ref=f1e685]: t
+                  - generic [aria-hidden] [ref=f1e686]: h
+                - generic [aria-hidden] [ref=f1e687]:
+                  - generic [aria-hidden] [ref=f1e688]: A
+                  - generic [aria-hidden] [ref=f1e689]: "n"
+                  - generic [aria-hidden] [ref=f1e690]: t
+                  - generic [aria-hidden] [ref=f1e691]: i
+                  - generic [aria-hidden] [ref=f1e692]: g
+                  - generic [aria-hidden] [ref=f1e693]: r
+                  - generic [aria-hidden] [ref=f1e694]: a
+                  - generic [aria-hidden] [ref=f1e695]: v
+                  - generic [aria-hidden] [ref=f1e696]: i
+                  - generic [aria-hidden] [ref=f1e697]: t
+                  - generic [aria-hidden] [ref=f1e698]: "y"
+                - generic [aria-hidden] [ref=f1e699]:
+                  - generic [aria-hidden] [ref=f1e700]: a
+                  - generic [aria-hidden] [ref=f1e701]: g
+                  - generic [aria-hidden] [ref=f1e702]: e
+                  - generic [aria-hidden] [ref=f1e703]: "n"
+                  - generic [aria-hidden] [ref=f1e704]: t
+                  - generic [aria-hidden] [ref=f1e705]: s
+                  - generic [aria-hidden] [ref=f1e706]: .
+                - generic [aria-hidden] [ref=f1e707]:
+                  - generic [aria-hidden] [ref=f1e708]: R
+                  - generic [aria-hidden] [ref=f1e709]: u
+                  - generic [aria-hidden] [ref=f1e710]: "n"
+                - generic [aria-hidden] [ref=f1e711]:
+                  - generic [aria-hidden] [ref=f1e712]: a
+                  - generic [aria-hidden] [ref=f1e713]: u
+                  - generic [aria-hidden] [ref=f1e714]: t
+                  - generic [aria-hidden] [ref=f1e715]: o
+                  - generic [aria-hidden] [ref=f1e716]: "n"
+                  - generic [aria-hidden] [ref=f1e717]: o
+                  - generic [aria-hidden] [ref=f1e718]: m
+                  - generic [aria-hidden] [ref=f1e719]: o
+                  - generic [aria-hidden] [ref=f1e720]: u
+                  - generic [aria-hidden] [ref=f1e721]: s
+                - generic [aria-hidden] [ref=f1e722]:
+                  - generic [aria-hidden] [ref=f1e723]: c
+                  - generic [aria-hidden] [ref=f1e724]: o
+                  - generic [aria-hidden] [ref=f1e725]: d
+                  - generic [aria-hidden] [ref=f1e726]: i
+                  - generic [aria-hidden] [ref=f1e727]: "n"
+                  - generic [aria-hidden] [ref=f1e728]: g
+                - generic [aria-hidden] [ref=f1e729]:
+                  - generic [aria-hidden] [ref=f1e730]: a
+                  - generic [aria-hidden] [ref=f1e731]: g
+                  - generic [aria-hidden] [ref=f1e732]: e
+                  - generic [aria-hidden] [ref=f1e733]: "n"
+                  - generic [aria-hidden] [ref=f1e734]: t
+                  - generic [aria-hidden] [ref=f1e735]: s
+                  - generic [aria-hidden] [ref=f1e736]: ","
+                - generic [aria-hidden] [ref=f1e737]:
+                  - generic [aria-hidden] [ref=f1e738]: e
+                  - generic [aria-hidden] [ref=f1e739]: x
+                  - generic [aria-hidden] [ref=f1e740]: e
+                  - generic [aria-hidden] [ref=f1e741]: c
+                  - generic [aria-hidden] [ref=f1e742]: u
+                  - generic [aria-hidden] [ref=f1e743]: t
+                  - generic [aria-hidden] [ref=f1e744]: e
+                - generic [aria-hidden] [ref=f1e745]:
+                  - generic [aria-hidden] [ref=f1e746]: s
+                  - generic [aria-hidden] [ref=f1e747]: h
+                  - generic [aria-hidden] [ref=f1e748]: e
+                  - generic [aria-hidden] [ref=f1e749]: l
+                  - generic [aria-hidden] [ref=f1e750]: l
+                - generic [aria-hidden] [ref=f1e751]:
+                  - generic [aria-hidden] [ref=f1e752]: c
+                  - generic [aria-hidden] [ref=f1e753]: o
+                  - generic [aria-hidden] [ref=f1e754]: m
+                  - generic [aria-hidden] [ref=f1e755]: m
+                  - generic [aria-hidden] [ref=f1e756]: a
+                  - generic [aria-hidden] [ref=f1e757]: "n"
+                  - generic [aria-hidden] [ref=f1e758]: d
+                  - generic [aria-hidden] [ref=f1e759]: s
+                - generic [aria-hidden] [ref=f1e760]:
+                  - generic [aria-hidden] [ref=f1e761]: d
+                  - generic [aria-hidden] [ref=f1e762]: i
+                  - generic [aria-hidden] [ref=f1e763]: r
+                  - generic [aria-hidden] [ref=f1e764]: e
+                  - generic [aria-hidden] [ref=f1e765]: c
+                  - generic [aria-hidden] [ref=f1e766]: t
+                  - generic [aria-hidden] [ref=f1e767]: l
+                  - generic [aria-hidden] [ref=f1e768]: "y"
+                  - generic [aria-hidden] [ref=f1e769]: ","
+                - generic [aria-hidden] [ref=f1e770]:
+                  - generic [aria-hidden] [ref=f1e771]: a
+                  - generic [aria-hidden] [ref=f1e772]: "n"
+                  - generic [aria-hidden] [ref=f1e773]: d
+                - generic [aria-hidden] [ref=f1e774]:
+                  - generic [aria-hidden] [ref=f1e775]: m
+                  - generic [aria-hidden] [ref=f1e776]: a
+                  - generic [aria-hidden] [ref=f1e777]: "n"
+                  - generic [aria-hidden] [ref=f1e778]: a
+                  - generic [aria-hidden] [ref=f1e779]: g
+                  - generic [aria-hidden] [ref=f1e780]: e
+                - generic [aria-hidden] [ref=f1e781]:
+                  - generic [aria-hidden] [ref=f1e782]: b
+                  - generic [aria-hidden] [ref=f1e783]: a
+                  - generic [aria-hidden] [ref=f1e784]: c
+                  - generic [aria-hidden] [ref=f1e785]: k
+                  - generic [aria-hidden] [ref=f1e786]: g
+                  - generic [aria-hidden] [ref=f1e787]: r
+                  - generic [aria-hidden] [ref=f1e788]: o
+                  - generic [aria-hidden] [ref=f1e789]: u
+                  - generic [aria-hidden] [ref=f1e790]: "n"
+                  - generic [aria-hidden] [ref=f1e791]: d
+                - generic [aria-hidden] [ref=f1e792]:
+                  - generic [aria-hidden] [ref=f1e793]: s
+                  - generic [aria-hidden] [ref=f1e794]: u
+                  - generic [aria-hidden] [ref=f1e795]: b
+                  - generic [aria-hidden] [ref=f1e796]: a
+                  - generic [aria-hidden] [ref=f1e797]: g
+                  - generic [aria-hidden] [ref=f1e798]: e
+                  - generic [aria-hidden] [ref=f1e799]: "n"
+                  - generic [aria-hidden] [ref=f1e800]: t
+                  - generic [aria-hidden] [ref=f1e801]: s
+                - generic [aria-hidden] [ref=f1e802]:
+                  - generic [aria-hidden] [ref=f1e803]: a
+                  - generic [aria-hidden] [ref=f1e804]: l
+                  - generic [aria-hidden] [ref=f1e805]: l
+                - generic [aria-hidden] [ref=f1e806]:
+                  - generic [aria-hidden] [ref=f1e807]: f
+                  - generic [aria-hidden] [ref=f1e808]: r
+                  - generic [aria-hidden] [ref=f1e809]: o
+                  - generic [aria-hidden] [ref=f1e810]: m
+                - generic [aria-hidden] [ref=f1e811]:
+                  - generic [aria-hidden] [ref=f1e812]: "y"
+                  - generic [aria-hidden] [ref=f1e813]: o
+                  - generic [aria-hidden] [ref=f1e814]: u
+                  - generic [aria-hidden] [ref=f1e815]: r
+                - generic [aria-hidden] [ref=f1e816]:
+                  - generic [aria-hidden] [ref=f1e817]: k
+                  - generic [aria-hidden] [ref=f1e818]: e
+                  - generic [aria-hidden] [ref=f1e819]: "y"
+                  - generic [aria-hidden] [ref=f1e820]: b
+                  - generic [aria-hidden] [ref=f1e821]: o
+                  - generic [aria-hidden] [ref=f1e822]: a
+                  - generic [aria-hidden] [ref=f1e823]: r
+                  - generic [aria-hidden] [ref=f1e824]: d
+                  - generic [aria-hidden] [ref=f1e825]: .
+            - img "The lightweight, fast, terminal-first surface to work with Antigravity agents. Run autonomous coding agents, execute shell commands directly, and manage background subagents all from your keyboard." [ref=f1e828]
+          - generic [ref=f1e832]:
+            - link "Antigravity IDE" [ref=f1e833] [cursor=pointer]:
+              - /url: /product/antigravity-ide
+            - paragraph [ref=f1e834]:
+              - generic [aria-hidden] [ref=f1e835]:
+                - generic [aria-hidden] [ref=f1e836]: T
+                - generic [aria-hidden] [ref=f1e837]: h
+                - generic [aria-hidden] [ref=f1e838]: e
+              - generic [aria-hidden] [ref=f1e839]:
+                - generic [aria-hidden] [ref=f1e840]: f
+                - generic [aria-hidden] [ref=f1e841]: u
+                - generic [aria-hidden] [ref=f1e842]: l
+                - generic [aria-hidden] [ref=f1e843]: l
+                - generic [aria-hidden] [ref=f1e844]: "y"
+                - generic [aria-hidden] [ref=f1e845]: "-"
+                - generic [aria-hidden] [ref=f1e846]: f
+                - generic [aria-hidden] [ref=f1e847]: e
+                - generic [aria-hidden] [ref=f1e848]: a
+                - generic [aria-hidden] [ref=f1e849]: t
+                - generic [aria-hidden] [ref=f1e850]: u
+                - generic [aria-hidden] [ref=f1e851]: r
+                - generic [aria-hidden] [ref=f1e852]: e
+                - generic [aria-hidden] [ref=f1e853]: d
+                - generic [aria-hidden] [ref=f1e854]: ","
+              - generic [aria-hidden] [ref=f1e855]:
+                - generic [aria-hidden] [ref=f1e856]: a
+                - generic [aria-hidden] [ref=f1e857]: g
+                - generic [aria-hidden] [ref=f1e858]: e
+                - generic [aria-hidden] [ref=f1e859]: "n"
+                - generic [aria-hidden] [ref=f1e860]: t
+                - generic [aria-hidden] [ref=f1e861]: i
+                - generic [aria-hidden] [ref=f1e862]: c
+              - generic [aria-hidden] [ref=f1e863]:
+                - generic [aria-hidden] [ref=f1e864]: I
+                - generic [aria-hidden] [ref=f1e865]: D
+                - generic [aria-hidden] [ref=f1e866]: E
+                - generic [aria-hidden] [ref=f1e867]: .
+              - generic [aria-hidden] [ref=f1e868]:
+                - generic [aria-hidden] [ref=f1e869]: C
+                - generic [aria-hidden] [ref=f1e870]: o
+                - generic [aria-hidden] [ref=f1e871]: m
+                - generic [aria-hidden] [ref=f1e872]: p
+                - generic [aria-hidden] [ref=f1e873]: l
+                - generic [aria-hidden] [ref=f1e874]: e
+                - generic [aria-hidden] [ref=f1e875]: t
+                - generic [aria-hidden] [ref=f1e876]: e
+              - generic [aria-hidden] [ref=f1e877]:
+                - generic [aria-hidden] [ref=f1e878]: w
+                - generic [aria-hidden] [ref=f1e879]: i
+                - generic [aria-hidden] [ref=f1e880]: t
+                - generic [aria-hidden] [ref=f1e881]: h
+              - generic [aria-hidden] [ref=f1e882]:
+                - generic [aria-hidden] [ref=f1e883]: t
+                - generic [aria-hidden] [ref=f1e884]: h
+                - generic [aria-hidden] [ref=f1e885]: e
+              - generic [aria-hidden] [ref=f1e886]:
+                - generic [aria-hidden] [ref=f1e887]: a
+                - generic [aria-hidden] [ref=f1e888]: g
+                - generic [aria-hidden] [ref=f1e889]: e
+                - generic [aria-hidden] [ref=f1e890]: "n"
+                - generic [aria-hidden] [ref=f1e891]: t
+              - generic [aria-hidden] [ref=f1e892]:
+                - generic [aria-hidden] [ref=f1e893]: m
+                - generic [aria-hidden] [ref=f1e894]: a
+                - generic [aria-hidden] [ref=f1e895]: "n"
+                - generic [aria-hidden] [ref=f1e896]: a
+                - generic [aria-hidden] [ref=f1e897]: g
+                - generic [aria-hidden] [ref=f1e898]: e
+                - generic [aria-hidden] [ref=f1e899]: r
+                - generic [aria-hidden] [ref=f1e900]: ","
+              - generic [aria-hidden] [ref=f1e901]:
+                - generic [aria-hidden] [ref=f1e902]: a
+                - generic [aria-hidden] [ref=f1e903]: r
+                - generic [aria-hidden] [ref=f1e904]: t
+                - generic [aria-hidden] [ref=f1e905]: i
+                - generic [aria-hidden] [ref=f1e906]: f
+                - generic [aria-hidden] [ref=f1e907]: a
+                - generic [aria-hidden] [ref=f1e908]: c
+                - generic [aria-hidden] [ref=f1e909]: t
+                - generic [aria-hidden] [ref=f1e910]: s
+                - generic [aria-hidden] [ref=f1e911]: ","
+              - generic [aria-hidden] [ref=f1e912]:
+                - generic [aria-hidden] [ref=f1e913]: a
+                - generic [aria-hidden] [ref=f1e914]: "n"
+                - generic [aria-hidden] [ref=f1e915]: d
+              - generic [aria-hidden] [ref=f1e917]: a
+              - generic [aria-hidden] [ref=f1e918]:
+                - generic [aria-hidden] [ref=f1e919]: d
+                - generic [aria-hidden] [ref=f1e920]: e
+                - generic [aria-hidden] [ref=f1e921]: e
+                - generic [aria-hidden] [ref=f1e922]: p
+              - generic [aria-hidden] [ref=f1e923]:
+                - generic [aria-hidden] [ref=f1e924]: u
+                - generic [aria-hidden] [ref=f1e925]: "n"
+                - generic [aria-hidden] [ref=f1e926]: d
+                - generic [aria-hidden] [ref=f1e927]: e
+                - generic [aria-hidden] [ref=f1e928]: r
+                - generic [aria-hidden] [ref=f1e929]: s
+                - generic [aria-hidden] [ref=f1e930]: t
+                - generic [aria-hidden] [ref=f1e931]: a
+                - generic [aria-hidden] [ref=f1e932]: "n"
+                - generic [aria-hidden] [ref=f1e933]: d
+                - generic [aria-hidden] [ref=f1e934]: i
+                - generic [aria-hidden] [ref=f1e935]: "n"
+                - generic [aria-hidden] [ref=f1e936]: g
+              - generic [aria-hidden] [ref=f1e937]:
+                - generic [aria-hidden] [ref=f1e938]: o
+                - generic [aria-hidden] [ref=f1e939]: f
+              - generic [aria-hidden] [ref=f1e940]:
+                - generic [aria-hidden] [ref=f1e941]: "y"
+                - generic [aria-hidden] [ref=f1e942]: o
+                - generic [aria-hidden] [ref=f1e943]: u
+                - generic [aria-hidden] [ref=f1e944]: r
+              - generic [aria-hidden] [ref=f1e945]:
+                - generic [aria-hidden] [ref=f1e946]: c
+                - generic [aria-hidden] [ref=f1e947]: o
+                - generic [aria-hidden] [ref=f1e948]: d
+                - generic [aria-hidden] [ref=f1e949]: e
+                - generic [aria-hidden] [ref=f1e950]: b
+                - generic [aria-hidden] [ref=f1e951]: a
+                - generic [aria-hidden] [ref=f1e952]: s
+                - generic [aria-hidden] [ref=f1e953]: e
+                - generic [aria-hidden] [ref=f1e954]: .
+          - generic [ref=f1e959]:
+            - generic [ref=f1e960]:
+              - generic [ref=f1e961]:
+                - link "Antigravity SDK" [ref=f1e962] [cursor=pointer]:
+                  - /url: /product/antigravity-sdk
+                - paragraph [ref=f1e963]:
+                  - generic [aria-hidden] [ref=f1e964]:
+                    - generic [aria-hidden] [ref=f1e965]: P
+                    - generic [aria-hidden] [ref=f1e966]: r
+                    - generic [aria-hidden] [ref=f1e967]: o
+                    - generic [aria-hidden] [ref=f1e968]: t
+                    - generic [aria-hidden] [ref=f1e969]: o
+                    - generic [aria-hidden] [ref=f1e970]: t
+                    - generic [aria-hidden] [ref=f1e971]: "y"
+                    - generic [aria-hidden] [ref=f1e972]: p
+                    - generic [aria-hidden] [ref=f1e973]: e
+                  - generic [aria-hidden] [ref=f1e974]:
+                    - generic [aria-hidden] [ref=f1e975]: c
+                    - generic [aria-hidden] [ref=f1e976]: u
+                    - generic [aria-hidden] [ref=f1e977]: s
+                    - generic [aria-hidden] [ref=f1e978]: t
+                    - generic [aria-hidden] [ref=f1e979]: o
+                    - generic [aria-hidden] [ref=f1e980]: m
+                  - generic [aria-hidden] [ref=f1e981]:
+                    - generic [aria-hidden] [ref=f1e982]: a
+                    - generic [aria-hidden] [ref=f1e983]: g
+                    - generic [aria-hidden] [ref=f1e984]: e
+                    - generic [aria-hidden] [ref=f1e985]: "n"
+                    - generic [aria-hidden] [ref=f1e986]: t
+                    - generic [aria-hidden] [ref=f1e987]: s
+                  - generic [aria-hidden] [ref=f1e988]:
+                    - generic [aria-hidden] [ref=f1e989]: l
+                    - generic [aria-hidden] [ref=f1e990]: e
+                    - generic [aria-hidden] [ref=f1e991]: v
+                    - generic [aria-hidden] [ref=f1e992]: e
+                    - generic [aria-hidden] [ref=f1e993]: r
+                    - generic [aria-hidden] [ref=f1e994]: a
+                    - generic [aria-hidden] [ref=f1e995]: g
+                    - generic [aria-hidden] [ref=f1e996]: i
+                    - generic [aria-hidden] [ref=f1e997]: "n"
+                    - generic [aria-hidden] [ref=f1e998]: g
+                  - generic [aria-hidden] [ref=f1e999]:
+                    - generic [aria-hidden] [ref=f1e1000]: A
+                    - generic [aria-hidden] [ref=f1e1001]: "n"
+                    - generic [aria-hidden] [ref=f1e1002]: t
+                    - generic [aria-hidden] [ref=f1e1003]: i
+                    - generic [aria-hidden] [ref=f1e1004]: g
+                    - generic [aria-hidden] [ref=f1e1005]: r
+                    - generic [aria-hidden] [ref=f1e1006]: a
+                    - generic [aria-hidden] [ref=f1e1007]: v
+                    - generic [aria-hidden] [ref=f1e1008]: i
+                    - generic [aria-hidden] [ref=f1e1009]: t
+                    - generic [aria-hidden] [ref=f1e1010]: "y"
+                    - generic [aria-hidden] [ref=f1e1011]: "'"
+                    - generic [aria-hidden] [ref=f1e1012]: s
+                  - generic [aria-hidden] [ref=f1e1013]:
+                    - generic [aria-hidden] [ref=f1e1014]: h
+                    - generic [aria-hidden] [ref=f1e1015]: a
+                    - generic [aria-hidden] [ref=f1e1016]: r
+                    - generic [aria-hidden] [ref=f1e1017]: "n"
+                    - generic [aria-hidden] [ref=f1e1018]: e
+                    - generic [aria-hidden] [ref=f1e1019]: s
+                    - generic [aria-hidden] [ref=f1e1020]: s
+                  - generic [aria-hidden] [ref=f1e1021]:
+                    - generic [aria-hidden] [ref=f1e1022]: w
+                    - generic [aria-hidden] [ref=f1e1023]: i
+                    - generic [aria-hidden] [ref=f1e1024]: t
+                    - generic [aria-hidden] [ref=f1e1025]: h
+                  - generic [aria-hidden] [ref=f1e1026]:
+                    - generic [aria-hidden] [ref=f1e1027]: m
+                    - generic [aria-hidden] [ref=f1e1028]: i
+                    - generic [aria-hidden] [ref=f1e1029]: "n"
+                    - generic [aria-hidden] [ref=f1e1030]: i
+                    - generic [aria-hidden] [ref=f1e1031]: m
+                    - generic [aria-hidden] [ref=f1e1032]: a
+                    - generic [aria-hidden] [ref=f1e1033]: l
+                  - generic [aria-hidden] [ref=f1e1034]:
+                    - generic [aria-hidden] [ref=f1e1035]: c
+                    - generic [aria-hidden] [ref=f1e1036]: o
+                    - generic [aria-hidden] [ref=f1e1037]: d
+                    - generic [aria-hidden] [ref=f1e1038]: e
+                    - generic [aria-hidden] [ref=f1e1039]: .
+                  - generic [aria-hidden] [ref=f1e1040]:
+                    - generic [aria-hidden] [ref=f1e1041]: S
+                    - generic [aria-hidden] [ref=f1e1042]: i
+                    - generic [aria-hidden] [ref=f1e1043]: m
+                    - generic [aria-hidden] [ref=f1e1044]: p
+                    - generic [aria-hidden] [ref=f1e1045]: l
+                    - generic [aria-hidden] [ref=f1e1046]: e
+                  - generic [aria-hidden] [ref=f1e1047]:
+                    - generic [aria-hidden] [ref=f1e1048]: P
+                    - generic [aria-hidden] [ref=f1e1049]: "y"
+                    - generic [aria-hidden] [ref=f1e1050]: t
+                    - generic [aria-hidden] [ref=f1e1051]: h
+                    - generic [aria-hidden] [ref=f1e1052]: o
+                    - generic [aria-hidden] [ref=f1e1053]: "n"
+                  - generic [aria-hidden] [ref=f1e1054]:
+                    - generic [aria-hidden] [ref=f1e1055]: s
+                    - generic [aria-hidden] [ref=f1e1056]: c
+                    - generic [aria-hidden] [ref=f1e1057]: r
+                    - generic [aria-hidden] [ref=f1e1058]: i
+                    - generic [aria-hidden] [ref=f1e1059]: p
+                    - generic [aria-hidden] [ref=f1e1060]: t
+                    - generic [aria-hidden] [ref=f1e1061]: s
+                  - generic [aria-hidden] [ref=f1e1062]:
+                    - generic [aria-hidden] [ref=f1e1063]: t
+                    - generic [aria-hidden] [ref=f1e1064]: o
+                  - generic [aria-hidden] [ref=f1e1065]:
+                    - generic [aria-hidden] [ref=f1e1066]: i
+                    - generic [aria-hidden] [ref=f1e1067]: t
+                    - generic [aria-hidden] [ref=f1e1068]: e
+                    - generic [aria-hidden] [ref=f1e1069]: r
+                    - generic [aria-hidden] [ref=f1e1070]: a
+                    - generic [aria-hidden] [ref=f1e1071]: t
+                    - generic [aria-hidden] [ref=f1e1072]: e
+                  - generic [aria-hidden] [ref=f1e1073]:
+                    - generic [aria-hidden] [ref=f1e1074]: o
+                    - generic [aria-hidden] [ref=f1e1075]: "n"
+                  - generic [aria-hidden] [ref=f1e1076]:
+                    - generic [aria-hidden] [ref=f1e1077]: a
+                    - generic [aria-hidden] [ref=f1e1078]: g
+                    - generic [aria-hidden] [ref=f1e1079]: e
+                    - generic [aria-hidden] [ref=f1e1080]: "n"
+                    - generic [aria-hidden] [ref=f1e1081]: t
+                    - generic [aria-hidden] [ref=f1e1082]: i
+                    - generic [aria-hidden] [ref=f1e1083]: c
+                  - generic [aria-hidden] [ref=f1e1084]:
+                    - generic [aria-hidden] [ref=f1e1085]: a
+                    - generic [aria-hidden] [ref=f1e1086]: p
+                    - generic [aria-hidden] [ref=f1e1087]: p
+                    - generic [aria-hidden] [ref=f1e1088]: l
+                    - generic [aria-hidden] [ref=f1e1089]: i
+                    - generic [aria-hidden] [ref=f1e1090]: c
+                    - generic [aria-hidden] [ref=f1e1091]: a
+                    - generic [aria-hidden] [ref=f1e1092]: t
+                    - generic [aria-hidden] [ref=f1e1093]: i
+                    - generic [aria-hidden] [ref=f1e1094]: o
+                    - generic [aria-hidden] [ref=f1e1095]: "n"
+                    - generic [aria-hidden] [ref=f1e1096]: s
+                    - generic [aria-hidden] [ref=f1e1097]: ","
+                  - generic [aria-hidden] [ref=f1e1098]:
+                    - generic [aria-hidden] [ref=f1e1099]: a
+                    - generic [aria-hidden] [ref=f1e1100]: u
+                    - generic [aria-hidden] [ref=f1e1101]: t
+                    - generic [aria-hidden] [ref=f1e1102]: o
+                    - generic [aria-hidden] [ref=f1e1103]: m
+                    - generic [aria-hidden] [ref=f1e1104]: a
+                    - generic [aria-hidden] [ref=f1e1105]: t
+                    - generic [aria-hidden] [ref=f1e1106]: e
+                  - generic [aria-hidden] [ref=f1e1107]:
+                    - generic [aria-hidden] [ref=f1e1108]: s
+                    - generic [aria-hidden] [ref=f1e1109]: o
+                    - generic [aria-hidden] [ref=f1e1110]: f
+                    - generic [aria-hidden] [ref=f1e1111]: t
+                    - generic [aria-hidden] [ref=f1e1112]: w
+                    - generic [aria-hidden] [ref=f1e1113]: a
+                    - generic [aria-hidden] [ref=f1e1114]: r
+                    - generic [aria-hidden] [ref=f1e1115]: e
+                  - generic [aria-hidden] [ref=f1e1116]:
+                    - generic [aria-hidden] [ref=f1e1117]: e
+                    - generic [aria-hidden] [ref=f1e1118]: "n"
+                    - generic [aria-hidden] [ref=f1e1119]: g
+                    - generic [aria-hidden] [ref=f1e1120]: i
+                    - generic [aria-hidden] [ref=f1e1121]: "n"
+                    - generic [aria-hidden] [ref=f1e1122]: e
+                    - generic [aria-hidden] [ref=f1e1123]: e
+                    - generic [aria-hidden] [ref=f1e1124]: r
+                    - generic [aria-hidden] [ref=f1e1125]: i
+                    - generic [aria-hidden] [ref=f1e1126]: "n"
+                    - generic [aria-hidden] [ref=f1e1127]: g
+                  - generic [aria-hidden] [ref=f1e1128]:
+                    - generic [aria-hidden] [ref=f1e1129]: t
+                    - generic [aria-hidden] [ref=f1e1130]: a
+                    - generic [aria-hidden] [ref=f1e1131]: s
+                    - generic [aria-hidden] [ref=f1e1132]: k
+                    - generic [aria-hidden] [ref=f1e1133]: s
+                    - generic [aria-hidden] [ref=f1e1134]: ","
+                  - generic [aria-hidden] [ref=f1e1135]:
+                    - generic [aria-hidden] [ref=f1e1136]: a
+                    - generic [aria-hidden] [ref=f1e1137]: "n"
+                    - generic [aria-hidden] [ref=f1e1138]: d
+                  - generic [aria-hidden] [ref=f1e1139]:
+                    - generic [aria-hidden] [ref=f1e1140]: r
+                    - generic [aria-hidden] [ref=f1e1141]: u
+                    - generic [aria-hidden] [ref=f1e1142]: "n"
+                  - generic [aria-hidden] [ref=f1e1143]:
+                    - generic [aria-hidden] [ref=f1e1144]: e
+                    - generic [aria-hidden] [ref=f1e1145]: v
+                    - generic [aria-hidden] [ref=f1e1146]: a
+                    - generic [aria-hidden] [ref=f1e1147]: l
+                    - generic [aria-hidden] [ref=f1e1148]: u
+                    - generic [aria-hidden] [ref=f1e1149]: a
+                    - generic [aria-hidden] [ref=f1e1150]: t
+                    - generic [aria-hidden] [ref=f1e1151]: i
+                    - generic [aria-hidden] [ref=f1e1152]: o
+                    - generic [aria-hidden] [ref=f1e1153]: "n"
+                    - generic [aria-hidden] [ref=f1e1154]: s
+                  - generic [aria-hidden] [ref=f1e1155]:
+                    - generic [aria-hidden] [ref=f1e1156]: o
+                    - generic [aria-hidden] [ref=f1e1157]: "n"
+                  - generic [aria-hidden] [ref=f1e1158]:
+                    - generic [aria-hidden] [ref=f1e1159]: t
+                    - generic [aria-hidden] [ref=f1e1160]: o
+                    - generic [aria-hidden] [ref=f1e1161]: p
+                  - generic [aria-hidden] [ref=f1e1162]:
+                    - generic [aria-hidden] [ref=f1e1163]: o
+                    - generic [aria-hidden] [ref=f1e1164]: f
+                  - generic [aria-hidden] [ref=f1e1165]:
+                    - generic [aria-hidden] [ref=f1e1166]: t
+                    - generic [aria-hidden] [ref=f1e1167]: h
+                    - generic [aria-hidden] [ref=f1e1168]: e
+                  - generic [aria-hidden] [ref=f1e1169]:
+                    - generic [aria-hidden] [ref=f1e1170]: A
+                    - generic [aria-hidden] [ref=f1e1171]: "n"
+                    - generic [aria-hidden] [ref=f1e1172]: t
+                    - generic [aria-hidden] [ref=f1e1173]: i
+                    - generic [aria-hidden] [ref=f1e1174]: g
+                    - generic [aria-hidden] [ref=f1e1175]: r
+                    - generic [aria-hidden] [ref=f1e1176]: a
+                    - generic [aria-hidden] [ref=f1e1177]: v
+                    - generic [aria-hidden] [ref=f1e1178]: i
+                    - generic [aria-hidden] [ref=f1e1179]: t
+                    - generic [aria-hidden] [ref=f1e1180]: "y"
+                  - generic [aria-hidden] [ref=f1e1181]:
+                    - generic [aria-hidden] [ref=f1e1182]: a
+                    - generic [aria-hidden] [ref=f1e1183]: g
+                    - generic [aria-hidden] [ref=f1e1184]: e
+                    - generic [aria-hidden] [ref=f1e1185]: "n"
+                    - generic [aria-hidden] [ref=f1e1186]: t
+                  - generic [aria-hidden] [ref=f1e1187]:
+                    - generic [aria-hidden] [ref=f1e1188]: h
+                    - generic [aria-hidden] [ref=f1e1189]: a
+                    - generic [aria-hidden] [ref=f1e1190]: r
+                    - generic [aria-hidden] [ref=f1e1191]: "n"
+                    - generic [aria-hidden] [ref=f1e1192]: e
+                    - generic [aria-hidden] [ref=f1e1193]: s
+                    - generic [aria-hidden] [ref=f1e1194]: s
+                    - generic [aria-hidden] [ref=f1e1195]: .
+              - link "Explore Product" [ref=f1e1197] [cursor=pointer]:
+                - /url: /product
+            - img "Prototype custom agents leveraging Antigravity's harness with minimal code. Simple Python scripts to iterate on agentic applications, automate software engineering tasks, and run evaluations on top of the Antigravity agent harness." [ref=f1e1201]
+        - generic [ref=f1e1203]:
+          - generic [ref=f1e1205]:
+            - heading "Built for developers for the agent-first era" [level=2] [ref=f1e1208]:
+              - generic [ref=f1e1209]: Built for developers
+              - generic [ref=f1e1210]: for the agent-first era
+            - paragraph [ref=f1e1212]: Google Antigravity is built for user trust, whether you're a professional developer working in a large enterprise codebase, a hobbyist vibe-coding in their spare time, or anyone in between.
+          - generic [ref=f1e1216]:
+            - 'button "Watch case: Full stack developer" [ref=f1e1219] [cursor=pointer]':
+              - img "Full stack developer" [ref=f1e1221]
+              - generic [ref=f1e1222]:
+                - generic [ref=f1e1223]:
+                  - generic [ref=f1e1224]: Full stack developer
+                  - generic [aria-hidden] [ref=f1e1225]:
+                    - generic [aria-hidden] [ref=f1e1226]:
+                      - generic [aria-hidden] [ref=f1e1227]: F
+                      - generic [aria-hidden] [ref=f1e1228]: u
+                      - generic [aria-hidden] [ref=f1e1229]: l
+                      - generic [aria-hidden] [ref=f1e1230]: l
+                    - generic [aria-hidden] [ref=f1e1231]:
+                      - generic [aria-hidden] [ref=f1e1232]: s
+                      - generic [aria-hidden] [ref=f1e1233]: t
+                      - generic [aria-hidden] [ref=f1e1234]: a
+                      - generic [aria-hidden] [ref=f1e1235]: c
+                      - generic [aria-hidden] [ref=f1e1236]: k
+                    - generic [aria-hidden] [ref=f1e1237]:
+                      - generic [aria-hidden] [ref=f1e1238]: d
+                      - generic [aria-hidden] [ref=f1e1239]: e
+                      - generic [aria-hidden] [ref=f1e1240]: v
+                      - generic [aria-hidden] [ref=f1e1241]: e
+                      - generic [aria-hidden] [ref=f1e1242]: l
+                      - generic [aria-hidden] [ref=f1e1243]: o
+                      - generic [aria-hidden] [ref=f1e1244]: p
+                      - generic [aria-hidden] [ref=f1e1245]: e
+                      - generic [aria-hidden] [ref=f1e1246]: r
+                - generic: Watch case
+            - generic [ref=f1e1250]:
+              - generic [ref=f1e1251]:
+                - strong [ref=f1e1252]: Full stack developer
+                - paragraph [ref=f1e1253]: Build production-ready applications with confidence with thoroughly designed artifacts and comprehensive verification tests.
+                - link "View case" [ref=f1e1254] [cursor=pointer]:
+                  - /url: /use-cases/fullstack
+              - generic [ref=f1e1256]:
+                - button "Previous slide" [disabled] [ref=f1e1257]
+                - button "Next slide" [ref=f1e1260] [cursor=pointer]
+        - generic [ref=f1e1268]:
+          - generic [ref=f1e1271]:
+            - paragraph [ref=f1e1272]: Available at no charge
+            - paragraph [ref=f1e1273]: For developers
+            - paragraph [ref=f1e1274]: Achieve new heights
+            - link "Download" [ref=f1e1277] [cursor=pointer]:
+              - /url: /download
+          - generic [ref=f1e1281]:
+            - paragraph [ref=f1e1282]: Now Available!
+            - paragraph [ref=f1e1283]: For organizations
+            - paragraph [ref=f1e1284]: Level up your entire team
+            - link "Read More" [ref=f1e1287] [cursor=pointer]:
+              - /url: /docs/enterprise
+        - generic [ref=f1e1290]:
+          - generic [ref=f1e1294]:
+            - generic [ref=f1e1295]: Latest Blogs
+            - link "View blog" [ref=f1e1296] [cursor=pointer]:
+              - /url: /blog
+          - generic [ref=f1e1302]:
+            - generic [ref=f1e1303]:
+              - link "Plugin Marketplace in Antigravity Plugin Marketplace in Antigravity Oct 29, 2026 Product Read blog" [ref=f1e1304] [cursor=pointer]:
+                - /url: /blog/plugin-marketplace-in-antigravity
+                - img "Plugin Marketplace in Antigravity" [ref=f1e1306]
+                - generic [ref=f1e1307]:
+                  - paragraph [ref=f1e1308]: Plugin Marketplace in Antigravity
+                  - generic [ref=f1e1309]:
+                    - generic [ref=f1e1310]: Oct 29, 2026
+                    - generic [ref=f1e1311]: Product
+                  - generic [ref=f1e1312]: Read blog
+              - 'link "How Gemini 4 Argon Upleveled Agents on Antigravity: Trillion-Edge Graphs and Custom TPU Kernels How Gemini 4 Argon Upleveled Agents on Antigravity: Trillion-Edge Graphs and Custom TPU Kernels Oct 26, 2026 Research Model Read blog" [ref=f1e1313] [cursor=pointer]':
+                - /url: /blog/gemini-4-argon-trillion-edge-graphs-and-tpu-kernels
+                - 'img "How Gemini 4 Argon Upleveled Agents on Antigravity: Trillion-Edge Graphs and Custom TPU Kernels" [ref=f1e1315]'
+                - generic [ref=f1e1316]:
+                  - paragraph [ref=f1e1317]: "How Gemini 4 Argon Upleveled Agents on Antigravity: Trillion-Edge Graphs and Custom TPU Kernels"
+                  - generic [ref=f1e1318]:
+                    - generic [ref=f1e1319]: Oct 26, 2026
+                    - generic [ref=f1e1320]: Research
+                    - generic [ref=f1e1321]: Model
+                  - generic [ref=f1e1322]: Read blog
+              - link "Gemini 4 Argon in Google Antigravity Gemini 4 Argon in Google Antigravity Oct 13, 2026 Model Read blog" [ref=f1e1323] [cursor=pointer]:
+                - /url: /blog/gemini-4-argon-in-google-antigravity
+                - img "Gemini 4 Argon in Google Antigravity" [ref=f1e1325]
+                - generic [ref=f1e1326]:
+                  - paragraph [ref=f1e1327]: Gemini 4 Argon in Google Antigravity
+                  - generic [ref=f1e1328]:
+                    - generic [ref=f1e1329]: Oct 13, 2026
+                    - generic [ref=f1e1330]: Model
+                  - generic [ref=f1e1331]: Read blog
+              - link "Custom agents in Google plugins Custom agents in Google plugins Sep 28, 2026 Product Read blog" [ref=f1e1332] [cursor=pointer]:
+                - /url: /blog/custom-agents-in-google-plugins
+                - img "Custom agents in Google plugins" [ref=f1e1334]
+                - generic [ref=f1e1335]:
+                  - paragraph [ref=f1e1336]: Custom agents in Google plugins
+                  - generic [ref=f1e1337]:
+                    - generic [ref=f1e1338]: Sep 28, 2026
+                    - generic [ref=f1e1339]: Product
+                  - generic [ref=f1e1340]: Read blog
+              - link "Gemini 3.8 Flash in Google Antigravity Gemini 3.8 Flash in Google Antigravity Sep 1, 2026 Model Read blog" [ref=f1e1341] [cursor=pointer]:
+                - /url: /blog/gemini-3-8-flash-in-google-antigravity
+                - img "Gemini 3.8 Flash in Google Antigravity" [ref=f1e1343]
+                - generic [ref=f1e1344]:
+                  - paragraph [ref=f1e1345]: Gemini 3.8 Flash in Google Antigravity
+                  - generic [ref=f1e1346]:
+                    - generic [ref=f1e1347]: Sep 1, 2026
+                    - generic [ref=f1e1348]: Model
+                  - generic [ref=f1e1349]: Read blog
+              - 'link "Teamwork: when AI becomes a research partner Teamwork: when AI becomes a research partner Aug 27, 2026 Research Product Read blog" [ref=f1e1350] [cursor=pointer]':
+                - /url: /blog/teamwork-when-ai-becomes-a-research-partner
+                - 'img "Teamwork: when AI becomes a research partner" [ref=f1e1352]'
+                - generic [ref=f1e1353]:
+                  - paragraph [ref=f1e1354]: "Teamwork: when AI becomes a research partner"
+                  - generic [ref=f1e1355]:
+                    - generic [ref=f1e1356]: Aug 27, 2026
+                    - generic [ref=f1e1357]: Research
+                    - generic [ref=f1e1358]: Product
+                  - generic [ref=f1e1359]: Read blog
+              - link "Visualizing with the help of Antigravity Visualizing with the help of Antigravity Aug 26, 2026 Product Read blog" [ref=f1e1360] [cursor=pointer]:
+                - /url: /blog/visualizing-with-the-help-of-antigravity
+                - img "Visualizing with the help of Antigravity" [ref=f1e1362]
+                - generic [ref=f1e1363]:
+                  - paragraph [ref=f1e1364]: Visualizing with the help of Antigravity
+                  - generic [ref=f1e1365]:
+                    - generic [ref=f1e1366]: Aug 26, 2026
+                    - generic [ref=f1e1367]: Product
+                  - generic [ref=f1e1368]: Read blog
+              - link "Improving the version control experience Improving the version control experience Aug 24, 2026 Product Read blog" [ref=f1e1369] [cursor=pointer]:
+                - /url: /blog/vcs-and-terminal
+                - img "Improving the version control experience" [ref=f1e1371]
+                - generic [ref=f1e1372]:
+                  - paragraph [ref=f1e1373]: Improving the version control experience
+                  - generic [ref=f1e1374]:
+                    - generic [ref=f1e1375]: Aug 24, 2026
+                    - generic [ref=f1e1376]: Product
+                  - generic [ref=f1e1377]: Read blog
+              - link "Antigravity anywhere with Remote Control Antigravity anywhere with Remote Control Aug 21, 2026 Product Read blog" [ref=f1e1378] [cursor=pointer]:
+                - /url: /blog/remote-control-for-antigravity
+                - img "Antigravity anywhere with Remote Control" [ref=f1e1380]
+                - generic [ref=f1e1381]:
+                  - paragraph [ref=f1e1382]: Antigravity anywhere with Remote Control
+                  - generic [ref=f1e1383]:
+                    - generic [ref=f1e1384]: Aug 21, 2026
+                    - generic [ref=f1e1385]: Product
+                  - generic [ref=f1e1386]: Read blog
+            - generic [ref=f1e1388]:
+              - button "Previous slide" [disabled] [ref=f1e1389]
+              - button "Next slide" [ref=f1e1392] [cursor=pointer]
+        - complementary "Google Antigravity Newsletter Subscription" [ref=f1e1399]:
+          - generic [ref=f1e1400]:
+            - generic [ref=f1e1401]:
+              - heading "Stay in sync with Google Antigravity" [level=2] [ref=f1e1403]
+              - paragraph [ref=f1e1404]: Get the latest product updates, releases, and feature drops.
+            - generic [ref=f1e1405]:
+              - group "Product surfaces" [ref=f1e1406]:
+                - group "Newsletter update topics" [ref=f1e1408]:
+                  - generic "Every update across Antigravity App, CLI, IDE Extensions, and SDK" [ref=f1e1409] [cursor=pointer]:
+                    - checkbox "All Updates" [checked]
+                    - generic [ref=f1e1417]: All Updates
+                  - generic "Multi-agent workspace & desktop updates" [ref=f1e1418] [cursor=pointer]:
+                    - checkbox "Antigravity App"
+                    - generic [ref=f1e1426]: Antigravity App
+                  - generic "Terminal agent commands & flag updates" [ref=f1e1427] [cursor=pointer]:
+                    - checkbox "Antigravity CLI"
+                    - generic [ref=f1e1435]: Antigravity CLI
+                  - generic "VS Code, JetBrains, Visual Studio, Zed & Xcode updates" [ref=f1e1436] [cursor=pointer]:
+                    - checkbox "IDE Extensions"
+                    - generic [ref=f1e1444]: IDE Extensions
+                  - generic "APIs, client libraries & programmatic agent updates" [ref=f1e1445] [cursor=pointer]:
+                    - checkbox "Antigravity SDK"
+                    - generic [ref=f1e1453]: Antigravity SDK
+              - generic [ref=f1e1454]:
+                - generic [ref=f1e1455]:
+                  - generic [ref=f1e1456]: Email address
+                  - textbox "Email address" [ref=f1e1457]:
+                    - /placeholder: Enter your email address
+                - button "Subscribe" [ref=f1e1458] [cursor=pointer]
+              - generic [ref=f1e1461] [cursor=pointer]:
+                - checkbox "I accept Google's Terms and Privacy Policy. Unsubscribe anytime." [ref=f1e1462]
+                - generic [ref=f1e1463]:
+                  - text: I accept Google's
+                  - link "Terms" [ref=f1e1464]:
+                    - /url: https://policies.google.com/terms
+                  - text: and
+                  - link "Privacy Policy" [ref=f1e1465]:
+                    - /url: https://policies.google.com/privacy?hl=en-US
+                  - text: . Unsubscribe anytime.
+        - generic [ref=f1e1473]:
+          - generic [ref=f1e1475]:
+            - generic [ref=f1e1476]: Download Google Antigravity for Windows
+            - generic [aria-hidden] [ref=f1e1477]:
+              - generic [aria-hidden] [ref=f1e1478]:
+                - generic [aria-hidden] [ref=f1e1479]: D
+                - generic [aria-hidden] [ref=f1e1480]: o
+                - generic [aria-hidden] [ref=f1e1481]: w
+                - generic [aria-hidden] [ref=f1e1482]: "n"
+                - generic [aria-hidden] [ref=f1e1483]: l
+                - generic [aria-hidden] [ref=f1e1484]: o
+                - generic [aria-hidden] [ref=f1e1485]: a
+                - generic [aria-hidden] [ref=f1e1486]: d
+              - generic [aria-hidden] [ref=f1e1487]:
+                - generic [aria-hidden] [ref=f1e1488]: G
+                - generic [aria-hidden] [ref=f1e1489]: o
+                - generic [aria-hidden] [ref=f1e1490]: o
+                - generic [aria-hidden] [ref=f1e1491]: g
+                - generic [aria-hidden] [ref=f1e1492]: l
+                - generic [aria-hidden] [ref=f1e1493]: e
+              - generic [aria-hidden] [ref=f1e1494]:
+                - generic [aria-hidden] [ref=f1e1495]: A
+                - generic [aria-hidden] [ref=f1e1496]: "n"
+                - generic [aria-hidden] [ref=f1e1497]: t
+                - generic [aria-hidden] [ref=f1e1498]: i
+                - generic [aria-hidden] [ref=f1e1499]: g
+                - generic [aria-hidden] [ref=f1e1500]: r
+                - generic [aria-hidden] [ref=f1e1501]: a
+                - generic [aria-hidden] [ref=f1e1502]: v
+                - generic [aria-hidden] [ref=f1e1503]: i
+                - generic [aria-hidden] [ref=f1e1504]: t
+                - generic [aria-hidden] [ref=f1e1505]: "y"
+          - generic [ref=f1e1506]:
+            - link "Download for x64" [ref=f1e1507] [cursor=pointer]:
+              - /url: /download
+            - link "Download for ARM64" [ref=f1e1509] [cursor=pointer]:
+              - /url: /download
+      - generic [ref=f1e1511]:
+        - generic [ref=f1e1514]:
+          - paragraph [ref=f1e1516]: Experience liftoff
+          - generic [ref=f1e1518]:
+            - paragraph [ref=f1e1519]: Product
+            - link "Product" [ref=f1e1520] [cursor=pointer]:
+              - /url: /product
+            - link "Download" [ref=f1e1521] [cursor=pointer]:
+              - /url: /download
+            - link "Antigravity App" [ref=f1e1522] [cursor=pointer]:
+              - /url: /product/antigravity-2
+            - link "Antigravity Extensions" [ref=f1e1523] [cursor=pointer]:
+              - /url: /docs/ide/extensions
+            - link "Antigravity CLI" [ref=f1e1524] [cursor=pointer]:
+              - /url: /product/antigravity-cli
+            - link "Antigravity IDE" [ref=f1e1525] [cursor=pointer]:
+              - /url: /product/antigravity-ide
+            - link "Antigravity SDK" [ref=f1e1526] [cursor=pointer]:
+              - /url: /product/antigravity-sdk
+          - generic [ref=f1e1528]:
+            - paragraph [ref=f1e1529]: Resources
+            - link "Docs" [ref=f1e1530] [cursor=pointer]:
+              - /url: /docs/overview
+            - link "Changelog" [ref=f1e1531] [cursor=pointer]:
+              - /url: /docs/changelog
+            - link "Releases" [ref=f1e1532] [cursor=pointer]:
+              - /url: /releases
+            - link "Blog" [ref=f1e1533] [cursor=pointer]:
+              - /url: /blog
+            - link "Newsletter" [ref=f1e1534] [cursor=pointer]:
+              - /url: /newsletter
+            - link "Pricing" [ref=f1e1535] [cursor=pointer]:
+              - /url: /pricing
+            - link "Use Cases" [ref=f1e1536] [cursor=pointer]:
+              - /url: /use-cases
+            - link "Press" [ref=f1e1537] [cursor=pointer]:
+              - /url: /press
+        - generic [ref=f1e1542]:
+          - link "Google" [ref=f1e1544] [cursor=pointer]:
+            - /url: https://www.google.com
+          - navigation [ref=f1e1548]:
+            - link "About Google" [ref=f1e1549] [cursor=pointer]:
+              - /url: https://about.google/
+            - link "Google Products" [ref=f1e1550] [cursor=pointer]:
+              - /url: https://about.google/products/
+            - link "Privacy" [ref=f1e1551] [cursor=pointer]:
+              - /url: https://policies.google.com/privacy?hl=en-US
+            - link "Terms" [ref=f1e1552] [cursor=pointer]:
+              - /url: /terms

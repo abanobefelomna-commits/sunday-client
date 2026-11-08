@@ -1,65 +1,78 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Home, Baby, CheckSquare, BookOpen, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  BarChart3,
+  Baby,
+  CalendarCheck,
+  CheckCircle2,
+  HeartHandshake,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
 import {
-  getChildren,
+  Badge,
+  EmptyState,
+  MiniBars,
+  PageHeader,
+  ProgressRing,
+  SkeletonCards,
+  SkeletonRows,
+  StatCard,
+} from "../components/ui";
+import {
+  getAnalyticsOverview,
   getClasses,
-  getServants,
+  getFollowUps,
   getNews,
-  getAttendance,
   getStoredUser,
-  type ChildItem,
-  type ClassItem,
-  type ServantItem,
-  type NewsItem,
+  type AnalyticsOverview,
   type AuthUser,
+  type ClassItem,
+  type FollowUpCase,
+  type FollowUpListResponse,
+  type NewsItem,
 } from "../lib/api";
+import {
+  FOLLOW_UP_STATUS_LABELS,
+  formatShortDate,
+  followUpTone,
+  numberAr,
+  percent,
+  priorityTone,
+  PRIORITY_LABELS,
+  shiftIso,
+  todayIso,
+} from "../lib/format";
 
 export default function DashboardPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [childrenCount, setChildrenCount] = useState(0);
-  const [classesCount, setClassesCount] = useState(0);
-  const [servantsCount, setServantsCount] = useState(0);
-  const [presentToday, setPresentToday] = useState(0);
+  const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [followUps, setFollowUps] = useState<FollowUpListResponse | null>(null);
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [careChildren, setCareChildren] = useState<ChildItem[]>([]);
-  const [classesList, setClassesList] = useState<ClassItem[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setUser(getStoredUser());
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIso();
+    const from = shiftIso(today, -29);
 
     Promise.allSettled([
-      getChildren({ limit: 100 }),
+      getAnalyticsOverview({ from, to: today }),
+      getFollowUps({ status: "active", limit: 6, overdue: false }),
+      getNews("", 1, 3),
       getClasses(),
-      getServants(),
-      getNews("", 1, 4),
-      getAttendance(undefined, today),
-    ]).then(([resCh, resCl, resSv, resNw, resAtt]) => {
-      if (resCh.status === "fulfilled") {
-        setChildrenCount(resCh.value.total || resCh.value.data.length);
-        // Children needing visitation (no attendance or flagged)
-        setCareChildren(resCh.value.data.slice(0, 4));
-      }
-      if (resCl.status === "fulfilled") {
-        setClassesCount(resCl.value.length);
-        setClassesList(resCl.value);
-      }
-      if (resSv.status === "fulfilled") {
-        setServantsCount(resSv.value.total || resSv.value.data.length);
-      }
-      if (resNw.status === "fulfilled") {
-        setNews(resNw.value.data);
-      }
-      if (resAtt.status === "fulfilled") {
-        const count = resAtt.value.filter((a) => a.status === "present").length;
-        setPresentToday(count);
-      }
+    ]).then(([resAnalytics, resFollowUps, resNews, resClasses]) => {
+      if (resAnalytics.status === "fulfilled") setAnalytics(resAnalytics.value);
+      if (resFollowUps.status === "fulfilled") setFollowUps(resFollowUps.value);
+      if (resNews.status === "fulfilled") setNews(resNews.value.data);
+      if (resClasses.status === "fulfilled") setClasses(resClasses.value);
       setLoading(false);
     });
   }, []);
@@ -72,161 +85,345 @@ export default function DashboardPage() {
     month: "long",
   });
 
-  const TILES = [
-    { href: "/children", icon: <Baby className="h-5 w-5" />, title: "الأطفال", count: `${childrenCount} طفل`, color: "#3b6ff5" },
-    { href: "/classes", icon: <BookOpen className="h-5 w-5" />, title: "الفصول", count: `${classesCount} فصول`, color: "#2fa36b" },
-    { href: "/servants", icon: <Users className="h-5 w-5" />, title: "الخدام", count: `${servantsCount} خادم`, color: "#e8a317" },
-    { href: "/attendance", icon: <CheckSquare className="h-5 w-5" />, title: "الحضور", count: `${presentToday} حاضر النهاردة`, color: "#8b5cf6" },
-  ];
+  const weekly = useMemo(
+    () =>
+      (analytics?.weekly ?? []).slice(-6).map((row) => ({
+        label: formatShortDate(row.bucket),
+        value: row.rate ?? 0,
+        hint: `${formatShortDate(row.bucket)} — ${percent(row.rate)}`,
+      })),
+    [analytics],
+  );
+
+  const activeCases = followUps?.data ?? [];
+  const summary = followUps?.meta.summary ?? {
+    open: 0,
+    inProgress: 0,
+    overdue: 0,
+    resolved: 0,
+    total: 0,
+  };
+  const attendanceRate = analytics?.totals.attendanceRate ?? null;
+  const students = analytics?.totals.students ?? 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32">
+    <div className="min-h-screen pb-32">
       <AppHeader />
 
       <main className="pg">
-        {/* Welcome Banner */}
-        <section className="wb">
-          <div>
-            <small className="opacity-80 block mb-1">مساحتك في خدمة مدارس الأحد</small>
-            <h1>
-              {greeting} يا {user?.name || "خادم المسيح"} 👋
-            </h1>
-            <p className="mt-1 opacity-90">
-              {todayArabic} — ربنا يبارك خدمتك
-            </p>
+        <PageHeader
+          eyebrow={
+            <>
+              <Sparkles className="h-4 w-4" aria-hidden="true" /> مساحتك الرعوية
+            </>
+          }
+          title={`${greeting} يا ${user?.name?.replace(/^أ\.\s*/, "") || "خادم المسيح"}`}
+          subtitle={`${todayArabic} — نظرة سريعة على رحلة أولادنا هذا الشهر.`}
+          actions={
+            <>
+              <Link href="/attendance" className="btn sm">
+                <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+                تسجيل حضور اليوم
+              </Link>
+              <Link href="/follow-ups" className="btn ghost sm">
+                <HeartHandshake className="h-4 w-4" aria-hidden="true" />
+                المتابعات
+              </Link>
+            </>
+          }
+        />
+
+        <section className="hero-inner-card" aria-label="ملخص الخدمة">
+          <span className="eyebrow" style={{ color: "rgba(255,255,255,.82)" }}>
+            رحلة الطالب
+          </span>
+          <h2>كل طفل له حكاية… ونحن هنا لنرافقها</h2>
+          <p>
+            حضور، افتقاد، متابعة رعوية وتقدم تعليمي في مكان واحد — بلغة واضحة وأرقام حقيقية.
+          </p>
+          <div className="hero-chips">
+            <span>
+              <Baby className="h-3.5 w-3.5" aria-hidden="true" />
+              {numberAr(students)} طفل
+            </span>
+            <span>
+              <Users className="h-3.5 w-3.5" aria-hidden="true" />
+              {numberAr(analytics?.totals.activeClasses ?? classes.length)} فصل
+            </span>
+            <span>
+              <HeartHandshake className="h-3.5 w-3.5" aria-hidden="true" />
+              {numberAr(summary.open + summary.inProgress)} متابعة نشطة
+            </span>
+            {summary.overdue > 0 ? (
+              <span>
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                {numberAr(summary.overdue)} متأخرة
+              </span>
+            ) : null}
           </div>
         </section>
 
-        {/* Quick Navigation Tiles */}
-        <div className="tl">
-          {TILES.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              className="ti"
-              style={{ ["--c" as string]: t.color }}
-            >
-              <span className="si" aria-hidden="true">
-                {t.icon}
-              </span>
-              <div>
-                <b>{t.title}</b>
-                <small>{t.count}</small>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Visitation Alert (محتاجين افتقاد) */}
-        <div className="card">
-          <div className="ch">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-              محتاجين افتقاد ومتابعة
-            </h3>
-            <span className="cb" style={{ ["--c" as string]: "#d64545" }}>
-              {careChildren.length} أطفال
-            </span>
-          </div>
-
-          {careChildren.length > 0 ? (
-            careChildren.map((c) => (
-              <div key={c.id} className="row">
-                <div className="flex items-center gap-3">
-                  <span
-                    className="av2 text-sm font-bold"
-                    style={{ ["--c" as string]: "#3b6ff5" }}
-                  >
-                    {c.name.charAt(0)}
-                  </span>
-                  <div>
-                    <b className="block text-slate-900 dark:text-slate-100">{c.name}</b>
-                    <small className="text-slate-500">{c.class?.name || "بدون فصل"}</small>
-                  </div>
-                </div>
-
-                {c.parentPhone ? (
-                  <a
-                    className="btn sm"
-                    href={`tel:${c.parentPhone}`}
-                    title="اتصال بولي الأمر"
-                  >
-                    اتصل بولي الأمر
-                  </a>
-                ) : (
-                  <span className="text-xs text-slate-400">لا يوجد رقم</span>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-6 text-slate-400">
-              كل الأطفال منتظمين في الحضور والخدمة 🎉
-            </div>
-          )}
-        </div>
-
-        {/* Latest News & Announcements */}
-        <div className="card">
-          <div className="ch">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-              آخر الأخبار والإعلانات
-            </h3>
-            <Link href="/news" className="text-sm font-bold text-blue-600 dark:text-blue-400">
-              عرض الكل
-            </Link>
-          </div>
-
-          {news.length > 0 ? (
-            news.map((item) => (
-              <article key={item.id} className="py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                <span className="text-xs text-slate-400">
-                  {new Date(item.createdAt).toLocaleDateString("ar-EG")}
-                </span>
-                {item.title && (
-                  <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1">
-                    {item.title}
-                  </h4>
-                )}
-                <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5 line-clamp-2">
-                  {item.content}
-                </p>
-              </article>
-            ))
-          ) : (
-            <div className="text-center py-6 text-slate-400">
-              لا توجد أخبار منشورة حالياً.
-            </div>
-          )}
-        </div>
-
-        {/* Class Gallery */}
-        {classesList.length > 0 && (
-          <div className="card">
-            <div className="ch">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                فصول مدارس الأحد
-              </h3>
-              <Link href="/classes" className="text-sm font-bold text-blue-600 dark:text-blue-400">
-                كل الفصول
-              </Link>
-            </div>
-
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {classesList.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/classes/${c.id}`}
-                  className="flex-none w-36 h-28 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-3 text-white flex flex-col justify-end font-bold shadow-md hover:scale-105 transition"
-                >
-                  <span className="text-sm">{c.name}</span>
-                  <small className="text-xs opacity-75">{c.grade}</small>
-                </Link>
-              ))}
-            </div>
-          </div>
+        {loading ? (
+          <SkeletonCards count={4} />
+        ) : (
+          <section className="kpi-grid" aria-label="المؤشرات الرئيسية">
+            <StatCard
+              label="الأطفال المسجلون"
+              value={numberAr(students)}
+              hint={`${numberAr(analytics?.totals.childrenWithAttendance ?? 0)} طفل لديه سجل حضور`}
+              icon={<Baby className="h-4 w-4" />}
+              color="var(--pri)"
+            />
+            <StatCard
+              label="نسبة الحضور (30 يومًا)"
+              value={percent(attendanceRate)}
+              hint={`${numberAr(analytics?.totals.recordedRecords ?? 0)} سجل حضور`}
+              icon={<CheckCircle2 className="h-4 w-4" />}
+              color="var(--ok)"
+            />
+            <StatCard
+              label="متابعات نشطة"
+              value={numberAr(summary.open + summary.inProgress)}
+              hint={`${numberAr(summary.open)} مفتوحة · ${numberAr(summary.inProgress)} قيد المتابعة`}
+              icon={<HeartHandshake className="h-4 w-4" />}
+              color="var(--warn)"
+            />
+            <StatCard
+              label="متابعات متأخرة"
+              value={numberAr(summary.overdue)}
+              hint={summary.overdue > 0 ? "تحتاج تدخّلًا اليوم" : "لا يوجد تأخير — شكرًا لاجتهادكم"}
+              icon={<AlertTriangle className="h-4 w-4" />}
+              color="var(--danger)"
+            />
+          </section>
         )}
+
+        <div className="two-col">
+          <div className="stack">
+            <section className="surface surface-pad" aria-label="اتجاه الحضور">
+              <div className="surface-head">
+                <div>
+                  <h2>اتجاه الحضور الأسبوعي</h2>
+                  <p>نسبة الحضور والغياب بعذر خلال آخر 6 أسابيع</p>
+                </div>
+                <Link href="/analytics" className="link-quiet">
+                  التحليلات <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+              {loading ? (
+                <div className="skel" style={{ height: 150 }} />
+              ) : weekly.length > 0 && analytics?.totals.recordedRecords ? (
+                <>
+                  <MiniBars data={weekly} height={150} />
+                  <div className="legend">
+                    <span>
+                      <i style={{ ["--l-color" as string]: "var(--pri)" }} /> نسبة الحضور الأسبوعية
+                    </span>
+                    <span>
+                      <i style={{ ["--l-color" as string]: "var(--warn)" }} /> الغياب بعذر لا يُحتسب حضورًا
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <EmptyState
+                  icon="📊"
+                  title="لا توجد بيانات حضور بعد"
+                  description="سجّل حضور أول جلسة وسيبدأ المخطط في الظهور فورًا."
+                  action={
+                    <Link href="/attendance" className="btn sm">
+                      تسجيل الحضور
+                    </Link>
+                  }
+                />
+              )}
+            </section>
+
+            <section className="surface surface-pad" aria-label="متابعات تحتاج اهتمامًا">
+              <div className="surface-head">
+                <div>
+                  <h2>محتاجين متابعة</h2>
+                  <p>حالات مفتوحة مرتبة حسب الأولوية والاستحقاق</p>
+                </div>
+                <Link href="/follow-ups" className="link-quiet">
+                  عرض الكل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+
+              {loading ? (
+                <SkeletonRows rows={4} height={58} />
+              ) : activeCases.length > 0 ? (
+                <div className="list-stack">
+                  {activeCases.map((item) => (
+                    <FollowUpRow key={item.id} item={item} />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon="🕊️"
+                  title="لا توجد متابعات نشطة"
+                  description="كل الأطفال مستقرون في الحضور والافتقاد حاليًا. يمكنك تشغيل قواعد المتابعة يدويًا من صفحة المتابعات."
+                  action={
+                    <Link href="/follow-ups" className="btn ghost sm">
+                      إدارة القواعد
+                    </Link>
+                  }
+                />
+              )}
+            </section>
+          </div>
+
+          <div className="stack">
+            <section className="surface surface-pad" aria-label="ملخص الرعاية">
+              <div className="surface-head">
+                <div>
+                  <h2>ملخص الرعاية</h2>
+                  <p>آخر 30 يومًا</p>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+                <ProgressRing
+                  value={attendanceRate}
+                  caption="نسبة الحضور"
+                  color={
+                    attendanceRate === null
+                      ? "var(--mute)"
+                      : attendanceRate >= 85
+                        ? "var(--ok)"
+                        : attendanceRate >= 70
+                          ? "var(--warn)"
+                          : "var(--danger)"
+                  }
+                />
+                <div className="stack-sm" style={{ flex: 1, minWidth: 150 }}>
+                  <MetricRow label="حضور" value={analytics?.distribution.present ?? 0} tone="var(--ok)" />
+                  <MetricRow label="غياب" value={analytics?.distribution.absent ?? 0} tone="var(--danger)" />
+                  <MetricRow label="متأخر" value={analytics?.distribution.late ?? 0} tone="var(--warn)" />
+                  <MetricRow label="بعذر" value={analytics?.distribution.excused ?? 0} tone="var(--violet)" />
+                </div>
+              </div>
+              <div className="divider" style={{ margin: "16px 0" }} />
+              <div className="stack-sm">
+                <MetricRow
+                  label="متابعات بدون مسؤول"
+                  value={analytics?.followUps.unassignedCases ?? 0}
+                  tone="var(--warn)"
+                />
+                <MetricRow
+                  label="متابعات أُغلقت هذا الشهر"
+                  value={analytics?.followUps.resolvedInRange ?? 0}
+                  tone="var(--ok)"
+                />
+                <MetricRow
+                  label="أنشطة رعوية مسجّلة"
+                  value={analytics?.followUps.activitiesInRange ?? 0}
+                  tone="var(--pri)"
+                />
+              </div>
+            </section>
+
+            <section className="surface surface-pad" aria-label="آخر الأخبار">
+              <div className="surface-head">
+                <div>
+                  <h2>آخر الأخبار</h2>
+                  <p>إعلانات الخدمة</p>
+                </div>
+                <Link href="/news" className="link-quiet">
+                  الكل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+              {news.length > 0 ? (
+                <div className="stack-sm">
+                  {news.map((item) => (
+                    <Link key={item.id} href="/news" className="listrow">
+                      <span className="avatar-md" aria-hidden="true">
+                        📰
+                      </span>
+                      <span className="grow">
+                        <b>{item.title || item.content.slice(0, 40)}</b>
+                        <small>{new Date(item.createdAt).toLocaleDateString("ar-EG")}</small>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon="📰" title="لا توجد أخبار منشورة" description="ستظهر إعلانات الخدمة هنا." />
+              )}
+            </section>
+
+            <section className="surface surface-pad" aria-label="الفصول">
+              <div className="surface-head">
+                <div>
+                  <h2>الفصول</h2>
+                  <p>نسبة الحضور لكل فصل</p>
+                </div>
+                <Link href="/classes" className="link-quiet">
+                  الكل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                </Link>
+              </div>
+              {(analytics?.classes ?? []).length > 0 ? (
+                <div className="stack-sm">
+                  {(analytics?.classes ?? []).slice(0, 5).map((item) => (
+                    <Link key={item.id} href={`/classes/${item.id}`} className="listrow">
+                      <span className="avatar-md" aria-hidden="true">
+                        <Baby className="h-5 w-5" />
+                      </span>
+                      <span className="grow">
+                        <b>{item.name}</b>
+                        <small>{numberAr(item.students)} طفل · {numberAr(item.openFollowUps)} متابعة</small>
+                      </span>
+                      <Badge tone={item.rate === null ? "muted" : item.rate >= 85 ? "ok" : item.rate >= 70 ? "warn" : "danger"}>
+                        {percent(item.rate)}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState icon="🏫" title="لا توجد فصول" description="أضف فصلًا من صفحة الفصول." />
+              )}
+            </section>
+          </div>
+        </div>
       </main>
 
       <BottomNav />
     </div>
+  );
+}
+
+function MetricRow({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "var(--mute)", fontSize: ".84rem" }}>
+        <i style={{ width: 8, height: 8, borderRadius: 3, background: tone }} aria-hidden="true" />
+        {label}
+      </span>
+      <b style={{ fontSize: ".98rem" }}>{numberAr(value)}</b>
+    </div>
+  );
+}
+
+function FollowUpRow({ item }: { item: FollowUpCase }) {
+  return (
+    <Link href={`/follow-ups/${item.id}`} className="listrow">
+      <span className="avatar-md" aria-hidden="true">
+        {item.child.name.charAt(0)}
+      </span>
+      <span className="grow">
+        <b>{item.child.name}</b>
+        <small>{item.reason}</small>
+      </span>
+      <span style={{ display: "grid", gap: 4, justifyItems: "end" }}>
+        <Badge tone={followUpTone(item.status)} dot>
+          {FOLLOW_UP_STATUS_LABELS[item.status]}
+        </Badge>
+        <Badge tone={priorityTone(item.priority)}>{PRIORITY_LABELS[item.priority]}</Badge>
+      </span>
+      {item.isOverdue ? (
+        <Badge tone="danger">
+          <AlertTriangle className="h-3 w-3" aria-hidden="true" /> متأخرة
+        </Badge>
+      ) : null}
+      <BarChart3 className="h-4 w-4 opacity-30" aria-hidden="true" />
+    </Link>
   );
 }
