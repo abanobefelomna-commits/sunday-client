@@ -1,6 +1,3 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { query, queryOne } from '@/src/server/db';
 import { getAuthUser, getAccessContext, canReadClass, jsonResponse, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 import { isUuid, oneOf, ATTENDANCE_STATUSES } from '@/src/server/validation';
