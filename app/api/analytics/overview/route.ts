@@ -1,12 +1,7 @@
-import {
-  getAuthUser,
-  getAccessContext,
-  canReadClass,
-  jsonResponse,
-  forbidden,
-  unauthorized,
-  serverError,
-} from '@/src/server/middleware';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { getAuthUser, getAccessContext, canReadClass, jsonResponse, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 import { getAnalyticsOverview } from '@/src/server/analytics';
 import { isUuid, parseDateRange, ValidationError } from '@/src/server/validation';
 
