@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
   ArrowRight,
   CalendarDays,
@@ -63,9 +62,12 @@ const ACTIVITY_META: Record<
   assignment: { label: "إسناد", icon: <UserRound className="h-4 w-4" />, tone: "violet" },
 };
 
-export default function FollowUpDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = params?.id;
+export default function FollowUpDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
 
   const [detail, setDetail] = useState<FollowUpDetail | null>(null);
   const [loading, setLoading] = useState(true);

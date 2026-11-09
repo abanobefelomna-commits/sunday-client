@@ -1,13 +1,5 @@
 import { query } from '@/src/server/db';
-import {
-  getAuthUser,
-  getAccessContext,
-  canReadClass,
-  jsonResponse,
-  forbidden,
-  unauthorized,
-  serverError,
-} from '@/src/server/middleware';
+import { getAuthUser, getAccessContext, canReadClass, jsonResponse, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 import { isUuid, parseDateRange, ValidationError } from '@/src/server/validation';
 
 export async function GET(req: Request) {

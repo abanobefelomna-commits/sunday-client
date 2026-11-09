@@ -56,13 +56,23 @@ function monthLabel(bucket: string): string {
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [from, setFrom] = useState(() => shiftIso(todayIso(), -89));
-  const [to, setTo] = useState(() => todayIso());
+  const [from, setFrom] = useState<string | null>(null);
+  const [to, setTo] = useState<string | null>(null);
   const [classId, setClassId] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialise date range on first client render (safe from prerender)
+  useEffect(() => {
+    if (from === null) {
+      const today = todayIso();
+      setFrom(shiftIso(today, -89));
+      setTo(today);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const load = useCallback(async () => {
+    if (!from || !to) return;
     try {
       const [resOverview, resClasses] = await Promise.all([
         getAnalyticsOverview({
@@ -92,6 +102,7 @@ export default function AnalyticsPage() {
   };
 
   const activeRangeDays = useMemo(() => {
+    if (!from || !to) return null;
     const start = new Date(`${from}T00:00:00Z`).getTime();
     const end = new Date(`${to}T00:00:00Z`).getTime();
     if (Number.isNaN(start) || Number.isNaN(end)) return null;
@@ -163,8 +174,8 @@ export default function AnalyticsPage() {
               <span className="sr-only">من تاريخ</span>
               <input
                 type="date"
-                value={from}
-                max={to}
+                value={from ?? ""}
+                max={to ?? undefined}
                 onChange={(event) => setFrom(event.target.value)}
                 aria-label="من تاريخ"
               />
@@ -174,8 +185,8 @@ export default function AnalyticsPage() {
               <span className="sr-only">إلى تاريخ</span>
               <input
                 type="date"
-                value={to}
-                min={from}
+                value={to ?? ""}
+                min={from ?? undefined}
                 onChange={(event) => setTo(event.target.value)}
                 aria-label="إلى تاريخ"
               />

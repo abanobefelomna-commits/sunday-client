@@ -57,11 +57,24 @@ export default function DashboardPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [greeting, setGreeting] = useState("");
+  const [todayArabic, setTodayArabic] = useState("");
 
   useEffect(() => {
     setUser(getStoredUser());
     const today = todayIso();
     const from = shiftIso(today, -29);
+
+    // Greeting and date — computed at runtime only (safe from prerender)
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? "صباح الخير" : hour < 18 ? "أهلاً بيك" : "مساء الخير");
+    setTodayArabic(
+      new Date().toLocaleDateString("ar-EG", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      })
+    );
 
     Promise.allSettled([
       getAnalyticsOverview({ from, to: today }),
@@ -76,14 +89,6 @@ export default function DashboardPage() {
       setLoading(false);
     });
   }, []);
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "صباح الخير" : hour < 18 ? "أهلاً بيك" : "مساء الخير";
-  const todayArabic = new Date().toLocaleDateString("ar-EG", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
 
   const weekly = useMemo(
     () =>

@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
   ArrowRight,
   CalendarDays,
@@ -68,9 +67,12 @@ const TABS: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
   { key: "visitations", label: "الافتقاد", icon: <Home className="h-4 w-4" /> },
 ];
 
-export default function StudentProfilePage() {
-  const params = useParams<{ id: string }>();
-  const id = params?.id;
+export default function StudentProfilePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -404,6 +406,7 @@ export default function StudentProfilePage() {
 
       {editOpen ? (
         <EditModal
+          childId={id}
           initial={{
             birthDate: student.birthDate?.slice(0, 10) || "",
             parentPhone: student.parentPhone || "",
@@ -438,10 +441,12 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 }
 
 function EditModal({
+  childId,
   initial,
   onClose,
   onSaved,
 }: {
+  childId: string;
   initial: {
     birthDate: string;
     parentPhone: string;
@@ -453,7 +458,6 @@ function EditModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const params = useParams<{ id: string }>();
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -463,11 +467,11 @@ function EditModal({
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!params?.id) return;
+    if (!childId) return;
     setSaving(true);
     setError(null);
     try {
-      await updateChild(params.id, {
+      await updateChild(childId, {
         birthDate: form.birthDate || undefined,
         parentPhone: form.parentPhone,
         parentName: form.parentName,

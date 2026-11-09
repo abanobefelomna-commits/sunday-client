@@ -1,3 +1,8 @@
+// @next-codemod-ignore Cache Components adoption: this segment temporarily allows blocking.
+// Remove this opt-out after verifying the segment passes validation without it.
+// See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
+export const instant = false;
+
 import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -29,7 +34,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl" className={cairo.variable} suppressHydrationWarning>
+    <html lang="ar" dir="rtl" className={cairo.variable} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="antialiased min-h-screen">
         {children}
         <Analytics />
