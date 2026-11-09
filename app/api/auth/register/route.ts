@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
     const userClasses = user.grades && user.grades.length > 0
       ? await query<{ id: string }>(
-          `SELECT "id" FROM "classes" WHERE "grade" = ANY($1::classes_grade_enum[])`,
+          `SELECT "id" FROM "classes" WHERE "grade"::text = ANY($1::text[])`,
           [user.grades],
         )
       : [];

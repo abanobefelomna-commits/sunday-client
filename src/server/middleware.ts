@@ -45,8 +45,8 @@ export async function getAccessContext(user: JwtUserPayload): Promise<AccessCont
        UNION
        SELECT c."id"
        FROM "classes" c
-       WHERE COALESCE(array_length($2::users_grades_enum[], 1), 0) > 0
-         AND c."grade" = ANY($2::users_grades_enum[])
+       WHERE COALESCE(array_length($2::text[], 1), 0) > 0
+         AND c."grade"::text = ANY($2::text[])
      ) scoped`,
     [servant?.id ?? null, account?.grades ?? []],
   );

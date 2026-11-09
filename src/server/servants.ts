@@ -79,7 +79,7 @@ export async function syncServantFromUser(data: {
     const classes = await query<{ id: string }>(
       `SELECT DISTINCT ON ("grade"::text) "id"
        FROM "classes"
-       WHERE "grade" = ANY($1::classes_grade_enum[])
+       WHERE "grade"::text = ANY($1::text[])
        ORDER BY "grade"::text, "createdAt" ASC, "id" ASC`,
       [assignedGrades],
     );

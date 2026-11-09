@@ -42,7 +42,7 @@ export async function GET(req: Request) {
   }
   if (user.grades && user.grades.length > 0) {
     const gc = await query<{ id: string }>(
-      `SELECT "id" FROM "classes" WHERE "grade" = ANY($1::classes_grade_enum[])`,
+      `SELECT "id" FROM "classes" WHERE "grade"::text = ANY($1::text[])`,
       [user.grades],
     );
     classIds.push(...gc.map((r) => r.id));
