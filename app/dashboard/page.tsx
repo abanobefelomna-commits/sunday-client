@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
+import { MOTION, Reveal } from "../components/motion";
 import {
   Badge,
   EmptyState,
@@ -61,20 +62,21 @@ export default function DashboardPage() {
   const [todayArabic, setTodayArabic] = useState("");
 
   useEffect(() => {
-    setUser(getStoredUser());
+    Promise.resolve().then(() => {
+      setUser(getStoredUser());
+      const hour = new Date().getHours();
+      setGreeting(hour < 12 ? "صباح الخير" : hour < 18 ? "أهلاً بيك" : "مساء الخير");
+      setTodayArabic(
+        new Date().toLocaleDateString("ar-EG", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        })
+      );
+    });
+
     const today = todayIso();
     const from = shiftIso(today, -29);
-
-    // Greeting and date — computed at runtime only (safe from prerender)
-    const hour = new Date().getHours();
-    setGreeting(hour < 12 ? "صباح الخير" : hour < 18 ? "أهلاً بيك" : "مساء الخير");
-    setTodayArabic(
-      new Date().toLocaleDateString("ar-EG", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      })
-    );
 
     Promise.allSettled([
       getAnalyticsOverview({ from, to: today }),
@@ -138,7 +140,7 @@ export default function DashboardPage() {
           }
         />
 
-        <section className="hero-inner-card" aria-label="ملخص الخدمة">
+        <Reveal><section className="hero-inner-card" aria-label="ملخص الخدمة">
           <span className="eyebrow" style={{ color: "rgba(255,255,255,.82)" }}>
             رحلة الطالب
           </span>
@@ -166,12 +168,13 @@ export default function DashboardPage() {
               </span>
             ) : null}
           </div>
-        </section>
+        </section></Reveal>
 
         {loading ? (
           <SkeletonCards count={4} />
         ) : (
-          <section className="kpi-grid" aria-label="المؤشرات الرئيسية">
+          <Reveal><section className="kpi-grid" aria-label="المؤشرات الرئيسية">
+            <Reveal className="kpi-grid-item">
             <StatCard
               label="الأطفال المسجلون"
               value={numberAr(students)}
@@ -179,6 +182,8 @@ export default function DashboardPage() {
               icon={<Baby className="h-4 w-4" />}
               color="var(--pri)"
             />
+            </Reveal>
+            <Reveal className="kpi-grid-item" delay={MOTION.stagger}>
             <StatCard
               label="نسبة الحضور (30 يومًا)"
               value={percent(attendanceRate)}
@@ -186,6 +191,8 @@ export default function DashboardPage() {
               icon={<CheckCircle2 className="h-4 w-4" />}
               color="var(--ok)"
             />
+            </Reveal>
+            <Reveal className="kpi-grid-item" delay={MOTION.stagger * 2}>
             <StatCard
               label="متابعات نشطة"
               value={numberAr(summary.open + summary.inProgress)}
@@ -193,6 +200,8 @@ export default function DashboardPage() {
               icon={<HeartHandshake className="h-4 w-4" />}
               color="var(--warn)"
             />
+            </Reveal>
+            <Reveal className="kpi-grid-item" delay={MOTION.stagger * 3}>
             <StatCard
               label="متابعات متأخرة"
               value={numberAr(summary.overdue)}
@@ -200,7 +209,8 @@ export default function DashboardPage() {
               icon={<AlertTriangle className="h-4 w-4" />}
               color="var(--danger)"
             />
-          </section>
+            </Reveal>
+          </section></Reveal>
         )}
 
         <div className="two-col">

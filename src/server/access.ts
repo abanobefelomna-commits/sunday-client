@@ -12,6 +12,7 @@ export type AccessContext = {
   role: string;
   servantId: string | null;
   servantRole: string | null;
+  permissions?: string[];
 };
 
 /**
@@ -45,4 +46,10 @@ export function isPrivilegedRole(role: string | null | undefined, servantRole: s
     ['admin', 'priest'].includes(role || '') ||
     ['مسؤول', 'أب كاهن'].includes(servantRole || '')
   );
+}
+
+export function canManageClassStructure(
+  access: Pick<AccessContext, 'privileged' | 'permissions'>,
+): boolean {
+  return access.privileged || access.permissions?.includes('classes.write') === true;
 }

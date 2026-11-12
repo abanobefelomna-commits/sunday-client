@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
+import { MOTION } from "./motion";
 import {
   BarChart3,
   Baby,
@@ -36,11 +38,9 @@ const SECONDARY = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  useEffect(() => {
-    setMoreOpen(false);
-  }, [pathname]);
+  const [openedAtPath, setOpenedAtPath] = useState<string | null>(null);
+  const moreOpen = openedAtPath === pathname;
+  const reduceMotion = useReducedMotion();
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
@@ -63,6 +63,7 @@ export default function BottomNav() {
               className={active ? "on" : ""}
               aria-current={active ? "page" : undefined}
             >
+              {active && <motion.span className="nav-active-indicator" layoutId="active-nav-item" transition={{ duration: reduceMotion ? 0 : MOTION.duration.micro, ease: MOTION.ease }} aria-hidden="true" />}
               <span aria-hidden="true" className="text-xl">
                 <Icon className="h-5 w-5" />
               </span>
@@ -82,6 +83,7 @@ export default function BottomNav() {
                 className={`secondary ${active ? "on" : ""}`}
                 aria-current={active ? "page" : undefined}
               >
+                {active && <motion.span className="nav-active-indicator" layoutId="active-nav-item" transition={{ duration: reduceMotion ? 0 : MOTION.duration.micro, ease: MOTION.ease }} aria-hidden="true" />}
                 <span aria-hidden="true">
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
@@ -94,7 +96,7 @@ export default function BottomNav() {
         <button
           type="button"
           className="nav-more"
-          onClick={() => setMoreOpen(true)}
+          onClick={() => setOpenedAtPath(pathname)}
           aria-label="المزيد من الصفحات"
           aria-expanded={moreOpen}
         >
@@ -111,7 +113,7 @@ export default function BottomNav() {
           style={{ zIndex: 45 }}
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setMoreOpen(false);
+            if (event.target === event.currentTarget) setOpenedAtPath(null);
           }}
         >
           <div className="sheet" role="dialog" aria-modal="true" aria-label="المزيد من الصفحات">
@@ -120,7 +122,7 @@ export default function BottomNav() {
                 <h2>المزيد</h2>
                 <p>كل صفحات الخدمة في مكان واحد</p>
               </div>
-              <button type="button" className="ib" onClick={() => setMoreOpen(false)} aria-label="إغلاق">
+              <button type="button" className="ib" onClick={() => setOpenedAtPath(null)} aria-label="إغلاق">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -128,7 +130,7 @@ export default function BottomNav() {
               {SECONDARY.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link key={item.href} href={item.href} className="listrow">
+                  <Link key={item.href} href={item.href} className="listrow" onClick={() => setOpenedAtPath(null)}>
                     <span className="avatar-md" aria-hidden="true">
                       <Icon className="h-5 w-5" />
                     </span>

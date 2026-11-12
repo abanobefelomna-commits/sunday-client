@@ -32,6 +32,7 @@ import {
 } from "./messages";
 import { sharedPublicCopy } from "./shared-copy";
 import { usePublicLocale } from "./use-public-locale";
+import { SessionIntro } from "../motion";
 
 function PublicHeader({
   locale,
@@ -190,7 +191,7 @@ export default function PublicLanding() {
       <main id="main-content">
         <section className={"ps-hero"} id="home">
           <div className={"ps-heroGlow"} aria-hidden="true" />
-          <div className={"ps-heroInner"}>
+          <SessionIntro className={"ps-heroInner"}>
             <div className={"ps-heroCopy"}>
               <span className={"ps-eyebrow"}><Sparkles size={15} />{messages.heroEyebrow}</span>
               <h1>{messages.heroTitle}</h1>
@@ -215,7 +216,7 @@ export default function PublicLanding() {
               <div className={"ps-heroImageCaption"}><span><Church size={16} /></span><div><strong>{messages.name}</strong><small>{messages.demo}</small></div></div>
               <span className={"ps-heroSparkle"} aria-hidden="true"><Sparkles size={25} /></span>
             </div>
-          </div>
+          </SessionIntro>
         </section>
 
         <div className={"ps-benefitsWrap"}><BenefitsStrip messages={messages} /></div>

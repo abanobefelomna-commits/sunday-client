@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { MOTION } from "../motion";
 
 export function PageHeader({
   eyebrow,
@@ -148,12 +150,21 @@ export function MiniBars({
   data: Array<{ label: string; value: number; hint?: string }>;
   height?: number;
 }) {
+  const reduceMotion = useReducedMotion();
   const max = Math.max(1, ...data.map((item) => item.value));
   return (
     <div className="mini-bars" style={{ height }} role="img" aria-label="مخطط بياني">
       {data.map((item) => (
         <div key={item.label} title={item.hint ?? `${item.label}: ${item.value}`}>
-          <i style={{ height: `${Math.max(4, (item.value / max) * 100)}%` }} />
+          <motion.i
+            initial={false}
+            animate={{ height: `${Math.max(4, (item.value / max) * 100)}%` }}
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : { duration: MOTION.duration.chart, ease: MOTION.ease }
+            }
+          />
           <small>{item.label}</small>
         </div>
       ))}

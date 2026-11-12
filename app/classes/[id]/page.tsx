@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Eye, LockKeyhole } from "lucide-react";
+import { toast } from "sonner";
 import AppHeader from "../../components/AppHeader";
 import BottomNav from "../../components/BottomNav";
 import {
@@ -24,10 +25,10 @@ export default function ClassDetailsPage({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setCurrentUser(getStoredUser());
+    Promise.resolve().then(() => setCurrentUser(getStoredUser()));
     getClass(id)
       .then((data) => setClassData(data))
-      .catch(() => {})
+      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "تعذّر تحميل تفاصيل الفصل"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -72,12 +73,11 @@ export default function ClassDetailsPage({
         {/* Cover Header */}
         <div className="cover bg-gradient-to-tr from-blue-700 to-indigo-500 min-h-44 rounded-3xl p-6 text-white flex flex-col justify-end shadow-xl">
           <small className="opacity-80">
-            {classData.grade === "general"
-              ? "قسم الفقرة العامة"
-              : `فصل مدارس الأحد · ${classData.grade}`}
+            {classData.grade === "general" ? "المجموعة العامة" : "فصل الخدمة"}
           </small>
           <h1 className="text-3xl font-extrabold mt-1">{classData.name}</h1>
           <p className="text-sm opacity-90 mt-1">السنة الدراسية: {classData.academicYear}</p>
+          {classData.description && <p className="text-sm opacity-90 mt-1">{classData.description}</p>}
         </div>
 
         {canManage ? (

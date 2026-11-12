@@ -17,6 +17,7 @@ import {
 } from './providers';
 import { TENANT_MIGRATIONS } from '../tenant/schema.generated';
 import { splitStatements } from '../sql';
+import { DEFAULT_CLASSES } from '../class-defaults';
 import { grantPreviewEntitlements, invalidateEntitlementCache } from './entitlements';
 import { recordPlatformAudit, sanitizeErrorMessage } from './audit';
 
@@ -153,6 +154,28 @@ async function seedTenantIdentity(input: {
      ON CONFLICT ("churchId") DO UPDATE
      SET "slug" = EXCLUDED."slug", "schemaVersion" = EXCLUDED."schemaVersion"`,
     [input.churchId, input.slug],
+  );
+  await sql.query(
+    `UPDATE "classes" SET "churchId" = $1 WHERE "churchId" IS NULL`,
+    [input.churchId],
+  );
+  await sql.query(
+    `INSERT INTO "classes"
+       ("id", "churchId", "name", "nameKey", "grade", "academicYear", "isActive", "sortOrder", "createdAt", "updatedAt")
+     SELECT uuid_generate_v4(), $1, defaults.name, lower(trim(defaults.name)),
+            defaults.grade, 'عام', true, defaults.sortOrder, now(), now()
+     FROM unnest($2::text[], $3::text[], $4::integer[]) AS defaults(name, grade, sortOrder)
+     WHERE NOT EXISTS (
+       SELECT 1 FROM "classes" existing
+       WHERE existing."churchId" = $1 AND existing."grade"::text = defaults.grade
+     )
+     ON CONFLICT DO NOTHING`,
+    [
+      input.churchId,
+      DEFAULT_CLASSES.map((item) => item.name),
+      DEFAULT_CLASSES.map((item) => item.grade),
+      DEFAULT_CLASSES.map((item) => item.sortOrder),
+    ],
   );
   await sql.query(
     `INSERT INTO "church_settings" ("key", "value", "updatedAt")

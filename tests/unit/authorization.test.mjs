@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   canReadClass,
+  canManageClassStructure,
   canViewPrivateNotes,
   canWriteClass,
   isPrivilegedRole,
@@ -55,6 +56,13 @@ test('private notes are limited to their author unless privileged', () => {
   assert.equal(canViewPrivateNotes(scoped, null), false);
   assert.equal(canViewPrivateNotes(privileged, 'user-2'), true);
   assert.equal(canViewPrivateNotes(privileged, null), true);
+});
+
+test('class structure administration is church-admin or explicit classes.write only', () => {
+  assert.equal(canManageClassStructure(privileged), true);
+  assert.equal(canManageClassStructure({ ...scoped, permissions: ['classes.write'] }), true);
+  assert.equal(canManageClassStructure({ ...scoped, permissions: ['settings.write'] }), false);
+  assert.equal(canManageClassStructure({ ...scoped, permissions: [] }), false);
 });
 
 test('isPrivilegedRole recognizes English and Arabic leadership roles', () => {

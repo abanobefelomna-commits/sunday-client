@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
+import { MOTION, Reveal } from "../components/motion";
 import {
   Badge,
   EmptyState,
@@ -56,23 +57,15 @@ function monthLabel(bucket: string): string {
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [from, setFrom] = useState<string | null>(null);
-  const [to, setTo] = useState<string | null>(null);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [classId, setClassId] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialise date range on first client render (safe from prerender)
-  useEffect(() => {
-    if (from === null) {
-      const today = todayIso();
-      setFrom(shiftIso(today, -89));
-      setTo(today);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
   const load = useCallback(async () => {
     if (!from || !to) return;
+    await Promise.resolve();
     try {
       const [resOverview, resClasses] = await Promise.all([
         getAnalyticsOverview({
@@ -93,7 +86,17 @@ export default function AnalyticsPage() {
   }, [from, to, classId]);
 
   useEffect(() => {
-    load();
+    const timer = window.setTimeout(() => {
+      const today = todayIso();
+      setFrom(shiftIso(today, -89));
+      setTo(today);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(load);
   }, [load]);
 
   const applyRange = (days: number) => {
@@ -102,7 +105,6 @@ export default function AnalyticsPage() {
   };
 
   const activeRangeDays = useMemo(() => {
-    if (!from || !to) return null;
     const start = new Date(`${from}T00:00:00Z`).getTime();
     const end = new Date(`${to}T00:00:00Z`).getTime();
     if (Number.isNaN(start) || Number.isNaN(end)) return null;
@@ -138,7 +140,8 @@ export default function AnalyticsPage() {
     <div className="min-h-screen pb-32">
       <AppHeader />
 
-      <main className="pg">
+      <main className="pg analytics-page">
+        <Reveal>
         <PageHeader
           eyebrow={
             <>
@@ -153,8 +156,9 @@ export default function AnalyticsPage() {
             </button>
           }
         />
+        </Reveal>
 
-        <section className="surface surface-pad" aria-label="فلاتر التحليلات">
+        <Reveal delay={0.04}><section className="surface surface-pad" aria-label="فلاتر التحليلات">
           <div className="filters" style={{ marginBottom: 0 }}>
             <div className="grow-wrap">
               {RANGES.map((range) => (
@@ -174,7 +178,7 @@ export default function AnalyticsPage() {
               <span className="sr-only">من تاريخ</span>
               <input
                 type="date"
-                value={from ?? ""}
+                value={from}
                 max={to ?? undefined}
                 onChange={(event) => setFrom(event.target.value)}
                 aria-label="من تاريخ"
@@ -185,7 +189,7 @@ export default function AnalyticsPage() {
               <span className="sr-only">إلى تاريخ</span>
               <input
                 type="date"
-                value={to ?? ""}
+                value={to}
                 min={from ?? undefined}
                 onChange={(event) => setTo(event.target.value)}
                 aria-label="إلى تاريخ"
@@ -208,7 +212,7 @@ export default function AnalyticsPage() {
               </select>
             </label>
           </div>
-        </section>
+        </section></Reveal>
 
         {error ? <Notice tone="danger">{error}</Notice> : null}
 
@@ -233,7 +237,8 @@ export default function AnalyticsPage() {
               </Notice>
             ) : null}
 
-            <section className="kpi-grid" aria-label="المؤشرات الرئيسية">
+            <Reveal delay={0.06}><section className="kpi-grid" aria-label="المؤشرات الرئيسية">
+              <Reveal className="kpi-grid-item" delay={MOTION.stagger * 0}>
               <StatCard
                 label="نسبة الحضور"
                 value={percent(totals.attendanceRate)}
@@ -241,6 +246,8 @@ export default function AnalyticsPage() {
                 icon={<TrendingUp className="h-4 w-4" />}
                 color="var(--ok)"
               />
+              </Reveal>
+              <Reveal className="kpi-grid-item" delay={MOTION.stagger}>
               <StatCard
                 label="سجلات الحضور"
                 value={numberAr(totals.recordedRecords)}
@@ -248,6 +255,8 @@ export default function AnalyticsPage() {
                 icon={<CalendarCheck className="h-4 w-4" />}
                 color="var(--pri)"
               />
+              </Reveal>
+              <Reveal className="kpi-grid-item" delay={MOTION.stagger * 2}>
               <StatCard
                 label="الأطفال والفصول"
                 value={`${numberAr(totals.students)} / ${numberAr(totals.activeClasses)}`}
@@ -255,6 +264,8 @@ export default function AnalyticsPage() {
                 icon={<Baby className="h-4 w-4" />}
                 color="var(--violet)"
               />
+              </Reveal>
+              <Reveal className="kpi-grid-item" delay={MOTION.stagger * 3}>
               <StatCard
                 label="متابعات مفتوحة"
                 value={numberAr(followUps.workload)}
@@ -262,7 +273,8 @@ export default function AnalyticsPage() {
                 icon={<HeartHandshake className="h-4 w-4" />}
                 color="var(--danger)"
               />
-            </section>
+              </Reveal>
+            </section></Reveal>
 
             <div className="two-col">
               <section className="surface surface-pad" aria-label="توزيع الحضور">
@@ -409,8 +421,8 @@ export default function AnalyticsPage() {
               {overview.classes.length === 0 ? (
                 <EmptyState title="لا توجد فصول" description="أضف فصلًا وأطفالًا لتبدأ القراءة." />
               ) : (
-                <div className="table-wrap">
-                  <table className="data">
+                <div className="table-wrap analytics-table-wrap">
+                  <table className="data analytics-table">
                     <caption className="sr-only">أداء الفصول حسب الحضور والمتابعات</caption>
                     <thead>
                       <tr>
@@ -425,12 +437,12 @@ export default function AnalyticsPage() {
                     <tbody>
                       {overview.classes.map((item) => (
                         <tr key={item.id}>
-                          <th scope="row" style={{ fontWeight: 800 }}>
+                          <th scope="row" data-label="الفصل" style={{ fontWeight: 800 }}>
                             {item.name}
                           </th>
-                          <td>{numberAr(item.students)}</td>
-                          <td>{numberAr(item.total)}</td>
-                          <td>
+                          <td data-label="الأطفال">{numberAr(item.students)}</td>
+                          <td data-label="السجلات">{numberAr(item.total)}</td>
+                          <td data-label="نسبة الحضور">
                             <div className="grow-wrap" style={{ gap: 8 }}>
                               <span style={{ minWidth: 42 }}>{percent(item.rate)}</span>
                               <span
@@ -462,8 +474,8 @@ export default function AnalyticsPage() {
                               </span>
                             </div>
                           </td>
-                          <td>{numberAr(item.absent)}</td>
-                          <td>
+                          <td data-label="غياب">{numberAr(item.absent)}</td>
+                          <td data-label="متابعات مفتوحة">
                             {item.openFollowUps > 0 ? (
                               <Badge tone="danger">{numberAr(item.openFollowUps)}</Badge>
                             ) : (

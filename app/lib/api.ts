@@ -66,7 +66,10 @@ export interface ClassItem {
   name: string;
   grade: string;
   academicYear: string;
+  description?: string | null;
   image?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
   leadServantId?: string | null;
   leadServant?: {
     id: string;
@@ -408,9 +411,10 @@ export async function deleteNews(id: string, token?: string): Promise<void> {
 
 // ======================== CLASSES ========================
 
-export async function getClasses(search?: string): Promise<ClassItem[]> {
+export async function getClasses(search?: string, includeInactive = false): Promise<ClassItem[]> {
   const params = new URLSearchParams();
   if (search && search.trim()) params.append('search', search.trim());
+  if (includeInactive) params.append('includeInactive', 'true');
   const res = await request<ClassItem[] | { data: ClassItem[] }>(
     `/api/classes?${params.toString()}`,
     { cache: 'no-store' },
@@ -424,8 +428,7 @@ export async function getClass(id: string): Promise<ClassItem> {
 
 export async function createClass(data: {
   name: string;
-  grade: string;
-  academicYear: string;
+  description?: string | null;
 }): Promise<ClassItem> {
   return request('/api/classes', {
     method: 'POST',
@@ -435,12 +438,23 @@ export async function createClass(data: {
 
 export async function updateClass(
   id: string,
-  data: Partial<{ name: string; grade: string; academicYear: string }>,
+  data: Partial<{ name: string; description: string | null; isActive: boolean; sortOrder: number }>,
 ): Promise<ClassItem> {
   return request(`/api/classes/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+}
+
+export async function reorderClasses(ids: string[]): Promise<void> {
+  await request('/api/classes', {
+    method: 'PATCH',
+    body: JSON.stringify({ order: ids }),
+  });
+}
+
+export async function restoreDefaultClasses(): Promise<void> {
+  await request('/api/classes/restore-defaults', { method: 'POST' });
 }
 
 export async function deleteClass(id: string): Promise<void> {
