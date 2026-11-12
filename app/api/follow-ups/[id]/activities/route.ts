@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -11,7 +12,7 @@ import {
 import { addFollowUpActivity } from '@/src/server/followups';
 import { ACTIVITY_TYPES, isUuid, oneOf, requiredText } from '@/src/server/validation';
 
-export async function POST(
+async function POSTHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -44,3 +45,5 @@ export async function POST(
     return serverError(error instanceof Error ? error.message : 'فشل إضافة النشاط');
   }
 }
+
+export const POST = withTenant(POSTHandler);

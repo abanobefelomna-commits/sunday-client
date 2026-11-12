@@ -1,7 +1,8 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { jsonResponse, notFound, serverError } from '@/src/server/middleware';
+import { getAuthUser, getAccessContext, jsonResponse, notFound, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -56,18 +57,31 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+
     const { id } = await params;
     const body = await req.json();
 
-    const existing = await queryOne(`SELECT "id" FROM "news" WHERE "id" = $1 LIMIT 1`, [id]);
+    const existing = await queryOne<{ id: string; authorId: string | null }>(
+      `SELECT "id", "authorId" FROM "news" WHERE "id" = $1 LIMIT 1`,
+      [id],
+    );
     if (!existing) {
       return notFound('الخبر غير موجود');
     }
+
+    const access = await getAccessContext(auth);
+    const canEdit =
+      access.privileged ||
+      access.permissions.includes('news.write') ||
+      existing.authorId === auth.sub;
+    if (!canEdit) return forbidden('غير مسموح بتعديل هذا الخبر');
 
     const updated = await queryOne(
       `UPDATE "news"
@@ -94,12 +108,28 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+
     const { id } = await params;
+    const existing = await queryOne<{ id: string; authorId: string | null }>(
+      `SELECT "id", "authorId" FROM "news" WHERE "id" = $1 LIMIT 1`,
+      [id],
+    );
+    if (!existing) return notFound('الخبر غير موجود');
+
+    const access = await getAccessContext(auth);
+    const canDelete =
+      access.privileged ||
+      access.permissions.includes('news.write') ||
+      existing.authorId === auth.sub;
+    if (!canDelete) return forbidden('غير مسموح بحذف هذا الخبر');
+
     await query(`DELETE FROM "news" WHERE "id" = $1`, [id]);
     return jsonResponse({ message: 'تم حذف الخبر بنجاح' });
   } catch (error: any) {
@@ -107,3 +137,7 @@ export async function DELETE(
     return serverError(error.message || 'فشل حذف الخبر');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const PATCH = withTenant(PATCHHandler);
+export const DELETE = withTenant(DELETEHandler);

@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   jsonResponse,
@@ -6,7 +7,7 @@ import {
 } from '@/src/server/middleware';
 import { listFollowUpRules } from '@/src/server/followups';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -17,3 +18,5 @@ export async function GET(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل جلب قواعد المتابعة');
   }
 }
+
+export const GET = withTenant(GETHandler);

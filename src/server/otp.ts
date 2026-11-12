@@ -1,12 +1,18 @@
-import { createHmac, randomInt } from 'crypto';
+import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { query, queryOne } from './db';
+import { getOtpSecret } from './platform/config';
 
-const OTP_SECRET = process.env.OTP_SECRET || '75b6e92b980571ad5f6e352a302617fa559d24e5d9890619d04b22eceebc4cd2';
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
 
 function hashOtp(code: string): string {
-  return createHmac('sha256', OTP_SECRET).update(code).digest('hex');
+  return createHmac('sha256', getOtpSecret()).update(code).digest('hex');
+}
+
+function hashesEqual(left: string, right: string): boolean {
+  const a = Buffer.from(left, 'hex');
+  const b = Buffer.from(right, 'hex');
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export async function createOtp(
@@ -75,7 +81,7 @@ export async function verifyOtp(
   );
 
   const candidateHash = hashOtp(code);
-  if (candidateHash !== record.codeHash) {
+  if (!hashesEqual(candidateHash, record.codeHash)) {
     return { valid: false, message: 'كود التحقق غير صحيح' };
   }
 

@@ -382,9 +382,11 @@ export default function ServantsPage() {
               <p className="text-slate-500 text-sm mt-1 mb-4">
                 {search ? "لم يتم العثور على نتائج للبحث." : "ابدأ بإضافة أول خادم لمجموعة الخدمة."}
               </p>
-              <button type="button" className="btn" onClick={openAddModal}>
-                إضافة خادم جديد
-              </button>
+              {isAdminOrPriest ? (
+                <button type="button" className="btn" onClick={openAddModal}>
+                  إضافة خادم جديد
+                </button>
+              ) : null}
             </div>
           )}
         </div>

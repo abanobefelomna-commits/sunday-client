@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -31,7 +32,7 @@ function parseScore(value: unknown): number | null | 'invalid' {
   return Math.round(score * 100) / 100;
 }
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -54,7 +55,7 @@ export async function GET(
   }
 }
 
-export async function POST(
+async function POSTHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -102,3 +103,6 @@ export async function POST(
     return serverError(error instanceof Error ? error.message : 'فشل إضافة التقدم التعليمي');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

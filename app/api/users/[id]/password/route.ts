@@ -1,18 +1,42 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { hashPassword, verifyPassword } from '@/src/server/auth';
-import { getAuthUser, jsonResponse, notFound, unauthorized, badRequest, serverError } from '@/src/server/middleware';
+import {
+  hashPassword,
+  revokeAllUserRefreshTokens,
+  validatePasswordStrength,
+  verifyPassword,
+} from '@/src/server/auth';
+import {
+  getAuthUser,
+  jsonResponse,
+  notFound,
+  unauthorized,
+  forbidden,
+  badRequest,
+  serverError,
+} from '@/src/server/middleware';
+import { getRequestIp, rateLimit, rateLimitedResponse, requireSameOrigin } from '@/src/server/security';
+import { isUuid } from '@/src/server/validation';
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const originError = requireSameOrigin(req);
+  if (originError) return originError;
+
   try {
     const auth = await getAuthUser(req);
     const { id } = await params;
 
-    if (!auth) {
-      return unauthorized();
+    if (!auth) return unauthorized();
+    if (!isUuid(id)) return notFound('المستخدم غير موجود');
+    if (auth.sub !== id) {
+      return forbidden('يمكنك تغيير كلمة مرور حسابك فقط');
     }
+
+    const limit = rateLimit(`password:${getRequestIp(req)}:${id}`, 5, 15 * 60);
+    if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
     const body = await req.json();
     const { oldPassword, newPassword } = body;
@@ -21,14 +45,15 @@ export async function PATCH(
       return badRequest('كلمة المرور الحالية والجديدة مطلوبة');
     }
 
+    const passwordError = validatePasswordStrength(newPassword);
+    if (passwordError) return badRequest(passwordError);
+
     const user = await queryOne<{ id: string; password: string }>(
       `SELECT "id", "password" FROM "users" WHERE "id" = $1 LIMIT 1`,
       [id],
     );
 
-    if (!user) {
-      return notFound('المستخدم غير موجود');
-    }
+    if (!user) return notFound('المستخدم غير موجود');
 
     const isValid = await verifyPassword(user.password, oldPassword);
     if (!isValid) {
@@ -42,9 +67,14 @@ export async function PATCH(
       [hashedPassword, id],
     );
 
+    // Invalidate every other session after a password change.
+    await revokeAllUserRefreshTokens(id);
+
     return jsonResponse({ message: 'تم تغيير كلمة المرور بنجاح' });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Change password error:', error);
-    return serverError(error.message || 'حدث خطأ أثناء تغيير كلمة المرور');
+    return serverError('حدث خطأ أثناء تغيير كلمة المرور');
   }
 }
+
+export const PATCH = withTenant(PATCHHandler);

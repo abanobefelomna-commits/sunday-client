@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -11,7 +12,7 @@ import {
 import { getFollowUpDetail, updateFollowUp } from '@/src/server/followups';
 import { FOLLOW_UP_PRIORITIES, FOLLOW_UP_STATUSES, isUuid, oneOf } from '@/src/server/validation';
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -33,7 +34,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -85,3 +86,6 @@ export async function PATCH(
     return serverError(error instanceof Error ? error.message : 'فشل تحديث المتابعة');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const PATCH = withTenant(PATCHHandler);

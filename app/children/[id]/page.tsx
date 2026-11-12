@@ -287,9 +287,13 @@ export default function StudentProfilePage({
             title="ملف الطالب"
             subtitle="سجل متكامل للحضور والرعاية والتقدم التعليمي"
             actions={
-              <button type="button" className="btn ghost sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="h-4 w-4" aria-hidden="true" /> تعديل البيانات
-              </button>
+              profile.permissions.canWrite ? (
+                <button type="button" className="btn ghost sm" onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4" aria-hidden="true" /> تعديل البيانات
+                </button>
+              ) : (
+                <Badge tone="muted">عرض فقط — فصل آخر</Badge>
+              )
             }
           />
         </div>
@@ -379,6 +383,7 @@ export default function StudentProfilePage({
           <FollowUpsTab
             profile={profile}
             busy={busy}
+            canWrite={profile.permissions.canWrite}
             onCreate={handleCreateFollowUp}
             onUpdate={handleUpdateFollowUp}
             onAddActivity={handleAddActivity}
@@ -388,6 +393,7 @@ export default function StudentProfilePage({
           <ProgressTab
             profile={profile}
             busy={busy}
+            canWrite={profile.permissions.canWrite}
             onAdd={handleAddProgress}
             onDelete={handleDeleteProgress}
           />

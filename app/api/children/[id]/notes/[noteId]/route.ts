@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -16,7 +17,7 @@ import {
 } from '@/src/server/student-notes';
 import { isUuid, NOTE_VISIBILITIES, oneOf, requiredText } from '@/src/server/validation';
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string; noteId: string }> },
 ) {
@@ -60,7 +61,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   req: Request,
   { params }: { params: Promise<{ id: string; noteId: string }> },
 ) {
@@ -96,3 +97,6 @@ export async function DELETE(
     return serverError(error instanceof Error ? error.message : 'فشل حذف الملاحظة');
   }
 }
+
+export const PATCH = withTenant(PATCHHandler);
+export const DELETE = withTenant(DELETEHandler);

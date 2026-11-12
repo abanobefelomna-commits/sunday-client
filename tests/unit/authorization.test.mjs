@@ -24,9 +24,9 @@ const privileged = {
   servantRole: 'مسؤول',
 };
 
-test('scoped users read and write only their assigned classes', () => {
+test('scoped users can read any class but write only their assigned classes', () => {
   assert.equal(canReadClass(scoped, 'class-a'), true);
-  assert.equal(canReadClass(scoped, 'class-z'), false);
+  assert.equal(canReadClass(scoped, 'class-z'), true);
   assert.equal(canReadClass(scoped, null), false);
   assert.equal(canWriteClass(scoped, 'class-b'), true);
   assert.equal(canWriteClass(scoped, 'class-z'), false);
@@ -34,10 +34,12 @@ test('scoped users read and write only their assigned classes', () => {
   assert.equal(canWriteClass(scoped, undefined), false);
 });
 
-test('scoped users with no classes are denied everything', () => {
+test('scoped users with no assignments can still browse but not write', () => {
   const empty = { ...scoped, classIds: [] };
-  assert.equal(canReadClass(empty, 'class-a'), false);
+  assert.equal(canReadClass(empty, 'class-a'), true);
+  assert.equal(canReadClass(empty, 'class-z'), true);
   assert.equal(canWriteClass(empty, 'class-a'), false);
+  assert.equal(canWriteClass(empty, 'class-z'), false);
 });
 
 test('privileged users access any class including unassigned children', () => {

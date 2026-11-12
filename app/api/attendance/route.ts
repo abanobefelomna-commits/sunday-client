@@ -1,8 +1,9 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { getAuthUser, getAccessContext, canReadClass, jsonResponse, forbidden, unauthorized, serverError } from '@/src/server/middleware';
 import { isUuid, oneOf, ATTENDANCE_STATUSES } from '@/src/server/validation';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -104,3 +105,5 @@ export async function GET(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل جلب سجلات الحضور');
   }
 }
+
+export const GET = withTenant(GETHandler);

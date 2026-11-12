@@ -36,6 +36,31 @@ export interface AuthUser {
   avatar?: string | null;
 }
 
+const PRIVILEGED_USER_ROLES = new Set(["admin", "priest"]);
+const PRIVILEGED_SERVANT_ROLES = new Set(["مسؤول", "أب كاهن"]);
+
+/** True for the roles that may administer every class. */
+export function isPrivilegedUser(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  return (
+    PRIVILEGED_USER_ROLES.has(user.role) ||
+    (!!user.servantRole && PRIVILEGED_SERVANT_ROLES.has(user.servantRole))
+  );
+}
+
+/**
+ * True when the user may modify this class. Every servant may *view* any
+ * class, but writes remain limited to the classes assigned to them.
+ */
+export function canManageClass(
+  user: AuthUser | null | undefined,
+  classId: string | null | undefined,
+): boolean {
+  if (!user) return false;
+  if (isPrivilegedUser(user)) return true;
+  return !!classId && Array.isArray(user.classIds) && user.classIds.includes(classId);
+}
+
 export interface ClassItem {
   id: string;
   name: string;

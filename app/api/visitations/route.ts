@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import {
   getAuthUser,
@@ -15,7 +16,7 @@ import { isIsoDate, isUuid, oneOf } from '@/src/server/validation';
 const VISIT_TYPES = ['home_visit', 'phone_call', 'church_meeting', 'other'] as const;
 const VISIT_STATUSES = ['planned', 'completed', 'cancelled'] as const;
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -121,7 +122,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -174,3 +175,6 @@ export async function POST(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل تسجيل الافتقاد');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

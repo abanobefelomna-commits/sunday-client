@@ -1,8 +1,9 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
 import { getAuthUser, canManageServants, jsonResponse, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     if (!await getAuthUser(req)) return unauthorized();
     await ensureDefaultClasses();
@@ -115,7 +116,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -205,3 +206,6 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

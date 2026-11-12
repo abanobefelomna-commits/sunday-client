@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import {
   getAuthUser,
@@ -12,7 +13,7 @@ import {
 } from '@/src/server/middleware';
 import { isUuid } from '@/src/server/validation';
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -87,10 +88,14 @@ export async function GET(
   }
 }
 
-export async function PATCH() {
+async function PATCHHandler() {
   return jsonResponse({ message: 'الفصول ثابتة ولا يمكن تعديلها' }, 405);
 }
 
-export async function DELETE() {
+async function DELETEHandler() {
   return jsonResponse({ message: 'الفصول ثابتة ولا يمكن حذفها' }, 405);
 }
+
+export const GET = withTenant(GETHandler);
+export const PATCH = withTenant(PATCHHandler);
+export const DELETE = withTenant(DELETEHandler);

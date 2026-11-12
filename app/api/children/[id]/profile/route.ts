@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { queryOne } from '@/src/server/db';
 import {
   getAuthUser,
@@ -13,7 +14,7 @@ import {
 import { getStudentProfile } from '@/src/server/students';
 import { isUuid } from '@/src/server/validation';
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -47,3 +48,5 @@ export async function GET(
     return serverError(error instanceof Error ? error.message : 'فشل جلب ملف الطالب');
   }
 }
+
+export const GET = withTenant(GETHandler);

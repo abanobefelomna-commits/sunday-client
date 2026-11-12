@@ -1,51 +1,62 @@
 import { neon } from '@neondatabase/serverless';
+import { requireTenantContext } from './tenant/context';
+
+const clients = new Map<string, ReturnType<typeof neon>>();
+const MAX_CLIENTS = 100;
 
 function getConnectionString(): string {
-  const conn = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED;
-  if (!conn) {
-    throw new Error('DATABASE_URL is not set in environment variables');
-  }
-  return conn;
+  const tenant = requireTenantContext();
+  return tenant.connectionString;
 }
 
 export function getDb() {
   const url = getConnectionString();
-  return neon(url);
+  let client = clients.get(url);
+  if (!client) {
+    if (clients.size >= MAX_CLIENTS) clients.clear();
+    client = neon(url);
+    clients.set(url, client);
+  }
+  return client;
+}
+
+function isRetryable(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code || '';
+  const message = error instanceof Error ? error.message : '';
+  return (
+    ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', '57P01', '57P02', '57P03'].includes(code) ||
+    /fetch failed|network|timeout|connection terminated|compute time/i.test(message)
+  );
 }
 
 /**
- * Execute a parameterized SQL query on Neon Postgres with auto-retry on cold-start suspension.
- * Example: query('SELECT * FROM users WHERE email = $1', [email])
+ * Execute a parameterized SQL query against the authenticated tenant database.
+ * The tenant connection is resolved by the route wrapper and stored in
+ * AsyncLocalStorage; callers cannot select a church through query parameters.
  */
-export async function query<T = any>(
+export async function query<T = Record<string, unknown>>(
   sqlText: string,
-  params: any[] = [],
+  params: unknown[] = [],
   retries = 2,
 ): Promise<T[]> {
   const sql = getDb();
   let attempt = 0;
 
-  while (true) {
+  for (;;) {
     try {
       const rows = await sql.query(sqlText, params);
       return rows as T[];
-    } catch (err: any) {
-      attempt++;
-      if (attempt > retries) {
-        throw err;
-      }
-      // Wait 1 second for Neon compute to resume from scale-to-zero
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+    } catch (error) {
+      attempt += 1;
+      if (attempt > retries || !isRetryable(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
     }
   }
 }
 
-/**
- * Execute a query and return the first row or null
- */
-export async function queryOne<T = any>(
+export async function queryOne<T = Record<string, unknown>>(
   sqlText: string,
-  params: any[] = [],
+  params: unknown[] = [],
 ): Promise<T | null> {
   const rows = await query<T>(sqlText, params);
   return rows.length > 0 ? rows[0] : null;
@@ -53,14 +64,14 @@ export async function queryOne<T = any>(
 
 export interface TransactionStatement {
   text: string;
-  params?: any[];
+  params?: unknown[];
 }
 
 /**
  * Run multiple parameterized statements atomically using Neon's HTTP
  * transaction API. Returns one result array per statement, in order.
  */
-export async function transaction<T = any>(
+export async function transaction<T = Record<string, unknown>>(
   statements: TransactionStatement[],
   retries = 1,
 ): Promise<T[][]> {
@@ -68,17 +79,19 @@ export async function transaction<T = any>(
   const sql = getDb();
   let attempt = 0;
 
-  while (true) {
+  for (;;) {
     try {
       const queries = statements.map((statement) =>
         sql.query(statement.text, statement.params ?? []),
       );
-      const results = await (sql as any).transaction(queries);
-      return results as T[][];
-    } catch (err) {
-      attempt++;
-      if (attempt > retries) throw err;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const results = await (sql as unknown as {
+        transaction: (queries: unknown[]) => Promise<T[][]>;
+      }).transaction(queries);
+      return results;
+    } catch (error) {
+      attempt += 1;
+      if (attempt > retries || !isRetryable(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
     }
   }
 }

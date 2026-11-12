@@ -2,9 +2,16 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { Eye, LockKeyhole } from "lucide-react";
 import AppHeader from "../../components/AppHeader";
 import BottomNav from "../../components/BottomNav";
-import { getClass, type ClassItem } from "../../lib/api";
+import {
+  canManageClass,
+  getClass,
+  getStoredUser,
+  type AuthUser,
+  type ClassItem,
+} from "../../lib/api";
 
 export default function ClassDetailsPage({
   params,
@@ -13,9 +20,11 @@ export default function ClassDetailsPage({
 }) {
   const { id } = use(params);
   const [classData, setClassData] = useState<ClassItem | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setCurrentUser(getStoredUser());
     getClass(id)
       .then((data) => setClassData(data))
       .catch(() => {})
@@ -49,6 +58,7 @@ export default function ClassDetailsPage({
 
   const children = classData.children || [];
   const servants = classData.servants || [];
+  const canManage = canManageClass(currentUser, classData.id);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32">
@@ -70,15 +80,24 @@ export default function ClassDetailsPage({
           <p className="text-sm opacity-90 mt-1">السنة الدراسية: {classData.academicYear}</p>
         </div>
 
-        {/* Action Button: Take Attendance for this class */}
-        <div className="flex gap-3">
-          <Link
-            href={`/attendance?classId=${classData.id}`}
-            className="btn big flex-1 text-center"
-          >
-            ✅ تسجيل حضور هذا الفصل اليوم
-          </Link>
-        </div>
+        {canManage ? (
+          <div className="flex gap-3">
+            <Link
+              href={`/attendance?classId=${classData.id}`}
+              className="btn big flex-1 text-center"
+            >
+              ✅ تسجيل حضور هذا الفصل اليوم
+            </Link>
+          </div>
+        ) : (
+          <div className="notice">
+            <Eye size={18} aria-hidden="true" />
+            <span>
+              أنت تستعرض هذا الفصل للقراءة فقط. يمكنك رؤية الخدام والأطفال،
+              لكن التعديل متاح لخدام الفصل والمسؤولين فقط.
+            </span>
+          </div>
+        )}
 
         {/* Children List in this Class */}
         <div className="card">
@@ -86,12 +105,18 @@ export default function ClassDetailsPage({
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               الأطفال المسجلين ({children.length})
             </h3>
-            <Link
-              href="/children"
-              className="text-sm text-blue-600 dark:text-blue-400 font-bold"
-            >
-              + إضافة طفل
-            </Link>
+            {canManage ? (
+              <Link
+                href="/children"
+                className="text-sm text-blue-600 dark:text-blue-400 font-bold"
+              >
+                + إضافة طفل
+              </Link>
+            ) : (
+              <span className="text-xs text-slate-400 inline-flex items-center gap-1">
+                <LockKeyhole size={13} aria-hidden="true" /> عرض فقط
+              </span>
+            )}
           </div>
 
           {children.length > 0 ? (

@@ -9,7 +9,12 @@ export async function sendOtpEmail(toEmail: string, code: string): Promise<boole
   const ttlMinutes = Number(process.env.OTP_TTL_MINUTES || 10);
 
   if (!host || !user || !pass || !from) {
-    console.warn(`[EmailService] SMTP not fully configured. Generated OTP for ${toEmail} is: ${code}`);
+    // Never print a live OTP in production. Local development keeps a
+    // convenience log so password reset can be exercised without SMTP.
+    console.warn('[EmailService] SMTP is not fully configured; no email was sent.');
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`[EmailService] Development OTP for ${toEmail}: ${code}`);
+    }
     return false;
   }
 

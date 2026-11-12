@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import {
   getAuthUser,
@@ -12,7 +13,7 @@ import {
 } from '@/src/server/middleware';
 import { isUuid } from '@/src/server/validation';
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ childId: string }> },
 ) {
@@ -66,3 +67,5 @@ export async function GET(
     return serverError(error instanceof Error ? error.message : 'فشل جلب افتقادات الطفل');
   }
 }
+
+export const GET = withTenant(GETHandler);

@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { getAuthUser, jsonResponse, unauthorized, forbidden, badRequest, serverError } from '@/src/server/middleware';
 import { query, queryOne } from '@/src/server/db';
 
@@ -12,7 +13,7 @@ async function currentRole(id: string) {
 const privileged = (role: string) => ['admin', 'priest', 'مسؤول', 'أب كاهن'].includes(role);
 const cairoWeekday = (date: Date) => new Intl.DateTimeFormat('en-US', { timeZone: 'Africa/Cairo', weekday: 'short' }).format(date);
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -31,20 +32,21 @@ export async function GET(req: Request) {
   } catch { return serverError('تعذر تحميل بيانات التحضير'); }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
     const account = await currentRole(auth.sub);
     if (!account || privileged(account.role) || !['servant', 'خادم', 'خادم فقرة عامة', 'قائد فصل'].includes(account.role)) return forbidden();
-    if (cairoWeekday(new Date()) !== 'Fri') return forbidden('يفتح التحضير يوم الجمعة');
     const body = await req.json();
     const topic = typeof body.lessonTopic === 'string' ? body.lessonTopic.trim() : '';
     const prepDate = typeof body.prepDate === 'string' ? body.prepDate : '';
     const content = typeof body.content === 'string' ? body.content.trim() : '';
     if (!body.attendanceChecked || !topic || !/^\d{4}-\d{2}-\d{2}$/.test(prepDate) || !content) return badRequest('أكمل بيانات التحضير المطلوبة');
-    if (cairoWeekday(new Date(`${prepDate}T12:00:00Z`)) !== 'Fri') return badRequest('اختر يوم جمعة للتحضير');
     const row = await queryOne(`INSERT INTO "friday_preparations" ("userId", "attendanceChecked", "lessonTopic", "prepDate", "content") VALUES ($1, true, $2, $3, $4) ON CONFLICT ("userId", "prepDate") DO UPDATE SET "attendanceChecked" = true, "lessonTopic" = EXCLUDED."lessonTopic", "content" = EXCLUDED."content", "submittedAt" = now(), "status" = 'submitted' RETURNING *`, [auth.sub, topic, prepDate, content]);
     return jsonResponse(row, 201);
   } catch { return serverError('تعذر حفظ التحضير'); }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

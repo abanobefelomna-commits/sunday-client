@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -30,7 +31,7 @@ function parseScore(value: unknown): number | null | 'invalid' {
   return Math.round(score * 100) / 100;
 }
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string; progressId: string }> },
 ) {
@@ -81,7 +82,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   req: Request,
   { params }: { params: Promise<{ id: string; progressId: string }> },
 ) {
@@ -115,3 +116,6 @@ export async function DELETE(
     return serverError(error instanceof Error ? error.message : 'فشل حذف التقدم التعليمي');
   }
 }
+
+export const PATCH = withTenant(PATCHHandler);
+export const DELETE = withTenant(DELETEHandler);

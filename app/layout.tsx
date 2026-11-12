@@ -7,6 +7,8 @@ import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import "./components/public-site/public-site-global.css";
+import "./components/public-site/public-site.css";
 import BibleWidget from "./components/BibleWidget";
 import { Toaster } from "sonner";
 

@@ -1,7 +1,8 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { getAuthUser, jsonResponse, unauthorized } from '@/src/server/middleware';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   const auth = await getAuthUser(req);
   if (!auth) {
     return unauthorized('لازم تسجّل الدخول الأول');
@@ -55,3 +56,5 @@ export async function GET(req: Request) {
     classIds,
   });
 }
+
+export const GET = withTenant(GETHandler);

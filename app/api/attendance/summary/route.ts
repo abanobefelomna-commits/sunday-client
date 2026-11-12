@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query } from '@/src/server/db';
 import {
   getAuthUser,
@@ -11,7 +12,7 @@ import {
 } from '@/src/server/middleware';
 import { isIsoDate, isUuid } from '@/src/server/validation';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -70,3 +71,5 @@ export async function GET(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل جلب ملخص الحضور');
   }
 }
+
+export const GET = withTenant(GETHandler);

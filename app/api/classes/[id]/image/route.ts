@@ -1,8 +1,9 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { authorizeClass, getAuthUser, jsonResponse, notFound, badRequest, forbidden, serverError, unauthorized } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -39,7 +40,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -64,3 +65,6 @@ export async function DELETE(
     return serverError(error.message || 'فشل حذف صورة الفصل');
   }
 }
+
+export const PATCH = withTenant(PATCHHandler);
+export const DELETE = withTenant(DELETEHandler);

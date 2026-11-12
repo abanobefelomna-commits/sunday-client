@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -18,7 +19,7 @@ import {
   requiredText,
 } from '@/src/server/validation';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -95,3 +96,6 @@ export async function POST(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل إنشاء المتابعة');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

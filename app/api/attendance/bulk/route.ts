@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne, transaction } from '@/src/server/db';
 import {
   getAuthUser,
@@ -20,7 +21,7 @@ import {
 } from '@/src/server/validation';
 import { notifyAttendanceAlert } from '@/src/server/notifications';
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -173,3 +174,5 @@ export async function POST(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل تسجيل الحضور');
   }
 }
+
+export const POST = withTenant(POSTHandler);

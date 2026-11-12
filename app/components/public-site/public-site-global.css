@@ -1,0 +1,4 @@
+body.public-visitor-page .fab,
+body.public-visitor-page .bib {
+  display: none !important;
+}

@@ -1,9 +1,10 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, notFound, unauthorized, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, jsonResponse, notFound, unauthorized, forbidden, badRequest, serverError } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 import { syncServantAvatarByPhone } from '@/src/server/servants';
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -13,6 +14,9 @@ export async function PATCH(
 
     if (!auth) {
       return unauthorized();
+    }
+    if (auth.sub !== id) {
+      return forbidden('يمكنك تغيير صورتك الشخصية فقط');
     }
 
     const user = await queryOne<{ id: string; phone: string }>(
@@ -50,7 +54,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -60,6 +64,9 @@ export async function DELETE(
 
     if (!auth) {
       return unauthorized();
+    }
+    if (auth.sub !== id) {
+      return forbidden('يمكنك تغيير صورتك الشخصية فقط');
     }
 
     const user = await queryOne<{ id: string; phone: string }>(
@@ -84,3 +91,6 @@ export async function DELETE(
     return serverError(error.message || 'فشل حذف الصورة');
   }
 }
+
+export const PATCH = withTenant(PATCHHandler);
+export const DELETE = withTenant(DELETEHandler);

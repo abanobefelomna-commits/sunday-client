@@ -22,13 +22,17 @@ import {
   SkeletonRows,
 } from "../components/ui";
 import {
+  canManageClass,
   createChild,
   deleteChild,
   getChild,
   getChildren,
   getClass,
   getClasses,
+  getStoredUser,
+  isPrivilegedUser,
   updateChild,
+  type AuthUser,
   type ChildItem,
   type ClassItem,
   type ServantItem,
@@ -47,6 +51,7 @@ export default function ChildrenPage() {
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   const [showModal, setShowModal] = useState(false);
   const [editingChild, setEditingChild] = useState<ChildItem | null>(null);
@@ -65,6 +70,10 @@ export default function ChildrenPage() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    setCurrentUser(getStoredUser());
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -122,11 +131,20 @@ export default function ChildrenPage() {
     () => children.filter((child) => child.assignedServantId).length,
     [children],
   );
+  const writableClasses = useMemo(
+    () => classes.filter((item) => canManageClass(currentUser, item.id)),
+    [classes, currentUser],
+  );
+  const canAddChild =
+    isPrivilegedUser(currentUser) || writableClasses.length > 0;
+  const canWriteChild = (child: ChildItem) =>
+    canManageClass(currentUser, child.classId);
 
   const openAddModal = () => {
     setEditingChild(null);
     setFormName("");
-    setFormClassId(selectedClassId !== "all" ? selectedClassId : classes[0]?.id || "");
+    const preferredClass = writableClasses.find((item) => item.id === selectedClassId);
+    setFormClassId(preferredClass?.id || writableClasses[0]?.id || "");
     setFormBirthDate("");
     setFormPhone("");
     setFormParentName("");
@@ -229,10 +247,12 @@ export default function ChildrenPage() {
           title="الأطفال"
           subtitle="كل طفل ملف رعوي كامل: الحضور، الافتقاد، المتابعة والتقدم التعليمي."
           actions={
-            <button type="button" className="btn" onClick={openAddModal}>
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              إضافة طفل
-            </button>
+            canAddChild ? (
+              <button type="button" className="btn" onClick={openAddModal}>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                إضافة طفل
+              </button>
+            ) : null
           }
         />
 
@@ -288,9 +308,11 @@ export default function ChildrenPage() {
                   : "ابدأ بإضافة أول طفل؛ سيُنشأ له ملف رحلة كامل تلقائيًا."
               }
               action={
-                <button type="button" className="btn sm" onClick={openAddModal}>
-                  إضافة طفل
-                </button>
+                canAddChild ? (
+                  <button type="button" className="btn sm" onClick={openAddModal}>
+                    إضافة طفل
+                  </button>
+                ) : null
               }
             />
           ) : (
@@ -334,25 +356,31 @@ export default function ChildrenPage() {
                     {child.birthDate ? (
                       <Badge tone="muted">{formatDate(child.birthDate)}</Badge>
                     ) : null}
-                    <button
-                      type="button"
-                      className="ib"
-                      onClick={() => openEditModal(child)}
-                      aria-label={`تعديل بيانات ${child.name}`}
-                      title="تعديل"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="ib"
-                      style={{ color: "var(--danger)" }}
-                      onClick={() => setDeletingId(child.id)}
-                      aria-label={`حذف ${child.name}`}
-                      title="حذف"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {canWriteChild(child) ? (
+                      <>
+                        <button
+                          type="button"
+                          className="ib"
+                          onClick={() => openEditModal(child)}
+                          aria-label={`تعديل بيانات ${child.name}`}
+                          title="تعديل"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="ib"
+                          style={{ color: "var(--danger)" }}
+                          onClick={() => setDeletingId(child.id)}
+                          aria-label={`حذف ${child.name}`}
+                          title="حذف"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <Badge tone="muted">عرض فقط</Badge>
+                    )}
                   </div>
                 </article>
               ))}
@@ -421,7 +449,7 @@ export default function ChildrenPage() {
                   disabled={saving}
                 >
                   <option value="">بدون فصل محدد</option>
-                  {classes.map((item) => (
+                  {writableClasses.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name} ({item.grade})
                     </option>

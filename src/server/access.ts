@@ -14,10 +14,19 @@ export type AccessContext = {
   servantRole: string | null;
 };
 
-/** True when the user is allowed to read data for this class. */
+/**
+ * True when the user is allowed to read data for this class.
+ *
+ * Every authenticated member of the service may browse any class, its
+ * servants and its children. Reading is intentionally broader than writing:
+ * the class roster, student directory and care history are visible to all
+ * servants, while canWriteClass() still limits changes to their own classes.
+ */
 export function canReadClass(access: AccessContext, classId: string | null | undefined): boolean {
   if (access.privileged) return true;
-  return !!classId && access.classIds.includes(classId);
+  // AccessContext is only built for an authenticated user, so any real class
+  // id is readable. `null` stays privileged-only for unassigned children.
+  return !!classId;
 }
 
 /** True when the user may change care/attendance data for this class. */

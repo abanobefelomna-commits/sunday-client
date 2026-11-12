@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -12,7 +13,7 @@ import { recordAudit } from '@/src/server/audit';
 import { createStudentNote, listStudentNotes, loadChildScope } from '@/src/server/student-notes';
 import { isUuid, NOTE_VISIBILITIES, oneOf, requiredText } from '@/src/server/validation';
 
-export async function GET(
+async function GETHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -35,7 +36,7 @@ export async function GET(
   }
 }
 
-export async function POST(
+async function POSTHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -74,3 +75,6 @@ export async function POST(
     return serverError(error instanceof Error ? error.message : 'فشل إضافة الملاحظة');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

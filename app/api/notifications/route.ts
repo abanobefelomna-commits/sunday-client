@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import {
   getAuthUser,
@@ -8,7 +9,7 @@ import {
 } from '@/src/server/middleware';
 import { isUuid } from '@/src/server/validation';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -56,7 +57,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function PATCH(req: Request) {
+async function PATCHHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -94,3 +95,6 @@ export async function PATCH(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل تحديث التنبيهات');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const PATCH = withTenant(PATCHHandler);

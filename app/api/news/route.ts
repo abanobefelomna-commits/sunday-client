@@ -1,8 +1,9 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, badRequest, serverError } from '@/src/server/middleware';
+import { getAuthUser, jsonResponse, badRequest, serverError, unauthorized } from '@/src/server/middleware';
 import { processUploadedImage } from '@/src/server/upload';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || null;
@@ -90,9 +91,11 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
+    if (!auth) return unauthorized();
+
     let content = '';
     let title: string | null = null;
     let isPinned = false;
@@ -153,3 +156,6 @@ export async function POST(req: Request) {
     return serverError(error.message || 'فشل نشر الخبر');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

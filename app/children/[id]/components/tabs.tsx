@@ -333,12 +333,14 @@ function MiniCounter({ label, value, color }: { label: string; value: number; co
 export function FollowUpsTab({
   profile,
   busy,
+  canWrite,
   onCreate,
   onUpdate,
   onAddActivity,
 }: {
   profile: StudentProfile;
   busy: boolean;
+  canWrite: boolean;
   onCreate: (input: {
     reason: string;
     priority: FollowUpPriority;
@@ -375,9 +377,11 @@ export function FollowUpsTab({
             <h2>المتابعات الرعوية</h2>
             <p>قرارات مبنية على وقائع مسجّلة وقواعد معلنة — دون تصنيف نفسي أو سلوكي.</p>
           </div>
-          <button type="button" className="btn sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden="true" /> متابعة جديدة
-          </button>
+          {canWrite ? (
+            <button type="button" className="btn sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden="true" /> متابعة جديدة
+            </button>
+          ) : null}
         </div>
 
         {active.length === 0 && closed.length === 0 ? (
@@ -396,10 +400,10 @@ export function FollowUpsTab({
                     key={item.id}
                     item={item}
                     busy={busy}
-                    onResolve={() => setResolveTarget(item.id)}
-                    onStart={() => onUpdate(item.id, { status: "in_progress" })}
-                    onDismiss={() => onUpdate(item.id, { status: "dismissed" })}
-                    onActivity={() => setActivityTarget(item.id)}
+                    onResolve={canWrite ? () => setResolveTarget(item.id) : undefined}
+                    onStart={canWrite ? () => onUpdate(item.id, { status: "in_progress" }) : undefined}
+                    onDismiss={canWrite ? () => onUpdate(item.id, { status: "dismissed" }) : undefined}
+                    onActivity={canWrite ? () => setActivityTarget(item.id) : undefined}
                   />
                 ))}
               </div>
@@ -417,7 +421,7 @@ export function FollowUpsTab({
         )}
       </section>
 
-      {createOpen ? (
+      {canWrite && createOpen ? (
         <CreateFollowUpModal
           servants={profile.student.responsibleServants}
           busy={busy}
@@ -429,7 +433,7 @@ export function FollowUpsTab({
         />
       ) : null}
 
-      {resolveTarget ? (
+      {canWrite && resolveTarget ? (
         <ResolveModal
           busy={busy}
           onClose={() => setResolveTarget(null)}
@@ -440,7 +444,7 @@ export function FollowUpsTab({
         />
       ) : null}
 
-      {activityTarget ? (
+      {canWrite && activityTarget ? (
         <ActivityModal
           busy={busy}
           onClose={() => setActivityTarget(null)}
@@ -766,11 +770,13 @@ const LEVEL_TONE: Record<string, "ok" | "warn" | "violet" | "default"> = {
 export function ProgressTab({
   profile,
   busy,
+  canWrite,
   onAdd,
   onDelete,
 }: {
   profile: StudentProfile;
   busy: boolean;
+  canWrite: boolean;
   onAdd: (input: {
     subject: string;
     level: EducationalProgress["level"];
@@ -789,9 +795,11 @@ export function ProgressTab({
           <h2>التقدم التعليمي</h2>
           <p>تقييم تعليمي صريح فقط — لا يُستخدم لتصنيف السلوك أو الشخصية.</p>
         </div>
-        <button type="button" className="btn sm" onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" aria-hidden="true" /> تسجيل تقييم
-        </button>
+        {canWrite ? (
+          <button type="button" className="btn sm" onClick={() => setOpen(true)}>
+            <Plus className="h-4 w-4" aria-hidden="true" /> تسجيل تقييم
+          </button>
+        ) : null}
       </div>
 
       {profile.progress.length === 0 ? (
@@ -812,16 +820,18 @@ export function ProgressTab({
                     <Badge tone="muted">{Number(item.score)} / 100</Badge>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  className="ib"
-                  style={{ color: "var(--danger)" }}
-                  onClick={() => onDelete(item.id)}
-                  disabled={busy}
-                  aria-label={`حذف تقييم ${item.subject}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                {canWrite ? (
+                  <button
+                    type="button"
+                    className="ib"
+                    style={{ color: "var(--danger)" }}
+                    onClick={() => onDelete(item.id)}
+                    disabled={busy}
+                    aria-label={`حذف تقييم ${item.subject}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
               <p style={{ margin: "6px 0 0", color: "var(--mute)", fontSize: ".84rem" }}>
                 {formatDate(item.assessedAt)} · {item.assessorName || "غير محدد"}
@@ -832,7 +842,7 @@ export function ProgressTab({
         </div>
       )}
 
-      {open ? (
+      {canWrite && open ? (
         <AddProgressModal
           busy={busy}
           onClose={() => setOpen(false)}

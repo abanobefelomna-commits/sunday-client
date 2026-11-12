@@ -1,8 +1,13 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { revokeRefreshToken } from '@/src/server/auth';
+import { requireSameOrigin } from '@/src/server/security';
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
+  const originError = requireSameOrigin(req);
+  if (originError) return originError;
+
   let token: string | undefined;
 
   const cookieStore = await cookies();
@@ -29,6 +34,15 @@ export async function POST(req: Request) {
     path: '/api/auth',
     expires: new Date(0),
   });
+  res.cookies.set('tenant_slug', '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    expires: new Date(0),
+  });
 
   return res;
 }
+
+export const POST = withTenant(POSTHandler);

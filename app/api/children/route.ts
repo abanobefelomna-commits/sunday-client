@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import {
   getAuthUser,
@@ -14,7 +15,7 @@ import { isUuid, isIsoDate, oneOf, optionalText } from '@/src/server/validation'
 
 const GENDERS = ['male', 'female'] as const;
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -31,7 +32,10 @@ export async function GET(req: Request) {
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
     const offset = (page - 1) * limit;
 
-    if (!access.privileged && access.classIds.length === 0) {
+    // The unfiltered directory stays scoped to the servant's own classes.
+    // Asking for a specific class opens that class in read-only mode, so a
+    // servant can review any class from the classes screen.
+    if (!access.privileged && access.classIds.length === 0 && !classId) {
       return jsonResponse({
         data: [],
         total: 0,
@@ -40,7 +44,7 @@ export async function GET(req: Request) {
     }
     if (classId && !canReadClass(access, classId)) return forbidden();
 
-    const scopeIds = access.privileged ? null : access.classIds;
+    const scopeIds = access.privileged || classId ? null : access.classIds;
 
     const rows = await query<{
       id: string;
@@ -159,7 +163,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
@@ -234,3 +238,6 @@ export async function POST(req: Request) {
     return serverError(error instanceof Error ? error.message : 'فشل إضافة الطفل');
   }
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

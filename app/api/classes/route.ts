@@ -1,8 +1,9 @@
+import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
 import { getAuthUser, jsonResponse, serverError, unauthorized } from '@/src/server/middleware';
 
-export async function GET(req: Request) {
+async function GETHandler(req: Request) {
   try {
     const user = await getAuthUser(req);
     if (!user) return unauthorized();
@@ -89,9 +90,12 @@ export async function GET(req: Request) {
   }
 }
 
-export async function POST() {
+async function POSTHandler() {
   return jsonResponse(
     { message: 'الفصول ثابتة ولا يمكن إضافة فصول جديدة' },
     405,
   );
 }
+
+export const GET = withTenant(GETHandler);
+export const POST = withTenant(POSTHandler);

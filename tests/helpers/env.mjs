@@ -31,3 +31,8 @@ export function loadEnv(file = '.env') {
 export function databaseUrl() {
   return process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED || null;
 }
+
+export function platformDatabaseUrl() {
+  return process.env.PLATFORM_DATABASE_URL || null;
+}
+

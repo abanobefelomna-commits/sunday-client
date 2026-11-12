@@ -1,3 +1,4 @@
+import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
   getAccessContext,
@@ -11,7 +12,7 @@ import {
 import { updateFollowUpRule } from '@/src/server/followups';
 import { FOLLOW_UP_PRIORITIES, isUuid, oneOf } from '@/src/server/validation';
 
-export async function PATCH(
+async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -47,3 +48,5 @@ export async function PATCH(
     return serverError(error instanceof Error ? error.message : 'فشل تحديث القاعدة');
   }
 }
+
+export const PATCH = withTenant(PATCHHandler);
