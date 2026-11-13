@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Status:** Local frontend instructions only. No deployment, production migration, or payment configuration was performed.
+**Status:** Local and production deployment instructions. No production migration or secret change is performed by this guide; apply any production change only with explicit owner approval.
 
 ## Frontend local workflow
 
@@ -23,6 +23,35 @@ npm.cmd start
 ## API local workflow
 
 The NestJS API is in `G:\God\sunday-school-api`. Its documented development command is `npm run start:dev`; build and test commands are `npm run build` and `npm test`. The existing build passed and the existing suite passed one unit test. These results do not validate the multi-tenant API. The API worktree has extensive uncommitted user changes and removed authentication files; preserve that work before changing it.
+
+## Production deployment configuration
+
+The Next.js app hosts the platform API and resolves every tenant request through the central platform database. Production must have:
+
+| Variable | Requirement |
+|---|---|
+| `DATABASE_URL` | Tenant/operational database connection string (existing church data). |
+| `PLATFORM_DATABASE_URL` | Dedicated platform database connection string, for example the same Neon endpoint with database `sunday_platform`. Required. |
+| `JWT_SECRET`, `PLATFORM_JWT_SECRET`, `OTP_SECRET` | Strong secrets, at least 32 characters. |
+| `TENANT_SECRET_KEY` | Existing 32-byte base64/hex key that decrypts `tenant_connections.encryptedUrl`. Do not regenerate it for an existing deployment. |
+| `SMTP_*`, `MAIL_FROM` | Required for password-reset/OTP email delivery. |
+
+Production never falls back to `DATABASE_URL` for platform queries. If `PLATFORM_DATABASE_URL` is missing, invalid, or resolves to the tenant database, tenant routes fail closed with HTTP 503 `PLATFORM_CONFIGURATION_ERROR` and the runtime log records the configuration error. Never enable `ALLOW_SHARED_PLATFORM_DATABASE` in production.
+
+Before deploying, run the read-only checks against the intended platform database:
+
+```powershell
+npm.cmd run db:verify:platform -- --deep
+npm.cmd run db:check:platform
+```
+
+`db:verify:platform` verifies required tables/columns, migration history, church/tenant registry integrity, URL fingerprints, and secrets without writing. `db:check:platform` exits non-zero if platform migrations are pending or required tables are missing. Apply pending platform migrations only when authorized:
+
+```powershell
+npm.cmd run db:migrate:platform
+```
+
+After deployment, verify a tenant API (for example `/api/analytics/overview`) with a real authenticated session. A healthy response is not sufficient proof if the route only reads cached or empty data; confirm the platform registry resolves the expected church ID.
 
 ## Release gates
 

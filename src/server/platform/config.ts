@@ -10,6 +10,31 @@ import { createHash, randomBytes } from 'node:crypto';
 const warned = new Set<string>();
 let ephemeralJwtSecret: Buffer | null = null;
 
+/**
+ * A configuration problem that must fail closed. Callers can map `code` to a
+ * safe 503 response without exposing connection strings or SQL details.
+ */
+export class PlatformConfigurationError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'PlatformConfigurationError';
+    this.code = code;
+  }
+}
+
+export function isPlatformConfigurationError(
+  error: unknown,
+): error is PlatformConfigurationError {
+  return (
+    error instanceof PlatformConfigurationError ||
+    (error instanceof Error &&
+      error.name === 'PlatformConfigurationError' &&
+      typeof (error as { code?: unknown }).code === 'string')
+  );
+}
+
 export function isProduction(): boolean {
   return process.env.NODE_ENV === 'production';
 }
@@ -99,20 +124,90 @@ export function getTenantEncryptionKey(): Buffer {
   return createHash('sha256').update(getJwtSecret()).update('tenant-connections-v1').digest();
 }
 
-export function getPlatformDatabaseUrl(): string {
-  const configured = process.env.PLATFORM_DATABASE_URL;
-  if (configured) return configured;
-  if (isProduction() || process.env.ALLOW_SHARED_PLATFORM_DATABASE === 'true') {
-    const fallback = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED;
-    if (fallback) {
-      warnOnce(
-        'shared-platform-db',
-        'PLATFORM_DATABASE_URL is unset; using DATABASE_URL with ALLOW_SHARED_PLATFORM_DATABASE. Do not use this in production.',
-      );
-      return fallback;
-    }
+function parsePostgresUrl(value: string, name: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new PlatformConfigurationError(
+      `${name}_INVALID`,
+      `${name} is not a valid URL`,
+    );
   }
-  throw new Error('PLATFORM_DATABASE_URL is not configured');
+  if (parsed.protocol !== 'postgres:' && parsed.protocol !== 'postgresql:') {
+    throw new PlatformConfigurationError(
+      `${name}_INVALID`,
+      `${name} must be a PostgreSQL connection string`,
+    );
+  }
+  if (!parsed.hostname || !parsed.pathname || parsed.pathname === '/') {
+    throw new PlatformConfigurationError(
+      `${name}_INVALID`,
+      `${name} must include a host and database name`,
+    );
+  }
+  return parsed;
+}
+
+/**
+ * Stable identity for a PostgreSQL database. Neon exposes pooled and direct
+ * endpoints on different hostnames, so the `-pooler` suffix is ignored.
+ */
+export function postgresDatabaseIdentity(value: string): string {
+  const parsed = parsePostgresUrl(value, 'DATABASE_URL');
+  const host = parsed.hostname.toLowerCase().replace(/-pooler(?=\.)/, '');
+  const port = parsed.port || '5432';
+  const database = parsed.pathname.replace(/^\/+/, '').toLowerCase();
+  return `${host}:${port}/${database}`;
+}
+
+export function isSamePostgresDatabase(left: string, right: string): boolean {
+  return postgresDatabaseIdentity(left) === postgresDatabaseIdentity(right);
+}
+
+/**
+ * Resolve the central platform database.
+ *
+ * Production must always name the dedicated platform database explicitly. A
+ * missing `PLATFORM_DATABASE_URL` never falls back to the tenant database,
+ * because platform tables such as `churches` do not exist there. Falling back
+ * silently produced misleading `42P01 relation "churches" does not exist`
+ * errors and queried tenant data with platform SQL.
+ */
+export function getPlatformDatabaseUrl(): string {
+  const configured = process.env.PLATFORM_DATABASE_URL?.trim();
+  const tenantUrl =
+    process.env.DATABASE_URL?.trim() || process.env.DATABASE_URL_UNPOOLED?.trim() || '';
+
+  if (configured) {
+    parsePostgresUrl(configured, 'PLATFORM_DATABASE_URL');
+    if (isProduction() && tenantUrl && isSamePostgresDatabase(configured, tenantUrl)) {
+      throw new PlatformConfigurationError(
+        'PLATFORM_DATABASE_URL_SHARED',
+        'PLATFORM_DATABASE_URL must point to the dedicated platform database, not the tenant database',
+      );
+    }
+    return configured;
+  }
+
+  // Development-only convenience, and only when explicitly enabled. This is
+  // never allowed in production, where it would mix platform and tenant data.
+  if (
+    !isProduction() &&
+    process.env.ALLOW_SHARED_PLATFORM_DATABASE === 'true' &&
+    tenantUrl
+  ) {
+    warnOnce(
+      'shared-platform-db',
+      'PLATFORM_DATABASE_URL is unset; using DATABASE_URL because ALLOW_SHARED_PLATFORM_DATABASE=true. Never enable this in production.',
+    );
+    return tenantUrl;
+  }
+
+  throw new PlatformConfigurationError(
+    'PLATFORM_DATABASE_URL_MISSING',
+    'PLATFORM_DATABASE_URL must be configured with the dedicated platform database connection string',
+  );
 }
 
 export function getPlatformRootDomain(): string | null {

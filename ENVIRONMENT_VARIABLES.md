@@ -14,6 +14,16 @@ This file lists names only; it contains no secret values. The actual deployment 
 
 Names currently referenced in the working tree include `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `PLATFORM_DATABASE_URL`, `PLATFORM_DATABASE_URL_UNPOOLED`, `TENANT_DATABASE_URL`, `TENANT_ADMIN_DATABASE_URL`, and API host-based fields `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_PASSWORD`, `DB_NAME`, and `DB_SYNCHRONIZE`.
 
+### Platform database (required in production)
+
+`PLATFORM_DATABASE_URL` is mandatory in production and must point to the dedicated platform database (for example `sunday_platform`), not to the tenant database. The application no longer falls back to `DATABASE_URL`: a missing URL, an invalid URL, or one that resolves to the same PostgreSQL database as `DATABASE_URL` fails closed. Tenant routes then return HTTP 503 `PLATFORM_CONFIGURATION_ERROR` instead of a misleading `42P01`/empty 500.
+
+- Verify configuration before deploying: `npm run db:verify:platform` (read-only; add `-- --deep` to check tenant identity rows).
+- Check applied platform migrations: `npm run db:check:platform`.
+- Apply platform migrations (additive, uses `PLATFORM_DATABASE_URL` only): `npm run db:migrate:platform`.
+- `ALLOW_SHARED_PLATFORM_DATABASE=true` is a development-only escape hatch. It is rejected in production and must not be configured there.
+- `TENANT_SECRET_KEY` must remain stable across deployments: it decrypts the tenant URLs already stored in `tenant_connections`. Rotating it without `scripts/rotate-tenant-secret.mjs` makes existing churches unresolvable.
+
 The platform helpers also reference `TENANT_PROVISIONING_PROVIDER`, `PLATFORM_ROOT_DOMAIN`, `NEON_API_KEY`, `NEON_ORG_ID`, and `NEON_REGION_ID`. These references are part of pre-existing Next-side work and are not a finalized Nest deployment contract.
 
 ## Authentication and notifications

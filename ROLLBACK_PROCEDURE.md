@@ -63,20 +63,20 @@ Before establishing the multi-tenant platform linkage, two independent verified 
 
 ## 3. Rollback Procedures
 
-### Procedure A: Immediate Platform Decoupling (Non-Destructive)
-Use this procedure if you want to immediately revert the system to standalone single-church operation:
+### Procedure A: Runtime Platform Decoupling (No Longer Supported)
 
-1. **Unset Platform Environment Variable in `.env`:**
-   ```bash
-   # Comment out or clear PLATFORM_DATABASE_URL
-   # PLATFORM_DATABASE_URL="..."
-   ```
-2. **Remove Tenant Identity row from `neondb` (optional, leaves DB standalone):**
-   ```sql
-   DELETE FROM "tenant_identity" WHERE "churchId" = 'c0000000-0000-4000-8000-000000000001';
-   ```
-3. **Result:**  
-   The application immediately connects directly via `DATABASE_URL` as a standalone Sunday School service. All 25 users, 12 servants, 7 classes, 34 children, and attendance history remain active and undisturbed.
+The current application always resolves tenants through the central platform database. **Do not unset `PLATFORM_DATABASE_URL` in production as a way to return to standalone operation.** Removing it fails closed: every tenant route returns HTTP 503 `PLATFORM_CONFIGURATION_ERROR`, while the platform admin and tenant resolution paths stop working.
+
+Unsetting the variable is therefore not a rollback mechanism, and `ALLOW_SHARED_PLATFORM_DATABASE` must not be enabled in production. The tenant database itself is unaffected by this configuration error and remains intact.
+
+If a true standalone deployment is required, treat it as an application rollback, not a configuration change:
+
+1. Select the last application release that predates multi-tenant resolution (the commit before `b125432`) and validate it against a non-production copy.
+2. Deploy that release only with explicit owner approval.
+3. Keep `neondb` untouched; do not delete `tenant_identity` or any platform records.
+4. Verify authentication and operational workflows against the tenant database before announcing the rollback.
+
+If platform records must be preserved while temporarily disabling access, use a maintenance/feature flag rather than removing the connection URL.
 
 ---
 
@@ -110,8 +110,12 @@ In the unlikely event of physical corruption in the production branch:
 3. **Verify Post-Restore Integrity:**
    ```bash
    node scripts/_audit_source_db.mjs
-   npm test
+   npm run test:unit
+   npm run db:verify:platform -- --deep
    ```
+
+   `_audit_source_db.mjs` and `db:verify:platform` are read-only. Do not run the
+   write-capable integration suite against production while validating a restore.
 
 ---
 
