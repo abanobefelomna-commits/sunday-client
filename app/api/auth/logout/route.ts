@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { revokeRefreshToken } from '@/src/server/auth';
 import { requireSameOrigin } from '@/src/server/security';
+import { SESSION_COOKIE, SESSION_COOKIE_PATH } from '@/app/lib/session';
 
 async function POSTHandler(req: Request) {
   const originError = requireSameOrigin(req);
@@ -39,6 +40,13 @@ async function POSTHandler(req: Request) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    expires: new Date(0),
+  });
+  res.cookies.set(SESSION_COOKIE, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: SESSION_COOKIE_PATH,
     expires: new Date(0),
   });
 

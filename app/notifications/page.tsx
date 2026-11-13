@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
+import { MotionGroup, MotionItem, MotionInView } from "../components/motion";
 import {
   Badge,
   EmptyState,
@@ -31,42 +32,48 @@ import {
   type AppNotification,
   type NotificationPreferences,
 } from "../lib/api";
-import { numberAr, relativeTime } from "../lib/format";
+import { relativeTimeFor } from "../lib/format";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 
 const TYPE_META: Record<
   AppNotification["type"],
-  { label: string; tone: string; icon: React.ReactNode }
+  { labelKey: AppMessageKey; tone: string; icon: React.ReactNode }
 > = {
   follow_up_assigned: {
-    label: "متابعة جديدة",
+    labelKey: "notifications.typeAssigned",
     tone: "violet",
     icon: <HeartHandshake className="h-4 w-4" />,
   },
   follow_up_overdue: {
-    label: "متابعة متأخرة",
+    labelKey: "notifications.typeOverdue",
     tone: "danger",
     icon: <AlertTriangle className="h-4 w-4" />,
   },
   follow_up_completed: {
-    label: "اكتملت متابعة",
+    labelKey: "notifications.typeCompleted",
     tone: "ok",
     icon: <CheckCircle2 className="h-4 w-4" />,
   },
   attendance_alert: {
-    label: "تنبيه حضور",
+    labelKey: "notifications.typeAttendance",
     tone: "warn",
     icon: <CalendarCheck className="h-4 w-4" />,
   },
 };
 
-const PREFERENCES: Array<{ key: keyof NotificationPreferences; label: string; hint: string }> = [
-  { key: "followUpAssigned", label: "متابعة جديدة", hint: "عند فتح متابعة أو إسنادها إليك." },
-  { key: "followUpOverdue", label: "متابعة متأخرة", hint: "عند تجاوز تاريخ الاستحقاق." },
-  { key: "followUpCompleted", label: "اكتمال متابعة", hint: "عند إغلاق متابعة تخصّك." },
-  { key: "attendanceAlert", label: "تنبيهات الحضور", hint: "عند تجاوز حد الغياب المفعّل." },
+const PREFERENCES: Array<{
+  key: keyof NotificationPreferences;
+  labelKey: AppMessageKey;
+  hintKey: AppMessageKey;
+}> = [
+  { key: "followUpAssigned", labelKey: "notifications.typeAssigned", hintKey: "notifications.prefAssignedHint" },
+  { key: "followUpOverdue", labelKey: "notifications.typeOverdue", hintKey: "notifications.prefOverdueHint" },
+  { key: "followUpCompleted", labelKey: "notifications.typeCompleted", hintKey: "notifications.prefCompletedHint" },
+  { key: "attendanceAlert", labelKey: "notifications.typeAttendance", hintKey: "notifications.prefAttendanceHint" },
 ];
 
 export default function NotificationsPage() {
+  const { t, number } = useI18n();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [tab, setTab] = useState<"all" | "unread">("all");
@@ -92,11 +99,11 @@ export default function NotificationsPage() {
       setPrefs(resPrefs);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل التنبيهات");
+      setError(err instanceof Error ? err.message : t("notifications.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [tab]);
+  }, [tab, t]);
 
   useEffect(() => {
     load();
@@ -118,7 +125,7 @@ export default function NotificationsPage() {
             ),
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تحديث التنبيه");
+      showToast(err instanceof Error ? err.message : t("notifications.updateFailed"));
     } finally {
       setBusy(false);
     }
@@ -134,9 +141,9 @@ export default function NotificationsPage() {
       } else {
         setItems((value) => value.map((row) => ({ ...row, readAt: row.readAt ?? new Date().toISOString() })));
       }
-      showToast("تم تعليم كل التنبيهات كمقروءة");
+      showToast(t("notifications.allRead"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تحديث التنبيهات");
+      showToast(err instanceof Error ? err.message : t("notifications.updateFailed"));
     } finally {
       setBusy(false);
     }
@@ -150,10 +157,10 @@ export default function NotificationsPage() {
     try {
       const saved = await updateNotificationPreferences({ [key]: next[key] });
       setPrefs(saved);
-      showToast("تم حفظ التفضيل");
+      showToast(t("notifications.preferenceSaved"));
     } catch (err) {
       setPrefs(prefs);
-      showToast(err instanceof Error ? err.message : "فشل حفظ التفضيل");
+      showToast(err instanceof Error ? err.message : t("notifications.preferenceFailed"));
     } finally {
       setBusy(false);
     }
@@ -172,26 +179,26 @@ export default function NotificationsPage() {
         <PageHeader
           eyebrow={
             <>
-              <BellRing className="h-4 w-4" aria-hidden="true" /> مركز التنبيهات
+              <BellRing className="h-4 w-4" aria-hidden="true" /> {t("notifications.eyebrow")}
             </>
           }
-          title="التنبيهات"
-          subtitle="كل ما يحتاج انتباهك: متابعات جديدة، تأخيرات، واكتمال الحالات — دون تكرار."
+          title={t("notifications.title")}
+          subtitle={t("notifications.subtitle")}
           actions={
             <>
               <button type="button" className="btn ghost sm" onClick={load} disabled={loading || busy}>
-                <RefreshCw className="h-4 w-4" aria-hidden="true" /> تحديث
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> {t("common.refresh")}
               </button>
               <button type="button" className="btn sm" onClick={markAll} disabled={busy || unreadCount === 0}>
-                <Check className="h-4 w-4" aria-hidden="true" /> تعليم الكل كمقروء
+                <Check className="h-4 w-4" aria-hidden="true" /> {t("notifications.markAll")}
               </button>
             </>
           }
         />
 
         <div className="two-col">
-          <section className="surface surface-pad" aria-label="قائمة التنبيهات">
-            <div className="tabs2" role="tablist" aria-label="تصفية التنبيهات">
+          <MotionInView as="section" className="surface surface-pad" ariaLabel={t("notifications.listAria")}>
+            <div className="tabs2" role="tablist" aria-label={t("notifications.filterAria")}>
               <button
                 type="button"
                 role="tab"
@@ -201,8 +208,8 @@ export default function NotificationsPage() {
                   setTab("all");
                 }}
               >
-                الكل
-                <span className="count">{numberAr(items.length)}</span>
+                {t("notifications.all")}
+                <span className="count">{number(items.length)}</span>
               </button>
               <button
                 type="button"
@@ -213,8 +220,8 @@ export default function NotificationsPage() {
                   setTab("unread");
                 }}
               >
-                غير المقروء
-                <span className="count">{numberAr(unreadCount)}</span>
+                {t("notifications.unread")}
+                <span className="count">{number(unreadCount)}</span>
               </button>
             </div>
 
@@ -225,29 +232,31 @@ export default function NotificationsPage() {
             ) : items.length === 0 ? (
               <EmptyState
                 icon={<Bell className="h-5 w-5" />}
-                title={tab === "unread" ? "لا توجد تنبيهات غير مقروءة" : "لا توجد تنبيهات بعد"}
+                title={tab === "unread" ? t("notifications.emptyUnread") : t("notifications.emptyAll")}
                 description={
                   tab === "unread"
-                    ? "رائع — كل شيء تحت السيطرة."
-                    : "ستصلك هنا التنبيهات عند إسناد متابعة أو تجاوز الاستحقاق أو تغيّر الحضور."
+                    ? t("notifications.emptyUnreadBody")
+                    : t("notifications.emptyAllBody")
                 }
               />
             ) : (
-              <div className="list-stack">
+              <MotionGroup className="list-stack" amount={0.05}>
                 {items.map((item) => (
-                  <NotificationRow key={item.id} item={item} busy={busy} onToggle={markOne} />
+                  <MotionItem key={item.id}>
+                    <NotificationRow item={item} busy={busy} onToggle={markOne} />
+                  </MotionItem>
                 ))}
-              </div>
+              </MotionGroup>
             )}
-          </section>
+          </MotionInView>
 
-          <aside className="surface surface-pad" aria-label="تفضيلات التنبيهات">
+          <MotionInView as="aside" className="surface surface-pad" ariaLabel={t("notifications.prefsAria")} delay={0.06}>
             <div className="surface-head">
               <div>
                 <h2>
-                  <Settings2 className="mr-1 inline h-4 w-4" aria-hidden="true" /> التفضيلات
+                  <Settings2 className="mr-1 inline h-4 w-4" aria-hidden="true" /> {t("notifications.prefs")}
                 </h2>
-                <p>اختر ما يصلك — تُطبَّق التفضيلات داخل قاعدة البيانات قبل إنشاء التنبيه.</p>
+                <p>{t("notifications.prefsHint")}</p>
               </div>
             </div>
 
@@ -264,20 +273,20 @@ export default function NotificationsPage() {
                       style={{ justifyContent: "space-between", gap: 12 }}
                     >
                       <div style={{ flex: 1, minWidth: 160 }}>
-                        <b style={{ display: "block", fontSize: ".9rem" }}>{preference.label}</b>
-                        <small style={{ color: "var(--mute)", fontSize: ".78rem" }}>{preference.hint}</small>
+                        <b style={{ display: "block", fontSize: ".9rem" }}>{t(preference.labelKey)}</b>
+                        <small style={{ color: "var(--mute)", fontSize: ".78rem" }}>{t(preference.hintKey)}</small>
                       </div>
                       <button
                         type="button"
                         role="switch"
                         aria-checked={enabled}
-                        aria-label={preference.label}
+                        aria-label={t(preference.labelKey)}
                         className={`chip ${enabled ? "on" : ""}`}
                         style={{ minWidth: 74, justifyContent: "center" }}
                         disabled={busy}
                         onClick={() => togglePreference(preference.key)}
                       >
-                        {enabled ? "مفعّل" : "متوقف"}
+                        {enabled ? t("common.enabled") : t("common.disabled")}
                       </button>
                     </div>
                   );
@@ -287,16 +296,14 @@ export default function NotificationsPage() {
 
             <div className="notice" style={{ marginTop: 14 }}>
               <Bell className="h-4 w-4 flex-none" aria-hidden="true" />
-              <span>
-                التنبيهات داخل التطبيق فقط. لا تُرسل رسائل بريد أو SMS، ولا تحتوي أي تصنيف نفسي أو سلوكي.
-              </span>
+              <span>{t("notifications.inAppOnly")}</span>
             </div>
-          </aside>
+          </MotionInView>
         </div>
 
         {tab === "all" && unreadShown > 0 ? (
           <p style={{ color: "var(--mute)", fontSize: ".82rem", textAlign: "center" }}>
-            {numberAr(unreadShown)} تنبيه غير مقروء في هذه القائمة.
+            {t("notifications.unreadSummary", { count: number(unreadShown) })}
           </p>
         ) : null}
       </main>
@@ -317,8 +324,9 @@ function NotificationRow({
   busy: boolean;
   onToggle: (item: AppNotification) => void;
 }) {
+  const { t, locale } = useI18n();
   const meta = TYPE_META[item.type] ?? {
-    label: item.type,
+    labelKey: null,
     tone: "muted",
     icon: <Bell className="h-4 w-4" />,
   };
@@ -347,8 +355,8 @@ function NotificationRow({
           <div style={{ minWidth: 0 }}>
             <div className="grow-wrap" style={{ gap: 6 }}>
               <b style={{ fontSize: ".94rem" }}>{item.title}</b>
-              <Badge tone={meta.tone}>{meta.label}</Badge>
-              {unread ? <Badge tone="danger" dot>جديد</Badge> : null}
+              <Badge tone={meta.tone}>{meta.labelKey ? t(meta.labelKey) : item.type}</Badge>
+              {unread ? <Badge tone="danger" dot>{t("common.new")}</Badge> : null}
             </div>
             {item.body ? (
               <p style={{ margin: "4px 0 0", fontSize: ".85rem", color: "var(--ink-2, var(--mute))", lineHeight: 1.7 }}>
@@ -356,12 +364,12 @@ function NotificationRow({
               </p>
             ) : null}
             <small style={{ color: "var(--mute)", fontSize: ".76rem" }}>
-              {relativeTime(item.createdAt)}
+              {relativeTimeFor(item.createdAt, locale)}
               {href ? (
                 <>
                   {" · "}
                   <Link href={href} className="link-quiet">
-                    فتح السجل
+                    {t("notifications.openRecord")}
                   </Link>
                 </>
               ) : null}
@@ -374,10 +382,10 @@ function NotificationRow({
           className="btn ghost sm"
           disabled={busy}
           onClick={() => onToggle(item)}
-          aria-label={unread ? "تعليم كمقروء" : "تعليم كغير مقروء"}
+          aria-label={unread ? t("notifications.markRead") : t("notifications.markUnread")}
         >
           {unread ? <Check className="h-4 w-4" aria-hidden="true" /> : <UserRound className="h-4 w-4" aria-hidden="true" />}
-          {unread ? "قرأته" : "غير مقروء"}
+          {unread ? t("notifications.readAction") : t("notifications.unreadAction")}
         </button>
       </div>
     </article>

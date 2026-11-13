@@ -1,21 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { loginUser } from "../lib/api";
 import { toast } from "sonner";
+import { useI18n } from "../lib/app-i18n";
 
-export default function LoginPage() {
+function safeNext(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  if (value === "/login" || value.startsWith("/login?")) return null;
+  return value;
+}
+
+function LoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const { t } = useI18n();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password) {
-      setError("يرجى إدخال البريد الإلكتروني أو رقم الهاتف وكلمة السر.");
-      toast.error("يرجى إدخال بيانات الدخول كاملة.");
+      setError(t("login.required"));
+      toast.error(t("login.requiredToast"));
       return;
     }
 
@@ -24,10 +34,11 @@ export default function LoginPage() {
 
     try {
       const res = await loginUser(identifier.trim(), password);
-      toast.success(`أهلاً بك يا ${res.user.name || "خادم المسيح"}! تم تسجيل الدخول بنجاح ✝`);
-      window.location.href = "/dashboard";
+      const name = res.user.name || t("login.defaultUser");
+      toast.success(t("login.welcome", { name }));
+      window.location.href = safeNext(searchParams.get("next")) ?? "/dashboard";
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "بيانات الدخول غير صحيحة، حاول مجدداً";
+      const msg = err instanceof Error ? err.message : t("login.failed");
       setError(msg);
       toast.error(msg);
       setLoading(false);
@@ -36,10 +47,9 @@ export default function LoginPage() {
 
   return (
     <div className="auth-page relative min-h-screen grid place-items-center p-4 overflow-hidden">
-      {/* Top right theme toggle & back link */}
       <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
         <Link href="/" className="btn ghost sm">
-          الرئيسية
+          {t("common.backHome")}
         </Link>
       </div>
 
@@ -49,12 +59,12 @@ export default function LoginPage() {
         </div>
 
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-1">
-          أهلاً بيك
+          {t("login.title")}
         </h2>
-        <p className="hint mb-6 text-slate-500">دخول الخدام والمشرفين</p>
+        <p className="hint mb-6 text-slate-500">{t("login.subtitle")}</p>
 
-        <form onSubmit={handleSubmit} className="f text-right">
-          <label htmlFor="identifier">اسم المستخدم / البريد / الهاتف</label>
+        <form onSubmit={handleSubmit} className="f text-start">
+          <label htmlFor="identifier">{t("login.identifier")}</label>
           <input
             id="identifier"
             type="text"
@@ -67,7 +77,7 @@ export default function LoginPage() {
             disabled={loading}
           />
 
-          <label htmlFor="password">كلمة السر</label>
+          <label htmlFor="password">{t("login.password")}</label>
           <input
             id="password"
             type="password"
@@ -79,12 +89,12 @@ export default function LoginPage() {
             disabled={loading}
           />
 
-          <div className="mt-2 text-left">
+          <div className="mt-2 text-start">
             <Link
               href="/forgot-password"
               className="auth-accent-link text-sm font-semibold hover:underline"
             >
-              نسيت كلمة السر؟
+              {t("login.forgot")}
             </Link>
           </div>
 
@@ -101,23 +111,37 @@ export default function LoginPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
-                <span>جارٍ التحقق...</span>
+                <span>{t("login.submitting")}</span>
               </>
             ) : (
-              <span>دخول</span>
+              <span>{t("login.submit")}</span>
             )}
           </button>
         </form>
 
         <p className="hint mt-6">
-          ليس لديك حساب؟{" "}
+          {t("login.noAccount")}{" "}
           <Link href="/register" className="auth-accent-link font-bold">
-            أنشئ حساب خادم جديد
+            {t("login.createAccount")}
           </Link>
         </p>
 
-        <p className="bless text-xs mt-6">بفضل ربنا يسوع وبقوة صليبه ✝</p>
+        <p className="bless text-xs mt-6">{t("login.blessing")}</p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="auth-page relative min-h-screen grid place-items-center p-4">
+          <div className="auth-card w-full max-w-md p-8 sm:p-10" aria-busy="true" />
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

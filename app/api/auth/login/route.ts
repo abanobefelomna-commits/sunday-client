@@ -5,6 +5,7 @@ import {
   issueRefreshToken,
   signAccessToken,
   normalizeEmail,
+  sessionCookie,
 } from '@/src/server/auth';
 import { badRequest, unauthorized, serverError } from '@/src/server/middleware';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
@@ -129,6 +130,9 @@ export async function POST(req: Request) {
         path: '/api/auth',
         expires: refreshToken.expiresAt,
       });
+
+      const [sessionName, sessionValue, sessionOptions] = sessionCookie(refreshToken.expiresAt);
+      res.cookies.set(sessionName, sessionValue, sessionOptions);
 
       return applyTenantCookie(res, tenant.slug);
     } catch (error) {

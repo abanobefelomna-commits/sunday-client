@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
-import { MOTION, Reveal } from "../components/motion";
+import { MotionGroup, MotionInView, MotionItem } from "../components/motion";
 import {
   Badge,
   EmptyState,
@@ -40,18 +40,15 @@ import {
   type NewsItem,
 } from "../lib/api";
 import {
-  FOLLOW_UP_STATUS_LABELS,
-  formatShortDate,
   followUpTone,
-  numberAr,
-  percent,
   priorityTone,
-  PRIORITY_LABELS,
   shiftIso,
   todayIso,
 } from "../lib/format";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 
 export default function DashboardPage() {
+  const { t, number, percent, locale } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
   const [followUps, setFollowUps] = useState<FollowUpListResponse | null>(null);
@@ -59,22 +56,31 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [greeting, setGreeting] = useState("");
-  const [todayArabic, setTodayArabic] = useState("");
+  const [todayLabel, setTodayLabel] = useState("");
 
   useEffect(() => {
-    Promise.resolve().then(() => {
-      setUser(getStoredUser());
-      const hour = new Date().getHours();
-      setGreeting(hour < 12 ? "صباح الخير" : hour < 18 ? "أهلاً بيك" : "مساء الخير");
-      setTodayArabic(
-        new Date().toLocaleDateString("ar-EG", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })
-      );
-    });
+    setUser(getStoredUser());
+  }, []);
 
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(
+      hour < 12
+        ? t("dashboard.greetingMorning")
+        : hour < 18
+          ? t("dashboard.greetingAfternoon")
+          : t("dashboard.greetingEvening"),
+    );
+    setTodayLabel(
+      new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }).format(new Date()),
+    );
+  }, [locale, t]);
+
+  useEffect(() => {
     const today = todayIso();
     const from = shiftIso(today, -29);
 
@@ -92,14 +98,23 @@ export default function DashboardPage() {
     });
   }, []);
 
+  const shortDate = useMemo(
+    () =>
+      new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
+        day: "numeric",
+        month: "short",
+      }),
+    [locale],
+  );
+
   const weekly = useMemo(
     () =>
       (analytics?.weekly ?? []).slice(-6).map((row) => ({
-        label: formatShortDate(row.bucket),
+        label: shortDate.format(new Date(row.bucket)),
         value: row.rate ?? 0,
-        hint: `${formatShortDate(row.bucket)} — ${percent(row.rate)}`,
+        hint: `${shortDate.format(new Date(row.bucket))} — ${percent(row.rate)}`,
       })),
-    [analytics],
+    [analytics, percent, shortDate],
   );
 
   const activeCases = followUps?.data ?? [];
@@ -112,6 +127,7 @@ export default function DashboardPage() {
   };
   const attendanceRate = analytics?.totals.attendanceRate ?? null;
   const students = analytics?.totals.students ?? 0;
+  const displayName = user?.name?.replace(/^أ\.\s*/, "") || t("dashboard.defaultUser");
 
   return (
     <div className="min-h-screen pb-32">
@@ -121,108 +137,109 @@ export default function DashboardPage() {
         <PageHeader
           eyebrow={
             <>
-              <Sparkles className="h-4 w-4" aria-hidden="true" /> مساحتك الرعوية
+              <Sparkles className="h-4 w-4" aria-hidden="true" /> {t("dashboard.eyebrow")}
             </>
           }
-          title={`${greeting} يا ${user?.name?.replace(/^أ\.\s*/, "") || "خادم المسيح"}`}
-          subtitle={`${todayArabic} — نظرة سريعة على رحلة أولادنا هذا الشهر.`}
+          title={t("dashboard.greeting", { greeting, name: displayName })}
+          subtitle={t("dashboard.subtitle", { date: todayLabel })}
           actions={
             <>
               <Link href="/attendance" className="btn sm">
                 <CalendarCheck className="h-4 w-4" aria-hidden="true" />
-                تسجيل حضور اليوم
+                {t("dashboard.attendanceAction")}
               </Link>
               <Link href="/follow-ups" className="btn ghost sm">
                 <HeartHandshake className="h-4 w-4" aria-hidden="true" />
-                المتابعات
+                {t("dashboard.followUpsAction")}
               </Link>
             </>
           }
         />
 
-        <Reveal><section className="hero-inner-card" aria-label="ملخص الخدمة">
+        <MotionInView as="section" className="hero-inner-card" ariaLabel={t("dashboard.summaryAria")}>
           <span className="eyebrow" style={{ color: "rgba(255,255,255,.82)" }}>
-            رحلة الطالب
+            {t("dashboard.heroEyebrow")}
           </span>
-          <h2>كل طفل له حكاية… ونحن هنا لنرافقها</h2>
-          <p>
-            حضور، افتقاد، متابعة رعوية وتقدم تعليمي في مكان واحد — بلغة واضحة وأرقام حقيقية.
-          </p>
+          <h2>{t("dashboard.heroTitle")}</h2>
+          <p>{t("dashboard.heroBody")}</p>
           <div className="hero-chips">
             <span>
               <Baby className="h-3.5 w-3.5" aria-hidden="true" />
-              {numberAr(students)} طفل
+              {t("dashboard.studentsChip", { count: number(students) })}
             </span>
             <span>
               <Users className="h-3.5 w-3.5" aria-hidden="true" />
-              {numberAr(analytics?.totals.activeClasses ?? classes.length)} فصل
+              {t("dashboard.classesChip", { count: number(analytics?.totals.activeClasses ?? classes.length) })}
             </span>
             <span>
               <HeartHandshake className="h-3.5 w-3.5" aria-hidden="true" />
-              {numberAr(summary.open + summary.inProgress)} متابعة نشطة
+              {t("dashboard.activeFollowUpsChip", { count: number(summary.open + summary.inProgress) })}
             </span>
             {summary.overdue > 0 ? (
               <span>
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
-                {numberAr(summary.overdue)} متأخرة
+                {t("dashboard.overdueChip", { count: number(summary.overdue) })}
               </span>
             ) : null}
           </div>
-        </section></Reveal>
+        </MotionInView>
 
         {loading ? (
           <SkeletonCards count={4} />
         ) : (
-          <Reveal><section className="kpi-grid" aria-label="المؤشرات الرئيسية">
-            <Reveal className="kpi-grid-item">
-            <StatCard
-              label="الأطفال المسجلون"
-              value={numberAr(students)}
-              hint={`${numberAr(analytics?.totals.childrenWithAttendance ?? 0)} طفل لديه سجل حضور`}
-              icon={<Baby className="h-4 w-4" />}
-              color="var(--pri)"
-            />
-            </Reveal>
-            <Reveal className="kpi-grid-item" delay={MOTION.stagger}>
-            <StatCard
-              label="نسبة الحضور (30 يومًا)"
-              value={percent(attendanceRate)}
-              hint={`${numberAr(analytics?.totals.recordedRecords ?? 0)} سجل حضور`}
-              icon={<CheckCircle2 className="h-4 w-4" />}
-              color="var(--ok)"
-            />
-            </Reveal>
-            <Reveal className="kpi-grid-item" delay={MOTION.stagger * 2}>
-            <StatCard
-              label="متابعات نشطة"
-              value={numberAr(summary.open + summary.inProgress)}
-              hint={`${numberAr(summary.open)} مفتوحة · ${numberAr(summary.inProgress)} قيد المتابعة`}
-              icon={<HeartHandshake className="h-4 w-4" />}
-              color="var(--warn)"
-            />
-            </Reveal>
-            <Reveal className="kpi-grid-item" delay={MOTION.stagger * 3}>
-            <StatCard
-              label="متابعات متأخرة"
-              value={numberAr(summary.overdue)}
-              hint={summary.overdue > 0 ? "تحتاج تدخّلًا اليوم" : "لا يوجد تأخير — شكرًا لاجتهادكم"}
-              icon={<AlertTriangle className="h-4 w-4" />}
-              color="var(--danger)"
-            />
-            </Reveal>
-          </section></Reveal>
+          <MotionGroup as="section" className="kpi-grid" ariaLabel={t("dashboard.kpiAria")} amount={0.1}>
+            <MotionItem className="kpi-grid-item">
+              <StatCard
+                label={t("dashboard.registeredStudents")}
+                value={number(students)}
+                hint={t("dashboard.studentsWithAttendance", { count: number(analytics?.totals.childrenWithAttendance ?? 0) })}
+                icon={<Baby className="h-4 w-4" />}
+                color="var(--pri)"
+              />
+            </MotionItem>
+            <MotionItem className="kpi-grid-item">
+              <StatCard
+                label={t("dashboard.attendanceRate30")}
+                value={percent(attendanceRate)}
+                hint={t("dashboard.attendanceRecords", { count: number(analytics?.totals.recordedRecords ?? 0) })}
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                color="var(--ok)"
+              />
+            </MotionItem>
+            <MotionItem className="kpi-grid-item">
+              <StatCard
+                label={t("dashboard.activeFollowUps")}
+                value={number(summary.open + summary.inProgress)}
+                hint={t("dashboard.followUpsBreakdown", {
+                  open: number(summary.open),
+                  progress: number(summary.inProgress),
+                })}
+                icon={<HeartHandshake className="h-4 w-4" />}
+                color="var(--warn)"
+              />
+            </MotionItem>
+            <MotionItem className="kpi-grid-item">
+              <StatCard
+                label={t("dashboard.overdueFollowUps")}
+                value={number(summary.overdue)}
+                hint={summary.overdue > 0 ? t("dashboard.needsAttention") : t("dashboard.noOverdue")}
+                icon={<AlertTriangle className="h-4 w-4" />}
+                color="var(--danger)"
+              />
+            </MotionItem>
+          </MotionGroup>
         )}
 
         <div className="two-col">
           <div className="stack">
-            <section className="surface surface-pad" aria-label="اتجاه الحضور">
+            <MotionInView as="section" className="surface surface-pad" ariaLabel={t("dashboard.weeklyTrend")}>
               <div className="surface-head">
                 <div>
-                  <h2>اتجاه الحضور الأسبوعي</h2>
-                  <p>نسبة الحضور والغياب بعذر خلال آخر 6 أسابيع</p>
+                  <h2>{t("dashboard.weeklyTrend")}</h2>
+                  <p>{t("dashboard.weeklyTrendHint")}</p>
                 </div>
                 <Link href="/analytics" className="link-quiet">
-                  التحليلات <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("nav.analytics")} <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
               {loading ? (
@@ -232,35 +249,35 @@ export default function DashboardPage() {
                   <MiniBars data={weekly} height={150} />
                   <div className="legend">
                     <span>
-                      <i style={{ ["--l-color" as string]: "var(--pri)" }} /> نسبة الحضور الأسبوعية
+                      <i style={{ ["--l-color" as string]: "var(--pri)" }} /> {t("dashboard.attendanceLegend")}
                     </span>
                     <span>
-                      <i style={{ ["--l-color" as string]: "var(--warn)" }} /> الغياب بعذر لا يُحتسب حضورًا
+                      <i style={{ ["--l-color" as string]: "var(--warn)" }} /> {t("dashboard.excusedLegend")}
                     </span>
                   </div>
                 </>
               ) : (
                 <EmptyState
                   icon="📊"
-                  title="لا توجد بيانات حضور بعد"
-                  description="سجّل حضور أول جلسة وسيبدأ المخطط في الظهور فورًا."
+                  title={t("dashboard.noAttendance")}
+                  description={t("dashboard.noAttendanceBody")}
                   action={
                     <Link href="/attendance" className="btn sm">
-                      تسجيل الحضور
+                      {t("dashboard.recordAttendance")}
                     </Link>
                   }
                 />
               )}
-            </section>
+            </MotionInView>
 
-            <section className="surface surface-pad" aria-label="متابعات تحتاج اهتمامًا">
+            <MotionInView as="section" className="surface surface-pad" ariaLabel={t("dashboard.needsFollowUp")} delay={0.06}>
               <div className="surface-head">
                 <div>
-                  <h2>محتاجين متابعة</h2>
-                  <p>حالات مفتوحة مرتبة حسب الأولوية والاستحقاق</p>
+                  <h2>{t("dashboard.needsFollowUp")}</h2>
+                  <p>{t("dashboard.needsFollowUpHint")}</p>
                 </div>
                 <Link href="/follow-ups" className="link-quiet">
-                  عرض الكل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("common.viewAll")} <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
 
@@ -275,30 +292,30 @@ export default function DashboardPage() {
               ) : (
                 <EmptyState
                   icon="🕊️"
-                  title="لا توجد متابعات نشطة"
-                  description="كل الأطفال مستقرون في الحضور والافتقاد حاليًا. يمكنك تشغيل قواعد المتابعة يدويًا من صفحة المتابعات."
+                  title={t("dashboard.noActiveFollowUps")}
+                  description={t("dashboard.noActiveFollowUpsBody")}
                   action={
                     <Link href="/follow-ups" className="btn ghost sm">
-                      إدارة القواعد
+                      {t("dashboard.manageRules")}
                     </Link>
                   }
                 />
               )}
-            </section>
+            </MotionInView>
           </div>
 
           <div className="stack">
-            <section className="surface surface-pad" aria-label="ملخص الرعاية">
+            <MotionInView as="section" className="surface surface-pad" ariaLabel={t("dashboard.careSummary")}>
               <div className="surface-head">
                 <div>
-                  <h2>ملخص الرعاية</h2>
-                  <p>آخر 30 يومًا</p>
+                  <h2>{t("dashboard.careSummary")}</h2>
+                  <p>{t("dashboard.last30")}</p>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
                 <ProgressRing
                   value={attendanceRate}
-                  caption="نسبة الحضور"
+                  caption={t("dashboard.attendanceRate")}
                   color={
                     attendanceRate === null
                       ? "var(--mute)"
@@ -310,40 +327,40 @@ export default function DashboardPage() {
                   }
                 />
                 <div className="stack-sm" style={{ flex: 1, minWidth: 150 }}>
-                  <MetricRow label="حضور" value={analytics?.distribution.present ?? 0} tone="var(--ok)" />
-                  <MetricRow label="غياب" value={analytics?.distribution.absent ?? 0} tone="var(--danger)" />
-                  <MetricRow label="متأخر" value={analytics?.distribution.late ?? 0} tone="var(--warn)" />
-                  <MetricRow label="بعذر" value={analytics?.distribution.excused ?? 0} tone="var(--violet)" />
+                  <MetricRow label={t("dashboard.present")} value={analytics?.distribution.present ?? 0} tone="var(--ok)" />
+                  <MetricRow label={t("dashboard.absent")} value={analytics?.distribution.absent ?? 0} tone="var(--danger)" />
+                  <MetricRow label={t("dashboard.late")} value={analytics?.distribution.late ?? 0} tone="var(--warn)" />
+                  <MetricRow label={t("dashboard.excused")} value={analytics?.distribution.excused ?? 0} tone="var(--violet)" />
                 </div>
               </div>
               <div className="divider" style={{ margin: "16px 0" }} />
               <div className="stack-sm">
                 <MetricRow
-                  label="متابعات بدون مسؤول"
+                  label={t("dashboard.unassignedFollowUps")}
                   value={analytics?.followUps.unassignedCases ?? 0}
                   tone="var(--warn)"
                 />
                 <MetricRow
-                  label="متابعات أُغلقت هذا الشهر"
+                  label={t("dashboard.resolvedThisMonth")}
                   value={analytics?.followUps.resolvedInRange ?? 0}
                   tone="var(--ok)"
                 />
                 <MetricRow
-                  label="أنشطة رعوية مسجّلة"
+                  label={t("dashboard.careActivities")}
                   value={analytics?.followUps.activitiesInRange ?? 0}
                   tone="var(--pri)"
                 />
               </div>
-            </section>
+            </MotionInView>
 
-            <section className="surface surface-pad" aria-label="آخر الأخبار">
+            <MotionInView as="section" className="surface surface-pad" ariaLabel={t("dashboard.latestNews")} delay={0.06}>
               <div className="surface-head">
                 <div>
-                  <h2>آخر الأخبار</h2>
-                  <p>إعلانات الخدمة</p>
+                  <h2>{t("dashboard.latestNews")}</h2>
+                  <p>{t("dashboard.latestNewsHint")}</p>
                 </div>
                 <Link href="/news" className="link-quiet">
-                  الكل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("common.all")} <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
               {news.length > 0 ? (
@@ -355,24 +372,24 @@ export default function DashboardPage() {
                       </span>
                       <span className="grow">
                         <b>{item.title || item.content.slice(0, 40)}</b>
-                        <small>{new Date(item.createdAt).toLocaleDateString("ar-EG")}</small>
+                        <small>{shortDate.format(new Date(item.createdAt))}</small>
                       </span>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <EmptyState icon="📰" title="لا توجد أخبار منشورة" description="ستظهر إعلانات الخدمة هنا." />
+                <EmptyState icon="📰" title={t("dashboard.noNews")} description={t("dashboard.noNewsBody")} />
               )}
-            </section>
+            </MotionInView>
 
-            <section className="surface surface-pad" aria-label="الفصول">
+            <MotionInView as="section" className="surface surface-pad" ariaLabel={t("dashboard.classes")} delay={0.1}>
               <div className="surface-head">
                 <div>
-                  <h2>الفصول</h2>
-                  <p>نسبة الحضور لكل فصل</p>
+                  <h2>{t("dashboard.classes")}</h2>
+                  <p>{t("dashboard.classesHint")}</p>
                 </div>
                 <Link href="/classes" className="link-quiet">
-                  الكل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("common.all")} <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
               {(analytics?.classes ?? []).length > 0 ? (
@@ -384,7 +401,12 @@ export default function DashboardPage() {
                       </span>
                       <span className="grow">
                         <b>{item.name}</b>
-                        <small>{numberAr(item.students)} طفل · {numberAr(item.openFollowUps)} متابعة</small>
+                        <small>
+                          {t("dashboard.studentsMeta", {
+                            students: number(item.students),
+                            followUps: number(item.openFollowUps),
+                          })}
+                        </small>
                       </span>
                       <Badge tone={item.rate === null ? "muted" : item.rate >= 85 ? "ok" : item.rate >= 70 ? "warn" : "danger"}>
                         {percent(item.rate)}
@@ -393,9 +415,9 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState icon="🏫" title="لا توجد فصول" description="أضف فصلًا من صفحة الفصول." />
+                <EmptyState icon="🏫" title={t("dashboard.noClasses")} description={t("dashboard.noClassesBody")} />
               )}
-            </section>
+            </MotionInView>
           </div>
         </div>
       </main>
@@ -406,18 +428,23 @@ export default function DashboardPage() {
 }
 
 function MetricRow({ label, value, tone }: { label: string; value: number; tone: string }) {
+  const { number } = useI18n();
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "var(--mute)", fontSize: ".84rem" }}>
         <i style={{ width: 8, height: 8, borderRadius: 3, background: tone }} aria-hidden="true" />
         {label}
       </span>
-      <b style={{ fontSize: ".98rem" }}>{numberAr(value)}</b>
+      <b style={{ fontSize: ".98rem" }}>{number(value)}</b>
     </div>
   );
 }
 
 function FollowUpRow({ item }: { item: FollowUpCase }) {
+  const { t } = useI18n();
+  const statusKey = `status.${item.status}` as AppMessageKey;
+  const priorityKey = `priority.${item.priority}` as AppMessageKey;
+
   return (
     <Link href={`/follow-ups/${item.id}`} className="listrow">
       <span className="avatar-md" aria-hidden="true">
@@ -429,13 +456,13 @@ function FollowUpRow({ item }: { item: FollowUpCase }) {
       </span>
       <span style={{ display: "grid", gap: 4, justifyItems: "end" }}>
         <Badge tone={followUpTone(item.status)} dot>
-          {FOLLOW_UP_STATUS_LABELS[item.status]}
+          {t(statusKey)}
         </Badge>
-        <Badge tone={priorityTone(item.priority)}>{PRIORITY_LABELS[item.priority]}</Badge>
+        <Badge tone={priorityTone(item.priority)}>{t(priorityKey)}</Badge>
       </span>
       {item.isOverdue ? (
         <Badge tone="danger">
-          <AlertTriangle className="h-3 w-3" aria-hidden="true" /> متأخرة
+          <AlertTriangle className="h-3 w-3" aria-hidden="true" /> {t("dashboard.overdueFollowUps")}
         </Badge>
       ) : null}
       <BarChart3 className="h-4 w-4 opacity-30" aria-hidden="true" />

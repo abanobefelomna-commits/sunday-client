@@ -10,6 +10,7 @@
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 \"tests/**/*.test.mjs\"",
     "test:unit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 \"tests/unit/*.test.mjs\"",
     "test:integration": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test --test-concurrency=1 \"tests/integration/*.test.mjs\"",
+    "test:e2e": "playwright test",
     "db:migrate": "node scripts/apply-sql-migration.mjs",
     "db:migrate:platform": "node scripts/migrate-platform.mjs",
     "db:check:platform": "node scripts/migrate-platform.mjs --check",
@@ -32,6 +33,7 @@
     "sonner": "^2.0.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",

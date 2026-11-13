@@ -2541,4 +2541,16 @@ table.data tbody tr:hover { background: color-mix(in srgb, var(--pri) 4%, transp
   .skel { animation: none; }
   .sheet { animation: none; }
   .mini-bars i, .bar-track > i { transition: none; }
+
+  /*
+   * Framer Motion cannot know the preference until after hydration, so the
+   * first frame may still carry hidden inline styles. Force entrance wrappers
+   * visible for reduced-motion users; CSS !important wins over inline styles.
+   */
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+  }
 }

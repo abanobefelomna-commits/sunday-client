@@ -178,6 +178,73 @@ export function clearStoredAuth(): void {
   localStorage.removeItem('ss_user');
 }
 
+const PUBLIC_PAGE_PATHS = new Set([
+  '/',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-otp',
+  '/churches',
+  '/join',
+  '/privacy',
+  '/terms',
+]);
+
+function isPublicPage(): boolean {
+  if (typeof window === 'undefined') return true;
+  const path = window.location.pathname;
+  return PUBLIC_PAGE_PATHS.has(path) || path.startsWith('/register/church');
+}
+
+/**
+ * Sends the browser through the server logout route so the httpOnly session
+ * and refresh cookies are cleared before landing on the login screen. Without
+ * this, the proxy would keep redirecting an expired session to the dashboard.
+ */
+function handleExpiredSession(): void {
+  if (typeof window === 'undefined' || isPublicPage()) return;
+  if (expiredSessionRedirect) return;
+  expiredSessionRedirect = true;
+  clearStoredAuth();
+  const next = `${window.location.pathname}${window.location.search}`;
+  window.location.assign(`/logout?next=${encodeURIComponent(next)}`);
+}
+
+/** Prevents concurrent 401s from stacking multiple logout navigations. */
+let expiredSessionRedirect = false;
+
+let refreshPromise: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}',
+        });
+        if (!res.ok) return null;
+        const data = (await res.json()) as {
+          accessToken?: string;
+          user?: AuthUser;
+        };
+        if (data.accessToken && data.user) {
+          setStoredAuth(data.accessToken, data.user);
+          return data.accessToken;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -197,10 +264,23 @@ async function request<T>(
   }
 
   const url = `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  const send = () =>
+    fetch(url, {
+      ...options,
+      headers,
+    });
+
+  let res = await send();
+
+  if (res.status === 401 && !endpoint.startsWith('/api/auth/')) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers['Authorization'] = `Bearer ${refreshed}`;
+      res = await send();
+    } else {
+      handleExpiredSession();
+    }
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));

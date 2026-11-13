@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { MOTION } from "./motion";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 import {
   BarChart3,
   Baby,
@@ -20,20 +21,20 @@ import {
   X,
 } from "lucide-react";
 
-const PRIMARY = [
-  { href: "/dashboard", icon: Home, label: "الرئيسية" },
-  { href: "/children", icon: Baby, label: "الأطفال" },
-  { href: "/attendance", icon: CalendarCheck, label: "الحضور" },
-  { href: "/follow-ups", icon: HeartHandshake, label: "المتابعات" },
-  { href: "/analytics", icon: BarChart3, label: "التحليلات" },
+const PRIMARY: Array<{ href: string; icon: typeof Home; key: AppMessageKey }> = [
+  { href: "/dashboard", icon: Home, key: "nav.home" },
+  { href: "/children", icon: Baby, key: "nav.children" },
+  { href: "/attendance", icon: CalendarCheck, key: "nav.attendance" },
+  { href: "/follow-ups", icon: HeartHandshake, key: "nav.followUpsShort" },
+  { href: "/analytics", icon: BarChart3, key: "nav.analytics" },
 ];
 
-const SECONDARY = [
-  { href: "/classes", icon: BookOpen, label: "الفصول" },
-  { href: "/servants", icon: Users, label: "الخدام" },
-  { href: "/friday-prep", icon: ClipboardCheck, label: "تحضير الجمعة" },
-  { href: "/news", icon: Newspaper, label: "الأخبار" },
-  { href: "/notifications", icon: Bell, label: "التنبيهات" },
+const SECONDARY: Array<{ href: string; icon: typeof Home; key: AppMessageKey }> = [
+  { href: "/classes", icon: BookOpen, key: "nav.classes" },
+  { href: "/servants", icon: Users, key: "nav.servants" },
+  { href: "/friday-prep", icon: ClipboardCheck, key: "nav.fridayPrep" },
+  { href: "/news", icon: Newspaper, key: "nav.news" },
+  { href: "/notifications", icon: Bell, key: "nav.notificationsShort" },
 ];
 
 export default function BottomNav() {
@@ -41,16 +42,17 @@ export default function BottomNav() {
   const [openedAtPath, setOpenedAtPath] = useState<string | null>(null);
   const moreOpen = openedAtPath === pathname;
   const reduceMotion = useReducedMotion();
+  const { t } = useI18n();
 
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
 
   return (
     <>
-      <nav className="tb2" aria-label="التنقل السريع">
+      <nav className="tb2" aria-label={t("nav.primaryAria")}>
         <div className="sidebar-brand" aria-hidden="true">
           <span className="sidebar-brand-mark">✝</span>
-          <span>مدارس الأحد</span>
+          <span>{t("common.appName")}</span>
         </div>
 
         {PRIMARY.map((item) => {
@@ -67,12 +69,12 @@ export default function BottomNav() {
               <span aria-hidden="true" className="text-xl">
                 <Icon className="h-5 w-5" />
               </span>
-              <span>{item.label}</span>
+              <span>{t(item.key)}</span>
             </Link>
           );
         })}
 
-        <div className="nav-secondary" aria-label="روابط إضافية">
+        <div className="nav-secondary" aria-label={t("nav.secondaryAria")}>
           {SECONDARY.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -87,7 +89,7 @@ export default function BottomNav() {
                 <span aria-hidden="true">
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
-                <span>{item.label}</span>
+                <span>{t(item.key)}</span>
               </Link>
             );
           })}
@@ -97,13 +99,13 @@ export default function BottomNav() {
           type="button"
           className="nav-more"
           onClick={() => setOpenedAtPath(pathname)}
-          aria-label="المزيد من الصفحات"
+          aria-label={t("nav.moreAria")}
           aria-expanded={moreOpen}
         >
           <span aria-hidden="true">
             <LayoutGrid className="h-5 w-5" />
           </span>
-          <span>المزيد</span>
+          <span>{t("nav.more")}</span>
         </button>
       </nav>
 
@@ -116,13 +118,13 @@ export default function BottomNav() {
             if (event.target === event.currentTarget) setOpenedAtPath(null);
           }}
         >
-          <div className="sheet" role="dialog" aria-modal="true" aria-label="المزيد من الصفحات">
+          <div className="sheet" role="dialog" aria-modal="true" aria-label={t("nav.moreAria")}>
             <div className="sheet-head">
               <div>
-                <h2>المزيد</h2>
-                <p>كل صفحات الخدمة في مكان واحد</p>
+                <h2>{t("nav.sheetTitle")}</h2>
+                <p>{t("nav.sheetHint")}</p>
               </div>
-              <button type="button" className="ib" onClick={() => setOpenedAtPath(null)} aria-label="إغلاق">
+              <button type="button" className="ib" onClick={() => setOpenedAtPath(null)} aria-label={t("common.close")}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -135,8 +137,8 @@ export default function BottomNav() {
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="grow">
-                      <b>{item.label}</b>
-                      <small>فتح الصفحة</small>
+                      <b>{t(item.key)}</b>
+                      <small>{t("nav.openPage")}</small>
                     </span>
                   </Link>
                 );

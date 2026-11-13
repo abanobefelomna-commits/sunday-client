@@ -1,3 +1,5 @@
+import type { Locale } from './locale';
+
 export const ATTENDANCE_LABELS: Record<string, string> = {
   present: 'حاضر',
   absent: 'غائب',
@@ -133,6 +135,31 @@ export function relativeTime(value?: string | Date | null): string {
   if (diff < day) return `منذ ${Math.floor(diff / 3_600_000)} ساعة`;
   if (diff < 7 * day) return `منذ ${Math.floor(diff / day)} يوم`;
   return formatDate(date);
+}
+
+/**
+ * Locale-aware relative time used by the authenticated UI. Every non-Arabic
+ * locale falls back to English formatting while keeping its own direction.
+ */
+export function relativeTimeFor(
+  value: string | Date | null | undefined,
+  locale: Locale,
+): string {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const tag = locale === 'ar' ? 'ar-EG' : 'en-US';
+  const diff = Date.now() - date.getTime();
+  const rtf = new Intl.RelativeTimeFormat(tag, { numeric: 'auto' });
+  const minute = 60_000;
+  const hour = 3_600_000;
+  const day = 86_400_000;
+
+  if (diff < minute) return rtf.format(0, 'second');
+  if (diff < hour) return rtf.format(-Math.floor(diff / minute), 'minute');
+  if (diff < day) return rtf.format(-Math.floor(diff / hour), 'hour');
+  if (diff < 7 * day) return rtf.format(-Math.floor(diff / day), 'day');
+  return new Intl.DateTimeFormat(tag, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
 export function ageFromBirthDate(birthDate?: string | null): number | null {

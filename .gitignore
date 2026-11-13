@@ -44,4 +44,8 @@ next-env.d.ts
 # backups and test artifacts
 /backups/
 /.playwright-mcp/
+/test-results/
+/playwright-report/
+/blob-report/
+/.playwright/
 

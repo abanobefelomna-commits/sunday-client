@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   BarChart3,
@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   ClipboardCheck,
   HeartHandshake,
+  Languages,
   LayoutDashboard,
   LogOut,
   Moon,
@@ -22,23 +23,24 @@ import {
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import {
-  getStoredUser,
   clearStoredAuth,
   getImageUrl,
   getNotifications,
+  getStoredUser,
   type AuthUser,
 } from "../lib/api";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 
-const MENU_LINKS = [
-  { href: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
-  { href: "/children", label: "الأطفال", icon: Baby },
-  { href: "/attendance", label: "الحضور", icon: CalendarCheck },
-  { href: "/follow-ups", label: "المتابعات الرعوية", icon: HeartHandshake },
-  { href: "/analytics", label: "التحليلات", icon: BarChart3 },
-  { href: "/classes", label: "الفصول", icon: BookOpen },
-  { href: "/servants", label: "الخدام", icon: Users },
-  { href: "/friday-prep", label: "تحضير الجمعة", icon: ClipboardCheck },
-  { href: "/news", label: "الأخبار", icon: Newspaper },
+const MENU_LINKS: Array<{ href: string; key: AppMessageKey; icon: typeof LayoutDashboard }> = [
+  { href: "/dashboard", key: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/children", key: "nav.children", icon: Baby },
+  { href: "/attendance", key: "nav.attendance", icon: CalendarCheck },
+  { href: "/follow-ups", key: "nav.followUps", icon: HeartHandshake },
+  { href: "/analytics", key: "nav.analytics", icon: BarChart3 },
+  { href: "/classes", key: "nav.classes", icon: BookOpen },
+  { href: "/servants", key: "nav.servants", icon: Users },
+  { href: "/friday-prep", key: "nav.fridayPrep", icon: ClipboardCheck },
+  { href: "/news", key: "nav.news", icon: Newspaper },
 ];
 
 export default function AppHeader() {
@@ -47,8 +49,8 @@ export default function AppHeader() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const router = useRouter();
   const pathname = usePathname();
+  const { t, locale, setLocale } = useI18n();
 
   useEffect(() => {
     setUser(getStoredUser());
@@ -88,32 +90,44 @@ export default function AppHeader() {
 
   const handleLogout = () => {
     clearStoredAuth();
-    router.push("/login");
+    // Server route clears the httpOnly session + refresh cookies, then redirects
+    // to the public landing page. This avoids a stale proxy session loop.
+    window.location.assign("/logout");
   };
 
-  const initial = user?.name ? user.name.replace(/^أ\. /, "").trim().charAt(0) : "✝";
+  const initial = user?.name ? user.name.replace(/^أ\.\s*/, "").trim().charAt(0) : "؟";
   const roleLabel =
     user?.role === "admin" || user?.servantRole === "مسؤول"
-      ? "مسؤول خدمة"
+      ? t("header.roleAdmin")
       : user?.role === "priest" || user?.servantRole === "أب كاهن"
-        ? "أب كاهن"
-        : "خادم";
+        ? t("header.rolePriest")
+        : t("header.roleServant");
 
   return (
     <>
       <header className="ab">
         <Link href="/dashboard" className="abb">
           <span className="lg2">✝</span>
-          <span>مدارس الأحد</span>
+          <span>{t("common.appName")}</span>
         </Link>
 
         <div className="tu">
           <button
             type="button"
             className="ib"
+            onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
+            aria-label={locale === "ar" ? "English" : "العربية"}
+            title={locale === "ar" ? "English" : "العربية"}
+          >
+            <Languages className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            className="ib"
             onClick={toggleTheme}
-            aria-label={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"}
-            title={theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"}
+            aria-label={theme === "dark" ? t("header.themeLight") : t("header.themeDark")}
+            title={theme === "dark" ? t("header.themeLight") : t("header.themeDark")}
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -122,8 +136,8 @@ export default function AppHeader() {
             type="button"
             className="ib"
             onClick={() => setPaletteOpen(true)}
-            aria-label="بحث سريع"
-            title="بحث سريع (Ctrl+K)"
+            aria-label={t("header.search")}
+            title={t("header.searchTitle")}
           >
             <Search className="h-4 w-4" />
           </button>
@@ -131,8 +145,12 @@ export default function AppHeader() {
           <Link
             href="/notifications"
             className="ib relative"
-            aria-label={unread > 0 ? `التنبيهات، ${unread} غير مقروء` : "التنبيهات"}
-            title="التنبيهات"
+            aria-label={
+              unread > 0
+                ? t("header.notificationsUnread", { count: unread })
+                : t("header.notifications")
+            }
+            title={t("header.notifications")}
           >
             <Bell className="h-4 w-4" />
             {unread > 0 ? (
@@ -165,7 +183,7 @@ export default function AppHeader() {
               type="button"
               className="av overflow-hidden flex items-center justify-center p-0"
               onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="حسابي"
+              aria-label={t("header.account")}
               aria-expanded={menuOpen}
             >
               {user?.avatar ? (
@@ -186,7 +204,7 @@ export default function AppHeader() {
               >
                 <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                   <b className="block text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                    {user?.name || "خادم"}
+                    {user?.name || t("header.userFallback")}
                   </b>
                   <small className="text-xs text-slate-500">{roleLabel}</small>
                 </div>
@@ -202,7 +220,7 @@ export default function AppHeader() {
                         className="px-2.5 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2.5 text-slate-700 dark:text-slate-200"
                       >
                         <Icon className="h-4 w-4 opacity-70" aria-hidden="true" />
-                        <span>{item.label}</span>
+                        <span>{t(item.key)}</span>
                       </Link>
                     );
                   })}
@@ -215,7 +233,7 @@ export default function AppHeader() {
                     className="px-2.5 py-2 text-sm font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-2.5 text-slate-700 dark:text-slate-200"
                   >
                     <User className="h-4 w-4 opacity-70" aria-hidden="true" />
-                    <span>الملف الشخصي</span>
+                    <span>{t("nav.profile")}</span>
                   </Link>
                   <button
                     type="button"
@@ -223,7 +241,7 @@ export default function AppHeader() {
                     className="px-2.5 py-2 text-sm font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition flex items-center gap-2.5 text-red-600 dark:text-red-400 text-start"
                   >
                     <LogOut className="h-4 w-4" aria-hidden="true" />
-                    <span>تسجيل الخروج</span>
+                    <span>{t("nav.logout")}</span>
                   </button>
                 </div>
               </div>

@@ -5,6 +5,11 @@ import { createHash, randomBytes } from 'crypto';
 import { query, queryOne } from './db';
 import { getJwtSecret } from './platform/config';
 import { requireTenantContext } from './tenant/context';
+import {
+  SESSION_COOKIE,
+  SESSION_COOKIE_PATH,
+  SESSION_COOKIE_VALUE,
+} from '../../app/lib/session';
 
 const ACCESS_TOKEN_EXPIRY = Number(process.env.JWT_EXPIRES_SECONDS || 900);
 const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TTL_DAYS || 7);
@@ -150,4 +155,22 @@ export function refreshCookieOptions(expiresAt: Date) {
     path: '/api/auth',
     expires: expiresAt,
   };
+}
+
+/**
+ * HttpOnly routing cookie. It carries no user data and is not accepted as an
+ * API credential; it only lets the proxy distinguish signed-in navigations.
+ */
+export function sessionCookieOptions(expiresAt: Date) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: SESSION_COOKIE_PATH,
+    expires: expiresAt,
+  };
+}
+
+export function sessionCookie(expiresAt: Date) {
+  return [SESSION_COOKIE, SESSION_COOKIE_VALUE, sessionCookieOptions(expiresAt)] as const;
 }

@@ -5,6 +5,7 @@ import {
   issueRefreshToken,
   normalizeEmail,
   signAccessToken,
+  sessionCookie,
   validatePasswordStrength,
 } from '@/src/server/auth';
 import { syncServantFromUser } from '@/src/server/servants';
@@ -162,6 +163,9 @@ export async function POST(req: Request) {
         path: '/api/auth',
         expires: refreshToken.expiresAt,
       });
+
+      const [sessionName, sessionValue, sessionOptions] = sessionCookie(refreshToken.expiresAt);
+      res.cookies.set(sessionName, sessionValue, sessionOptions);
 
       return applyTenantCookie(res, tenant.slug);
     } catch (error: unknown) {

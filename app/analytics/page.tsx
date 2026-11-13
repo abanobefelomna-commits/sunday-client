@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
-import { MOTION, Reveal } from "../components/motion";
+import { MotionGroup, MotionInView, MotionItem } from "../components/motion";
 import {
   Badge,
   EmptyState,
@@ -32,29 +32,29 @@ import {
   type AnalyticsOverview,
   type ClassItem,
 } from "../lib/api";
-import {
-  ATTENDANCE_LABELS,
-  formatShortDate,
-  numberAr,
-  percent,
-  shiftIso,
-  todayIso,
-} from "../lib/format";
+import { shiftIso, todayIso } from "../lib/format";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 
-const RANGES: Array<{ key: number; label: string }> = [
-  { key: 30, label: "30 يومًا" },
-  { key: 90, label: "90 يومًا" },
-  { key: 180, label: "6 أشهر" },
-  { key: 365, label: "سنة" },
+const RANGES: Array<{ key: number; labelKey: AppMessageKey }> = [
+  { key: 30, labelKey: "analytics.range30" },
+  { key: 90, labelKey: "analytics.range90" },
+  { key: 180, labelKey: "analytics.range180" },
+  { key: 365, labelKey: "analytics.range365" },
 ];
 
-function monthLabel(bucket: string): string {
-  const date = new Date(`${bucket.slice(0, 10)}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return bucket;
-  return date.toLocaleDateString("ar-EG", { month: "short", year: "2-digit" });
+const ATTENDANCE_ROWS = [
+  { status: "present", color: "var(--ok)", labelKey: "attendance.present" },
+  { status: "late", color: "var(--warn)", labelKey: "attendance.late" },
+  { status: "excused", color: "var(--violet)", labelKey: "attendance.excused" },
+  { status: "absent", color: "var(--danger)", labelKey: "attendance.absent" },
+] as const;
+
+function parseBucket(bucket: string): Date {
+  return new Date(bucket.length <= 10 ? `${bucket}T00:00:00Z` : bucket);
 }
 
 export default function AnalyticsPage() {
+  const { t, number, percent, tag } = useI18n();
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [from, setFrom] = useState("");
@@ -62,6 +62,26 @@ export default function AnalyticsPage() {
   const [classId, setClassId] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const shortDate = useMemo(
+    () =>
+      new Intl.DateTimeFormat(tag, {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      }),
+    [tag],
+  );
+
+  const monthLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat(tag, {
+        month: "short",
+        year: "2-digit",
+        timeZone: "UTC",
+      }),
+    [tag],
+  );
 
   const load = useCallback(async () => {
     if (!from || !to) return;
@@ -79,11 +99,11 @@ export default function AnalyticsPage() {
       setClasses(resClasses);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل التحليلات");
+      setError(err instanceof Error ? err.message : t("analytics.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [from, to, classId]);
+  }, [from, to, classId, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -118,22 +138,28 @@ export default function AnalyticsPage() {
 
   const weeklyBars = useMemo(
     () =>
-      (overview?.weekly ?? []).slice(-14).map((item) => ({
-        label: formatShortDate(item.bucket),
-        value: item.total,
-        hint: `${formatShortDate(item.bucket)} — ${numberAr(item.total)} سجل`,
-      })),
-    [overview],
+      (overview?.weekly ?? []).slice(-14).map((item) => {
+        const label = shortDate.format(parseBucket(item.bucket));
+        return {
+          label,
+          value: item.total,
+          hint: `${label} — ${t("analytics.recordsUnit", { count: number(item.total) })}`,
+        };
+      }),
+    [overview, shortDate, t, number],
   );
 
   const monthlyBars = useMemo(
     () =>
-      (overview?.monthly ?? []).map((item) => ({
-        label: monthLabel(item.bucket),
-        value: item.total,
-        hint: `${monthLabel(item.bucket)} — ${numberAr(item.total)} سجل`,
-      })),
-    [overview],
+      (overview?.monthly ?? []).map((item) => {
+        const label = monthLabel.format(parseBucket(item.bucket));
+        return {
+          label,
+          value: item.total,
+          hint: `${label} — ${t("analytics.recordsUnit", { count: number(item.total) })}`,
+        };
+      }),
+    [overview, monthLabel, t, number],
   );
 
   return (
@@ -141,24 +167,24 @@ export default function AnalyticsPage() {
       <AppHeader />
 
       <main className="pg analytics-page">
-        <Reveal>
-        <PageHeader
-          eyebrow={
-            <>
-              <BarChart3 className="h-4 w-4" aria-hidden="true" /> قراءة الأرقام
-            </>
-          }
-          title="التحليلات الرعوية"
-          subtitle="حضور، غياب، ومتابعات — أرقام من قاعدة البيانات فقط، ضمن نطاق فصولك وصلاحياتك."
-          actions={
-            <button type="button" className="btn ghost sm" onClick={load} disabled={loading}>
-              <RefreshCw className="h-4 w-4" aria-hidden="true" /> تحديث
-            </button>
-          }
-        />
-        </Reveal>
+        <MotionInView>
+          <PageHeader
+            eyebrow={
+              <>
+                <BarChart3 className="h-4 w-4" aria-hidden="true" /> {t("analytics.eyebrow")}
+              </>
+            }
+            title={t("analytics.pageTitle")}
+            subtitle={t("analytics.pageSubtitle")}
+            actions={
+              <button type="button" className="btn ghost sm" onClick={load} disabled={loading}>
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> {t("common.refresh")}
+              </button>
+            }
+          />
+        </MotionInView>
 
-        <Reveal delay={0.04}><section className="surface surface-pad" aria-label="فلاتر التحليلات">
+        <MotionInView as="section" className="surface surface-pad" ariaLabel={t("analytics.filtersAria")} delay={0.04}>
           <div className="filters" style={{ marginBottom: 0 }}>
             <div className="grow-wrap">
               {RANGES.map((range) => (
@@ -169,41 +195,41 @@ export default function AnalyticsPage() {
                   onClick={() => applyRange(range.key)}
                   aria-pressed={activeRangeDays === range.key}
                 >
-                  {range.label}
+                  {t(range.labelKey)}
                 </button>
               ))}
             </div>
 
             <label className="fld" style={{ minWidth: 150 }}>
-              <span className="sr-only">من تاريخ</span>
+              <span className="sr-only">{t("analytics.fromDate")}</span>
               <input
                 type="date"
                 value={from}
                 max={to ?? undefined}
                 onChange={(event) => setFrom(event.target.value)}
-                aria-label="من تاريخ"
+                aria-label={t("analytics.fromDate")}
               />
             </label>
 
             <label className="fld" style={{ minWidth: 150 }}>
-              <span className="sr-only">إلى تاريخ</span>
+              <span className="sr-only">{t("analytics.toDate")}</span>
               <input
                 type="date"
                 value={to}
                 min={from ?? undefined}
                 onChange={(event) => setTo(event.target.value)}
-                aria-label="إلى تاريخ"
+                aria-label={t("analytics.toDate")}
               />
             </label>
 
             <label className="fld" style={{ minWidth: 170 }}>
-              <span className="sr-only">الفصل</span>
+              <span className="sr-only">{t("analytics.class")}</span>
               <select
                 value={classId}
                 onChange={(event) => setClassId(event.target.value)}
-                aria-label="تصفية بالفصل"
+                aria-label={t("analytics.filterClass")}
               >
-                <option value="all">كل الفصول</option>
+                <option value="all">{t("analytics.allClasses")}</option>
                 {classes.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -212,7 +238,7 @@ export default function AnalyticsPage() {
               </select>
             </label>
           </div>
-        </section></Reveal>
+        </MotionInView>
 
         {error ? <Notice tone="danger">{error}</Notice> : null}
 
@@ -231,61 +257,72 @@ export default function AnalyticsPage() {
               <Notice tone="warn">
                 <AlertTriangle className="h-4 w-4 flex-none" aria-hidden="true" />
                 <span>
-                  لا توجد سجلات حضور في الفترة المحددة ({formatShortDate(from)} — {formatShortDate(to)}
-                  ). الأرقام أدناه تعكس الواقع ولا يتم توليد بيانات تجريبية. ابدأ من صفحة الحضور لتسجيل أول جلسة.
+                  {t("analytics.noRecords", {
+                    from: shortDate.format(parseBucket(from)),
+                    to: shortDate.format(parseBucket(to)),
+                  })}
                 </span>
               </Notice>
             ) : null}
 
-            <Reveal delay={0.06}><section className="kpi-grid" aria-label="المؤشرات الرئيسية">
-              <Reveal className="kpi-grid-item" delay={MOTION.stagger * 0}>
-              <StatCard
-                label="نسبة الحضور"
-                value={percent(totals.attendanceRate)}
-                hint={`${numberAr(distribution.present + distribution.late)} حضور من ${numberAr(distribution.total)} سجل`}
-                icon={<TrendingUp className="h-4 w-4" />}
-                color="var(--ok)"
-              />
-              </Reveal>
-              <Reveal className="kpi-grid-item" delay={MOTION.stagger}>
-              <StatCard
-                label="سجلات الحضور"
-                value={numberAr(totals.recordedRecords)}
-                hint={`${numberAr(totals.attendanceSessions)} جلسة · ${numberAr(totals.childrenWithAttendance)} طفل`}
-                icon={<CalendarCheck className="h-4 w-4" />}
-                color="var(--pri)"
-              />
-              </Reveal>
-              <Reveal className="kpi-grid-item" delay={MOTION.stagger * 2}>
-              <StatCard
-                label="الأطفال والفصول"
-                value={`${numberAr(totals.students)} / ${numberAr(totals.activeClasses)}`}
-                hint="طفل مسجّل / فصل نشط"
-                icon={<Baby className="h-4 w-4" />}
-                color="var(--violet)"
-              />
-              </Reveal>
-              <Reveal className="kpi-grid-item" delay={MOTION.stagger * 3}>
-              <StatCard
-                label="متابعات مفتوحة"
-                value={numberAr(followUps.workload)}
-                hint={`${numberAr(followUps.overdueCases)} متأخرة · ${numberAr(followUps.childrenWithOpenCases)} طفل`}
-                icon={<HeartHandshake className="h-4 w-4" />}
-                color="var(--danger)"
-              />
-              </Reveal>
-            </section></Reveal>
+            <MotionGroup as="section" className="kpi-grid" ariaLabel={t("analytics.kpiAria")} delay={0.06} amount={0.1}>
+              <MotionItem className="kpi-grid-item">
+                <StatCard
+                  label={t("analytics.attendanceRate")}
+                  value={percent(totals.attendanceRate)}
+                  hint={t("analytics.attendanceHint", {
+                    present: number(distribution.present + distribution.late),
+                    total: number(distribution.total),
+                  })}
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  color="var(--ok)"
+                />
+              </MotionItem>
+              <MotionItem className="kpi-grid-item">
+                <StatCard
+                  label={t("analytics.records")}
+                  value={number(totals.recordedRecords)}
+                  hint={t("analytics.recordsHint", {
+                    sessions: number(totals.attendanceSessions),
+                    children: number(totals.childrenWithAttendance),
+                  })}
+                  icon={<CalendarCheck className="h-4 w-4" />}
+                  color="var(--pri)"
+                />
+              </MotionItem>
+              <MotionItem className="kpi-grid-item">
+                <StatCard
+                  label={t("analytics.childrenClasses")}
+                  value={`${number(totals.students)} / ${number(totals.activeClasses)}`}
+                  hint={t("analytics.childrenClassesHint")}
+                  icon={<Baby className="h-4 w-4" />}
+                  color="var(--violet)"
+                />
+              </MotionItem>
+              <MotionItem className="kpi-grid-item">
+                <StatCard
+                  label={t("analytics.openFollowUps")}
+                  value={number(followUps.workload)}
+                  hint={t("analytics.openFollowUpsHint", {
+                    overdue: number(followUps.overdueCases),
+                    children: number(followUps.childrenWithOpenCases),
+                  })}
+                  icon={<HeartHandshake className="h-4 w-4" />}
+                  color="var(--danger)"
+                />
+              </MotionItem>
+            </MotionGroup>
 
             <div className="two-col">
-              <section className="surface surface-pad" aria-label="توزيع الحضور">
+              <MotionInView as="section" className="surface surface-pad" ariaLabel={t("analytics.distribution")}>
                 <div className="surface-head">
                   <div>
-                    <h2>توزيع الحضور</h2>
-                    <p>كل سجل مصنّف حسب الحالة المعتمدة.</p>
+                    <h2>{t("analytics.distribution")}</h2>
+                    <p>{t("analytics.distributionHint2")}</p>
                   </div>
                   <ProgressRing
                     value={totals.attendanceRate}
-                    caption="نسبة الحضور"
+                    caption={t("analytics.attendanceRate")}
                     color={
                       totals.attendanceRate === null
                         ? "var(--mute)"
@@ -301,36 +338,35 @@ export default function AnalyticsPage() {
                 {distribution.total === 0 ? (
                   <EmptyState
                     icon={<CalendarCheck className="h-5 w-5" />}
-                    title="لا توجد سجلات في هذه الفترة"
-                    description="غيّر الفترة أو سجّل حضورًا جديدًا."
+                    title={t("analytics.noRecordsInPeriod")}
+                    description={t("analytics.noRecordsInPeriodBody")}
                     action={
                       <Link href="/attendance" className="btn ghost sm">
-                        تسجيل الحضور
+                        {t("dashboard.recordAttendance")}
                       </Link>
                     }
                   />
                 ) : (
                   <div className="stack-sm">
-                    {(
-                      [
-                        ["present", distribution.present, "var(--ok)"],
-                        ["late", distribution.late, "var(--warn)"],
-                        ["excused", distribution.excused, "var(--violet)"],
-                        ["absent", distribution.absent, "var(--danger)"],
-                      ] as Array<[string, number, string]>
-                    ).map(([status, value, color]) => {
-                      const share = distribution.total > 0 ? Math.round((value / distribution.total) * 100) : 0;
+                    {ATTENDANCE_ROWS.map(({ status, color, labelKey }) => {
+                      const value = distribution[status];
+                      const share =
+                        distribution.total > 0 ? Math.round((value / distribution.total) * 100) : 0;
                       return (
                         <div key={status}>
                           <div className="grow-wrap" style={{ justifyContent: "space-between", marginBottom: 4 }}>
-                            <span style={{ fontSize: ".88rem", fontWeight: 700 }}>{ATTENDANCE_LABELS[status]}</span>
+                            <span style={{ fontSize: ".88rem", fontWeight: 700 }}>{t(labelKey)}</span>
                             <span style={{ fontSize: ".82rem", color: "var(--mute)" }}>
-                              {numberAr(value)} · {percent(share)}
+                              {number(value)} · {percent(share)}
                             </span>
                           </div>
                           <div
                             role="img"
-                            aria-label={`${ATTENDANCE_LABELS[status]}: ${value} من ${distribution.total}`}
+                            aria-label={t("analytics.recordAria", {
+                              status: t(labelKey),
+                              value: number(value),
+                              total: number(distribution.total),
+                            })}
                             style={{
                               height: 10,
                               borderRadius: 999,
@@ -353,96 +389,112 @@ export default function AnalyticsPage() {
                     })}
                   </div>
                 )}
-              </section>
+              </MotionInView>
 
-              <section className="surface surface-pad" aria-label="حالة المتابعة الرعوية">
+              <MotionInView
+                as="section"
+                className="surface surface-pad"
+                ariaLabel={t("analytics.careStateAria")}
+                delay={0.06}
+              >
                 <div className="surface-head">
                   <div>
-                    <h2>الرعاية والمتابعة</h2>
-                    <p>حالة الحالات ضمن الفترة المحددة.</p>
+                    <h2>{t("analytics.careTitle")}</h2>
+                    <p>{t("analytics.careHint")}</p>
                   </div>
                 </div>
                 <div className="stack-sm">
-                  <FollowRow label="مفتوحة" value={followUps.openCases} tone="danger" />
-                  <FollowRow label="قيد المتابعة" value={followUps.inProgressCases} tone="warn" />
-                  <FollowRow label="متأخرة" value={followUps.overdueCases} tone="violet" />
-                  <FollowRow label="أُغلقت في الفترة" value={followUps.resolvedInRange} tone="ok" />
-                  <FollowRow label="بدون خادم مسؤول" value={followUps.unassignedCases} tone="muted" />
-                  <FollowRow label="أنشطة موثّقة" value={followUps.activitiesInRange} tone="pri" />
+                  <FollowRow label={t("analytics.careOpen")} value={followUps.openCases} tone="danger" />
+                  <FollowRow label={t("analytics.careInProgress")} value={followUps.inProgressCases} tone="warn" />
+                  <FollowRow label={t("analytics.careOverdue")} value={followUps.overdueCases} tone="violet" />
+                  <FollowRow label={t("analytics.careResolved")} value={followUps.resolvedInRange} tone="ok" />
+                  <FollowRow label={t("analytics.careUnassigned")} value={followUps.unassignedCases} tone="muted" />
+                  <FollowRow label={t("analytics.careActivities")} value={followUps.activitiesInRange} tone="pri" />
                 </div>
                 <Link href="/follow-ups" className="btn ghost sm" style={{ marginTop: 14, justifyContent: "center" }}>
-                  <HeartHandshake className="h-4 w-4" aria-hidden="true" /> فتح المتابعات
+                  <HeartHandshake className="h-4 w-4" aria-hidden="true" /> {t("analytics.openFollowUpsAction")}
                 </Link>
-              </section>
+              </MotionInView>
             </div>
 
             <div className="two-col">
-              <section className="surface surface-pad" aria-label="اتجاه الحضور الأسبوعي">
+              <MotionInView
+                as="section"
+                className="surface surface-pad"
+                ariaLabel={t("analytics.weeklyAria")}
+                delay={0.08}
+              >
                 <div className="surface-head">
                   <div>
-                    <h2>الاتجاه الأسبوعي</h2>
-                    <p>عدد السجلات في كل أسبوع.</p>
+                    <h2>{t("analytics.weeklyTitle")}</h2>
+                    <p>{t("analytics.weeklyHint")}</p>
                   </div>
-                  <Badge tone="muted">آخر {numberAr(weeklyBars.length)} أسبوع</Badge>
+                  <Badge tone="muted">{t("analytics.lastWeeks", { count: number(weeklyBars.length) })}</Badge>
                 </div>
                 {weeklyBars.length === 0 || distribution.total === 0 ? (
-                  <EmptyState title="لا يوجد اتجاه بعد" description="سيظهر المخطط بعد تسجيل جلسات حضور." />
+                  <EmptyState title={t("analytics.noTrend")} description={t("analytics.noTrendBody")} />
                 ) : (
                   <MiniBars data={weeklyBars} height={150} />
                 )}
-              </section>
+              </MotionInView>
 
-              <section className="surface surface-pad" aria-label="الاتجاه الشهري">
+              <MotionInView
+                as="section"
+                className="surface surface-pad"
+                ariaLabel={t("analytics.monthlyAria")}
+                delay={0.1}
+              >
                 <div className="surface-head">
                   <div>
-                    <h2>الاتجاه الشهري</h2>
-                    <p>مقارنة السجلات شهرًا بشهر.</p>
+                    <h2>{t("analytics.monthlyTitle")}</h2>
+                    <p>{t("analytics.monthlyHint")}</p>
                   </div>
                 </div>
                 {monthlyBars.length === 0 || distribution.total === 0 ? (
-                  <EmptyState title="لا يوجد اتجاه بعد" description="سيظهر المخطط بعد تسجيل جلسات حضور." />
+                  <EmptyState title={t("analytics.noTrend")} description={t("analytics.noTrendBody")} />
                 ) : (
                   <MiniBars data={monthlyBars} height={150} />
                 )}
-              </section>
+              </MotionInView>
             </div>
 
-            <section className="surface surface-pad" aria-label="مقارنة الفصول">
+            <MotionInView as="section" className="surface surface-pad" ariaLabel={t("analytics.classCompareAria")} delay={0.12}>
               <div className="surface-head">
                 <div>
-                  <h2>أداء الفصول</h2>
-                  <p>مرتّبة حسب نسبة الحضور — الفصول بلا سجلات تظهر بدون نسبة.</p>
+                  <h2>{t("analytics.classPerformance")}</h2>
+                  <p>{t("analytics.classPerformanceHint2")}</p>
                 </div>
                 <Badge tone="muted">
-                  <Users className="h-3.5 w-3.5" aria-hidden="true" /> {numberAr(overview.classes.length)} فصل
+                  <Users className="h-3.5 w-3.5" aria-hidden="true" />{" "}
+                  {t("analytics.classCount", { count: number(overview.classes.length) })}
                 </Badge>
               </div>
 
               {overview.classes.length === 0 ? (
-                <EmptyState title="لا توجد فصول" description="أضف فصلًا وأطفالًا لتبدأ القراءة." />
+                <EmptyState title={t("dashboard.noClasses")} description={t("analytics.noClassesBody")} />
               ) : (
                 <div className="table-wrap analytics-table-wrap">
                   <table className="data analytics-table">
-                    <caption className="sr-only">أداء الفصول حسب الحضور والمتابعات</caption>
+                    <caption className="sr-only">{t("analytics.tableCaption")}</caption>
                     <thead>
                       <tr>
-                        <th scope="col">الفصل</th>
-                        <th scope="col">الأطفال</th>
-                        <th scope="col">السجلات</th>
-                        <th scope="col">نسبة الحضور</th>
-                        <th scope="col">غياب</th>
-                        <th scope="col">متابعات مفتوحة</th>
+                        <th scope="col">{t("analytics.colClass")}</th>
+                        <th scope="col">{t("analytics.colChildren")}</th>
+                        <th scope="col">{t("analytics.colRecords")}</th>
+                        <th scope="col">{t("analytics.colRate")}</th>
+                        <th scope="col">{t("analytics.colAbsent")}</th>
+                        <th scope="col">{t("analytics.colOpen")}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {overview.classes.map((item) => (
                         <tr key={item.id}>
-                          <th scope="row" data-label="الفصل" style={{ fontWeight: 800 }}>
+                          <th scope="row" data-label={t("analytics.colClass")} style={{ fontWeight: 800 }}>
                             {item.name}
                           </th>
-                          <td data-label="الأطفال">{numberAr(item.students)}</td>
-                          <td data-label="السجلات">{numberAr(item.total)}</td>
-                          <td data-label="نسبة الحضور">
+                          <td data-label={t("analytics.colChildren")}>{number(item.students)}</td>
+                          <td data-label={t("analytics.colRecords")}>{number(item.total)}</td>
+                          <td data-label={t("analytics.colRate")}>
                             <div className="grow-wrap" style={{ gap: 8 }}>
                               <span style={{ minWidth: 42 }}>{percent(item.rate)}</span>
                               <span
@@ -474,12 +526,12 @@ export default function AnalyticsPage() {
                               </span>
                             </div>
                           </td>
-                          <td data-label="غياب">{numberAr(item.absent)}</td>
-                          <td data-label="متابعات مفتوحة">
+                          <td data-label={t("analytics.colAbsent")}>{number(item.absent)}</td>
+                          <td data-label={t("analytics.colOpen")}>
                             {item.openFollowUps > 0 ? (
-                              <Badge tone="danger">{numberAr(item.openFollowUps)}</Badge>
+                              <Badge tone="danger">{number(item.openFollowUps)}</Badge>
                             ) : (
-                              <Badge tone="ok">لا يوجد</Badge>
+                              <Badge tone="ok">{t("analytics.none")}</Badge>
                             )}
                           </td>
                         </tr>
@@ -488,7 +540,7 @@ export default function AnalyticsPage() {
                   </table>
                 </div>
               )}
-            </section>
+            </MotionInView>
           </>
         ) : null}
       </main>
@@ -499,10 +551,11 @@ export default function AnalyticsPage() {
 }
 
 function FollowRow({ label, value, tone }: { label: string; value: number; tone: string }) {
+  const { number } = useI18n();
   return (
     <div className="grow-wrap" style={{ justifyContent: "space-between" }}>
       <span style={{ fontSize: ".88rem" }}>{label}</span>
-      <Badge tone={tone}>{numberAr(value)}</Badge>
+      <Badge tone={tone}>{number(value)}</Badge>
     </div>
   );
 }

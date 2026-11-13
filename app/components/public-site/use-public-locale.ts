@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { isLocale, landingMessages, type Locale } from "./messages";
+import { useEffect } from "react";
+import { useLocale } from "../LocaleProvider";
+import { landingMessages } from "./messages";
 import { getFlowMessages } from "./flow-messages";
 
-const localeStorageKey = "sunday-school-locale";
-
+/**
+ * Public landing/flow copy bound to the application-wide locale provider.
+ * The selected language lives in one place (`ss_locale` cookie + provider);
+ * this hook must never keep its own locale state.
+ */
 export function usePublicLocale() {
-  const [locale, setLocale] = useState<Locale>("ar");
+  const { locale, direction, setLocale } = useLocale();
   const messages = landingMessages[locale];
   const flow = getFlowMessages(locale);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(localeStorageKey);
-    if (isLocale(stored)) window.setTimeout(() => setLocale(stored), 0);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
-    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
     const path = window.location.pathname;
     const isPublicRoute = path === "/" || path === "/churches" || path === "/join" || path.startsWith("/register/church") || path === "/privacy" || path === "/terms";
     document.body.classList.toggle("public-visitor-page", isPublicRoute);
@@ -62,13 +59,9 @@ export function usePublicLocale() {
 
   return {
     locale,
-    direction: locale === "ar" ? "rtl" : "ltr",
+    direction,
     messages,
     flow,
-    setLocale: (value: string) => {
-      if (!isLocale(value)) return;
-      window.localStorage.setItem(localeStorageKey, value);
-      setLocale(value);
-    },
+    setLocale,
   };
 }

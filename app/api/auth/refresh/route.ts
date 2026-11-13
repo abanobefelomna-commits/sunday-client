@@ -6,6 +6,7 @@ import {
   verifyAndRotateRefreshToken,
   issueRefreshToken,
   signAccessToken,
+  sessionCookie,
 } from '@/src/server/auth';
 import { unauthorized, serverError } from '@/src/server/middleware';
 import { requireTenantContext } from '@/src/server/tenant/context';
@@ -116,6 +117,9 @@ async function POSTHandler(req: Request) {
       path: '/api/auth',
       expires: newRefreshToken.expiresAt,
     });
+
+    const [sessionName, sessionValue, sessionOptions] = sessionCookie(newRefreshToken.expiresAt);
+    res.cookies.set(sessionName, sessionValue, sessionOptions);
 
     return res;
   } catch (error) {

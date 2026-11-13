@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { requestPasswordReset, resetPassword } from "../lib/api";
+import { useI18n } from "../lib/app-i18n";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -16,6 +17,7 @@ function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [timer, setTimer] = useState(60);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -28,15 +30,15 @@ function ResetPasswordForm() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (code.length !== 6) {
-      setError("كود التحقق يجب أن يتكون من ٦ أرقام.");
+      setError(t("reset.codeLength"));
       return;
     }
     if (password.length < 8) {
-      setError("كلمة السر يجب أن تتكون من ٨ أحرف على الأقل.");
+      setError(t("reset.passwordLength"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("كلمتا السر غير متطابقتين.");
+      setError(t("reset.mismatch"));
       return;
     }
 
@@ -51,7 +53,7 @@ function ResetPasswordForm() {
       });
       setSuccess(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "تعذر تغيير كلمة السر، حاول مرة أخرى.");
+      setError(err instanceof Error ? err.message : t("reset.changeFailed"));
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ function ResetPasswordForm() {
       await requestPasswordReset(email.trim().toLowerCase());
       setTimer(60);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "تعذر إعادة إرسال الكود.");
+      setError(err instanceof Error ? err.message : t("reset.resendFailed"));
     } finally {
       setResending(false);
     }
@@ -79,24 +81,20 @@ function ResetPasswordForm() {
         OTP
       </div>
       <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
-        إعادة تعيين كلمة السر
+        {t("reset.title")}
       </h1>
-      <p className="hint mb-6 text-slate-500">
-        أدخل رمز التحقق المكوّن من ٦ أرقام والمرسل إلى بريدك الإلكتروني، ثم اختر كلمة سر جديدة.
-      </p>
+      <p className="hint mb-6 text-slate-500">{t("reset.subtitle")}</p>
 
       {success ? (
         <>
-          <p className="msg mt-3 text-emerald-600 dark:text-emerald-400">
-            تم تغيير كلمة السر بنجاح. يمكنك تسجيل الدخول الآن.
-          </p>
+          <p className="msg mt-3 text-emerald-600 dark:text-emerald-400">{t("reset.success")}</p>
           <Link href="/login" className="btn big w-full mt-6 inline-block">
-            تسجيل الدخول
+            {t("login.submit")}
           </Link>
         </>
       ) : (
-        <form onSubmit={handleSubmit} className="f text-right">
-          <label htmlFor="email">البريد الإلكتروني</label>
+        <form onSubmit={handleSubmit} className="f text-start">
+          <label htmlFor="email">{t("register.email")}</label>
           <input
             id="email"
             type="email"
@@ -108,7 +106,7 @@ function ResetPasswordForm() {
             disabled={loading}
           />
 
-          <label htmlFor="code">كود الاستعادة (٦ أرقام)</label>
+          <label htmlFor="code">{t("reset.codeLabel")}</label>
           <input
             id="code"
             type="text"
@@ -123,7 +121,7 @@ function ResetPasswordForm() {
             disabled={loading}
           />
 
-          <label htmlFor="password">كلمة السر الجديدة (٨ أحرف على الأقل)</label>
+          <label htmlFor="password">{t("reset.newPasswordLabel")}</label>
           <input
             id="password"
             type="password"
@@ -135,7 +133,7 @@ function ResetPasswordForm() {
             disabled={loading}
           />
 
-          <label htmlFor="confirmPassword">تأكيد كلمة السر الجديدة</label>
+          <label htmlFor="confirmPassword">{t("reset.confirmLabel")}</label>
           <input
             id="confirmPassword"
             type="password"
@@ -154,7 +152,7 @@ function ResetPasswordForm() {
             className="btn big w-full mt-6"
             disabled={loading || code.length !== 6}
           >
-            {loading ? "جارٍ تغيير كلمة السر..." : "حفظ كلمة السر الجديدة"}
+            {loading ? t("reset.changing") : t("reset.saveNew")}
           </button>
 
           <button
@@ -164,10 +162,10 @@ function ResetPasswordForm() {
             className="auth-accent-link w-full mt-4 text-sm font-semibold hover:underline disabled:opacity-50 disabled:no-underline"
           >
             {resending
-              ? "جارٍ إعادة الإرسال..."
+              ? t("reset.resending")
               : timer > 0
-                ? `إعادة إرسال الكود خلال (${timer}ث)`
-                : "إعادة إرسال الكود"}
+                ? t("reset.resendIn", { seconds: timer })
+                : t("reset.resend")}
           </button>
         </form>
       )}
@@ -176,22 +174,24 @@ function ResetPasswordForm() {
         href="/login"
         className="inline-block mt-6 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
       >
-        العودة لتسجيل الدخول
+        {t("auth.backToLogin")}
       </Link>
     </div>
   );
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useI18n();
+
   return (
     <div className="auth-page relative min-h-screen grid place-items-center p-4">
       <div className="absolute top-6 left-6 z-20 flex items-center gap-3">
         <Link href="/" className="btn ghost sm">
-          الرئيسية
+          {t("common.backHome")}
         </Link>
       </div>
 
-      <Suspense fallback={<div className="text-center py-10">جارٍ التحميل...</div>}>
+      <Suspense fallback={<div className="text-center py-10">{t("common.loading")}</div>}>
         <ResetPasswordForm />
       </Suspense>
     </div>

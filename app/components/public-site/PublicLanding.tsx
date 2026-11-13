@@ -32,7 +32,7 @@ import {
 } from "./messages";
 import { sharedPublicCopy } from "./shared-copy";
 import { usePublicLocale } from "./use-public-locale";
-import { SessionIntro } from "../motion";
+import { MotionInView, SessionIntro } from "../motion";
 
 function PublicHeader({
   locale,
@@ -98,7 +98,7 @@ function PublicHeader({
 function BenefitsStrip({ messages }: { messages: LandingMessages }) {
   const icons = [ShieldCheck, Languages, Sparkles, Headphones, HeartHandshake];
   return (
-    <section className={"ps-benefits"} aria-label={messages.heroNote}>
+    <MotionInView as="section" className={"ps-benefits"} ariaLabel={messages.heroNote}>
       {messages.benefits.map((benefit, index) => {
         const Icon = icons[index];
         return <div className={"ps-benefit"} key={benefit.title}>
@@ -106,7 +106,7 @@ function BenefitsStrip({ messages }: { messages: LandingMessages }) {
           <span><strong>{benefit.title}</strong><small>{benefit.text}</small></span>
         </div>;
       })}
-    </section>
+    </MotionInView>
   );
 }
 
@@ -221,7 +221,7 @@ export default function PublicLanding() {
 
         <div className={"ps-benefitsWrap"}><BenefitsStrip messages={messages} /></div>
 
-        <section className={`${"ps-section"} ${"ps-showcase"}`} id="showcase">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-showcase"}`} id="showcase">
           <div className={"ps-showcaseGrid"}>
             <div className={"ps-showcaseVisual"}><ProductPreview messages={messages} /></div>
             <div className={"ps-sectionCopy"}>
@@ -232,9 +232,9 @@ export default function PublicLanding() {
               <Link className={"ps-primaryButton"} href="/register/church">{messages.start}<ArrowUpRight size={17} /></Link>
             </div>
           </div>
-        </section>
+        </MotionInView>
 
-        <section className={`${"ps-section"} ${"ps-featuresSection"}`} id="features">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-featuresSection"}`} id="features">
           <div className={"ps-sectionHeading"}>
             <span className={"ps-sectionEyebrow"}><Sparkles size={15} />{messages.featuresEyebrow}</span>
             <h2>{messages.featuresTitle}</h2><p>{messages.featuresLead}</p>
@@ -250,9 +250,9 @@ export default function PublicLanding() {
               </article>;
             })}
           </div>
-        </section>
+        </MotionInView>
 
-        <section className={`${"ps-section"} ${"ps-howSection"}`} id="how-it-works">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-howSection"}`} id="how-it-works">
           <div className={"ps-sectionHeading"}>
             <span className={"ps-sectionEyebrow"}><ArrowUpRight size={15} />{messages.howEyebrow}</span>
             <h2>{messages.howTitle}</h2><p>{messages.howLead}</p>
@@ -264,9 +264,9 @@ export default function PublicLanding() {
               <h3>{step.title}</h3><p>{step.text}</p>
             </li>)}
           </ol>
-        </section>
+        </MotionInView>
 
-        <section className={`${"ps-section"} ${"ps-discoverySection"}`} id="churches">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-discoverySection"}`} id="churches">
           <div className={"ps-discoveryCard"}>
             <div className={"ps-discoveryArt"} aria-hidden="true">
               <span className={"ps-discoverySun"} />
@@ -284,17 +284,17 @@ export default function PublicLanding() {
               <p className={"ps-notice"}><CircleHelp size={17} />{messages.directoryNote}</p>
             </div>
           </div>
-        </section>
+        </MotionInView>
 
-        <section className={`${"ps-section"} ${"ps-previewSection"}`} id="preview">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-previewSection"}`} id="preview">
           <div className={"ps-previewBanner"}>
             <span className={"ps-previewEmblem"}><HeartHandshake size={28} /></span>
             <div><span className={"ps-sectionEyebrow"}>{messages.previewEyebrow}</span><h2>{messages.previewTitle}</h2><p>{messages.previewBody}</p><p className={"ps-previewRule"}><Check size={17} />{messages.previewRule}</p></div>
             <Link className={"ps-lightButton"} href="/register/church">{messages.previewAction}<ArrowUpRight size={17} /></Link>
           </div>
-        </section>
+        </MotionInView>
 
-        <section className={`${"ps-section"} ${"ps-faqSection"}`} id="faq">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-faqSection"}`} id="faq">
           <div className={"ps-sectionHeading"}>
             <span className={"ps-sectionEyebrow"}><CircleHelp size={15} />{messages.faqEyebrow}</span>
             <h2>{messages.faqTitle}</h2>
@@ -305,15 +305,15 @@ export default function PublicLanding() {
               <p>{item.answer}</p>
             </details>)}
           </div>
-        </section>
+        </MotionInView>
 
-        <section className={`${"ps-section"} ${"ps-contactSection"}`} id="contact">
+        <MotionInView as="section" className={`${"ps-section"} ${"ps-contactSection"}`} id="contact">
           <div className={"ps-contactCard"}>
             <span className={"ps-contactIcon"}><Headphones size={23} /></span>
             <div><span className={"ps-sectionEyebrow"}>{messages.contactEyebrow}</span><h2>{messages.contactTitle}</h2><p>{messages.contactText}</p><small>{messages.contactStatus}</small></div>
             <Link className={"ps-secondaryButton"} href="#faq">{messages.nav.faq}<ArrowUpRight size={16} /></Link>
           </div>
-        </section>
+        </MotionInView>
       </main>
       <PublicFooter messages={messages} />
     </div>
