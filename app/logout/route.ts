@@ -27,7 +27,10 @@ export async function GET(request: Request) {
   }
 
   const destination = next ? `/login?next=${encodeURIComponent(next)}` : "/";
-  const response = NextResponse.redirect(new URL(destination, request.url));
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || url.protocol.replace(":", "") || "http";
+  const base = host ? `${proto}://${host}` : request.url;
+  const response = NextResponse.redirect(new URL(destination, base));
   const secure = process.env.NODE_ENV === "production";
 
   response.cookies.set("refresh_token", "", {

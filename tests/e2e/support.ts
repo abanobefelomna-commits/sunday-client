@@ -158,6 +158,197 @@ export const FOLLOW_UPS = {
   },
 };
 
+export const CHILD_NAME = "Mark Adel Ibrahim Hanna";
+
+export const CHILDREN = {
+  data: [
+    {
+      id: "child-1",
+      name: CHILD_NAME,
+      birthDate: "2015-04-12",
+      gender: "male" as const,
+      address: "12 Nile Street",
+      parentName: "Adel Hanna",
+      parentPhone: "01000000001",
+      phone: "01000000002",
+      notes: null,
+      avatar: null,
+      classId: "class-1",
+      class: { id: "class-1", name: "First Grade", grade: "first" },
+      assignedServantId: "servant-1",
+      assignedServant: { id: "servant-1", name: "Mina Samy" },
+      createdAt: "2026-09-01T00:00:00.000Z",
+    },
+    {
+      id: "child-2",
+      name: "Mariam Adel Ibrahim Hanna",
+      birthDate: "2016-08-20",
+      gender: "female" as const,
+      address: null,
+      parentName: "Adel Hanna",
+      parentPhone: "01000000001",
+      phone: null,
+      notes: null,
+      avatar: null,
+      classId: "class-1",
+      class: { id: "class-1", name: "First Grade", grade: "first" },
+      assignedServantId: "servant-1",
+      assignedServant: { id: "servant-1", name: "Mina Samy" },
+      createdAt: "2026-09-01T00:00:00.000Z",
+    },
+  ],
+  total: 2,
+  page: 1,
+  limit: 50,
+  totalPages: 1,
+};
+
+export const SERVANTS = {
+  data: [
+    {
+      id: "servant-1",
+      name: "Mina Samy",
+      phone: "01000000000",
+      email: "mina@example.test",
+      role: "خادم",
+      avatar: null,
+      classes: [{ id: "class-1", name: "First Grade", grade: "first" }],
+      createdAt: "2026-08-01T00:00:00.000Z",
+    },
+  ],
+  total: 1,
+};
+
+export const FOLLOW_UP_CASE = FOLLOW_UPS.data[0];
+
+export const FOLLOW_UP_DETAIL = {
+  followUp: FOLLOW_UP_CASE,
+  child: {
+    id: "child-1",
+    name: CHILD_NAME,
+    classId: "class-1",
+    className: "First Grade",
+  },
+  activities: [],
+};
+
+export const CHILD_PROFILE = {
+  student: {
+    id: "child-1",
+    name: CHILD_NAME,
+    birthDate: "2015-04-12",
+    gender: "male",
+    parentPhone: "01000000001",
+    parentName: "Adel Hanna",
+    address: "12 Nile Street",
+    notes: null,
+    phone: "01000000002",
+    avatar: null,
+    classId: "class-1",
+    assignedServantId: "servant-1",
+    createdAt: "2026-09-01T00:00:00.000Z",
+    updatedAt: "2026-11-01T00:00:00.000Z",
+    class: { id: "class-1", name: "First Grade", grade: "first" },
+    assignedServant: { id: "servant-1", name: "Mina Samy" },
+    responsibleServants: [
+      { id: "servant-1", name: "Mina Samy", phone: "01000000000", role: "خادم", avatar: null },
+    ],
+  },
+  stats: {
+    attendanceRate: 87.5,
+    totalSessions: 8,
+    present: 6,
+    absent: 1,
+    late: 1,
+    excused: 0,
+    absencesLast30: 1,
+    currentStreak: 3,
+    lastAttendanceDate: "2026-11-08",
+    lastVisitDate: "2026-11-01",
+    openFollowUps: 1,
+    progressAverage: 78,
+    progressEntries: 2,
+  },
+  attendance: [
+    { id: "attendance-1", date: "2026-11-08", status: "present", notes: null, classId: "class-1", className: "First Grade" },
+    { id: "attendance-2", date: "2026-11-01", status: "late", notes: "Traffic", classId: "class-1", className: "First Grade" },
+    { id: "attendance-3", date: "2026-10-25", status: "absent", notes: null, classId: "class-1", className: "First Grade" },
+  ],
+  progress: [
+    {
+      id: "progress-1",
+      subject: "Bible reading",
+      level: "growing",
+      score: 82,
+      notes: "Reads confidently.",
+      assessedAt: "2026-11-01",
+      assessorName: "Mina Samy",
+    },
+  ],
+  visitations: [
+    {
+      id: "visitation-1",
+      date: "2026-11-01",
+      type: "home_visit",
+      status: "completed",
+      notes: "Family encouraged.",
+      followUpDate: "2026-12-01",
+      servantName: "Mina Samy",
+      servantId: "servant-1",
+    },
+  ],
+  followUps: [FOLLOW_UP_CASE],
+  notes: [
+    {
+      id: "note-1",
+      visibility: "class",
+      body: "Brings his Bible every week.",
+      authorId: "user-e2e",
+      authorName: "Mina Samy",
+      createdAt: "2026-11-02T10:00:00.000Z",
+      updatedAt: "2026-11-02T10:00:00.000Z",
+    },
+  ],
+  activities: [],
+  timeline: [
+    {
+      id: "timeline-1",
+      type: "attendance",
+      title: "Present",
+      description: "First Grade",
+      date: "2026-11-08",
+      status: "present",
+      href: null,
+    },
+  ],
+  permissions: { canWrite: true, canViewPrivateNotes: true, manager: true },
+};
+
+export const CLASS_DETAIL = {
+  ...CLASSES[0],
+  leadServant: { id: "servant-1", name: "Mina Samy" },
+  servants: [{ id: "servant-1", name: "Mina Samy", phone: "01000000000", role: "خادم" }],
+  children: [
+    { id: "child-1", name: CHILD_NAME, phone: "01000000002" },
+    { id: "child-2", name: "Mariam Adel Ibrahim Hanna", phone: "" },
+  ],
+};
+
+export const FRIDAY_PREP = {
+  data: [
+    {
+      id: "prep-1",
+      serverName: "Mina Samy",
+      attendanceChecked: true,
+      lessonTopic: "The Good Shepherd",
+      prepDate: "2026-11-13",
+      content: "Read John 10 and prepare a short activity.",
+      submittedAt: "2026-11-13T18:00:00.000Z",
+      status: "submitted",
+    },
+  ],
+};
+
 export const NEWS = {
   data: [
     {

@@ -45,8 +45,8 @@ import {
 import {
   ageFromBirthDate,
   initials,
-  numberAr,
 } from "../../lib/format";
+import { useI18n } from "../../lib/app-i18n";
 import {
   AttendanceTab,
   FollowUpsTab,
@@ -58,13 +58,13 @@ import {
 
 type TabKey = "overview" | "attendance" | "followups" | "progress" | "notes" | "visitations";
 
-const TABS: Array<{ key: TabKey; label: string; icon: React.ReactNode }> = [
-  { key: "overview", label: "نظرة عامة", icon: <Sparkles className="h-4 w-4" /> },
-  { key: "attendance", label: "الحضور", icon: <CalendarDays className="h-4 w-4" /> },
-  { key: "followups", label: "المتابعات", icon: <HeartHandshake className="h-4 w-4" /> },
-  { key: "progress", label: "التقدم التعليمي", icon: <TrendingUp className="h-4 w-4" /> },
-  { key: "notes", label: "الملاحظات", icon: <NotebookPen className="h-4 w-4" /> },
-  { key: "visitations", label: "الافتقاد", icon: <Home className="h-4 w-4" /> },
+const TABS: Array<{ key: TabKey; labelKey: string; icon: React.ReactNode }> = [
+  { key: "overview", labelKey: "childProfile.tabOverview", icon: <Sparkles className="h-4 w-4" /> },
+  { key: "attendance", labelKey: "childProfile.tabAttendance", icon: <CalendarDays className="h-4 w-4" /> },
+  { key: "followups", labelKey: "childProfile.tabFollowUps", icon: <HeartHandshake className="h-4 w-4" /> },
+  { key: "progress", labelKey: "childProfile.tabProgress", icon: <TrendingUp className="h-4 w-4" /> },
+  { key: "notes", labelKey: "childProfile.tabNotes", icon: <NotebookPen className="h-4 w-4" /> },
+  { key: "visitations", labelKey: "childProfile.tabVisitations", icon: <Home className="h-4 w-4" /> },
 ];
 
 export default function StudentProfilePage({
@@ -73,6 +73,7 @@ export default function StudentProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t, number } = useI18n();
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,11 +94,11 @@ export default function StudentProfilePage({
       setProfile(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل ملف الطالب");
+      setError(err instanceof Error ? err.message : t("childProfile.loadError"));
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     load();
@@ -121,9 +122,9 @@ export default function StudentProfilePage({
     try {
       await createStudentNote(id, { body, visibility });
       await load();
-      showToast("تمت إضافة الملاحظة");
+      showToast(t("childProfile.noteAdded"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل حفظ الملاحظة");
+      showToast(err instanceof Error ? err.message : t("childProfile.noteError"));
     } finally {
       setBusy(false);
     }
@@ -135,9 +136,9 @@ export default function StudentProfilePage({
     try {
       await deleteStudentNote(id, noteId);
       await load();
-      showToast("تم حذف الملاحظة");
+      showToast(t("childProfile.noteDeleted"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل حذف الملاحظة");
+      showToast(err instanceof Error ? err.message : t("childProfile.noteDeleteError"));
     } finally {
       setBusy(false);
     }
@@ -155,9 +156,9 @@ export default function StudentProfilePage({
     try {
       await createEducationalProgress(id, input);
       await load();
-      showToast("تم تسجيل التقدم التعليمي");
+      showToast(t("childProfile.progressAdded"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل حفظ التقدم التعليمي");
+      showToast(err instanceof Error ? err.message : t("childProfile.progressError"));
     } finally {
       setBusy(false);
     }
@@ -169,9 +170,9 @@ export default function StudentProfilePage({
     try {
       await deleteEducationalProgress(id, progressId);
       await load();
-      showToast("تم حذف سجل التقدم");
+      showToast(t("childProfile.progressDeleted"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل حذف سجل التقدم");
+      showToast(err instanceof Error ? err.message : t("childProfile.progressDeleteError"));
     } finally {
       setBusy(false);
     }
@@ -188,9 +189,9 @@ export default function StudentProfilePage({
     try {
       await createFollowUp({ childId: id, ...input });
       await load();
-      showToast("تم فتح متابعة جديدة");
+      showToast(t("childProfile.followUpCreated"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل إنشاء المتابعة");
+      showToast(err instanceof Error ? err.message : t("childProfile.followUpCreateError"));
     } finally {
       setBusy(false);
     }
@@ -210,9 +211,9 @@ export default function StudentProfilePage({
     try {
       await updateFollowUp(followUpId, input);
       await load();
-      showToast("تم تحديث المتابعة");
+      showToast(t("childProfile.followUpUpdated"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تحديث المتابعة");
+      showToast(err instanceof Error ? err.message : t("childProfile.followUpUpdateError"));
     } finally {
       setBusy(false);
     }
@@ -226,9 +227,9 @@ export default function StudentProfilePage({
     try {
       await addFollowUpActivity(followUpId, input);
       await load();
-      showToast("تم تسجيل النشاط");
+      showToast(t("childProfile.activityAdded"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تسجيل النشاط");
+      showToast(err instanceof Error ? err.message : t("childProfile.activityError"));
     } finally {
       setBusy(false);
     }
@@ -255,10 +256,10 @@ export default function StudentProfilePage({
       <div className="min-h-screen pb-32">
         <AppHeader />
         <main className="pg">
-          <Notice tone="danger">{error || "ملف الطالب غير موجود"}</Notice>
+          <Notice tone="danger">{error || t("childProfile.notFound")}</Notice>
           <Link href="/children" className="btn ghost sm" style={{ alignSelf: "flex-start" }}>
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            رجوع لقائمة الأطفال
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+            {t("childProfile.backList")}
           </Link>
         </main>
         <BottomNav />
@@ -276,29 +277,29 @@ export default function StudentProfilePage({
       <main className="pg">
         <div className="grow-wrap" style={{ justifyContent: "space-between" }}>
           <Link href="/children" className="link-quiet">
-            <ArrowRight className="h-4 w-4" aria-hidden="true" /> كل الأطفال
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" /> {t("childProfile.backAll")}
           </Link>
           <PageHeader
             eyebrow={
               <>
-                <UserRound className="h-4 w-4" aria-hidden="true" /> ملف الرحلة
+                <UserRound className="h-4 w-4" aria-hidden="true" /> {t("childProfile.eyebrow")}
               </>
             }
-            title="ملف الطالب"
-            subtitle="سجل متكامل للحضور والرعاية والتقدم التعليمي"
+            title={t("childProfile.title")}
+            subtitle={t("childProfile.subtitle")}
             actions={
               profile.permissions.canWrite ? (
                 <button type="button" className="btn ghost sm" onClick={() => setEditOpen(true)}>
-                  <Pencil className="h-4 w-4" aria-hidden="true" /> تعديل البيانات
+                  <Pencil className="h-4 w-4" aria-hidden="true" /> {t("childProfile.edit")}
                 </button>
               ) : (
-                <Badge tone="muted">عرض فقط — فصل آخر</Badge>
+                <Badge tone="muted">{t("childProfile.viewOnly")}</Badge>
               )
             }
           />
         </div>
 
-        <section className="surface surface-pad" aria-label="بطاقة الطالب">
+        <section className="surface surface-pad" aria-label={t("childProfile.ariaCard")}>
           <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
             <span className="avatar-lg" aria-hidden="true">
               {initials(student.name)}
@@ -309,13 +310,17 @@ export default function StudentProfilePage({
                   {student.name}
                 </h2>
                 <Badge tone={student.gender === "female" ? "violet" : "default"}>
-                  {student.gender === "female" ? "بنت" : "ولد"}
+                  {student.gender === "female" ? t("childProfile.female") : t("childProfile.male")}
                 </Badge>
-                {age !== null ? <Badge tone="muted">{numberAr(age)} سنة</Badge> : null}
+                {age !== null ? (
+                  <Badge tone="muted">{t("childProfile.ageYears", { count: number(age) })}</Badge>
+                ) : null}
               </div>
               <p style={{ margin: "0 0 8px", color: "var(--mute)", fontSize: ".9rem" }}>
-                {student.class?.name || "بدون فصل"}
-                {student.assignedServant?.name ? ` · المسؤول: ${student.assignedServant.name}` : ""}
+                {student.class?.name || t("childProfile.noClass")}
+                {student.assignedServant?.name
+                  ? ` · ${t("childProfile.responsibleName", { name: student.assignedServant.name })}`
+                  : ""}
               </p>
               <div className="grow-wrap">
                 {student.parentPhone ? (
@@ -324,13 +329,13 @@ export default function StudentProfilePage({
                   </a>
                 ) : null}
                 {student.parentName ? (
-                  <Badge tone="muted">ولي الأمر: {student.parentName}</Badge>
+                  <Badge tone="muted">{t("childProfile.parent", { name: student.parentName })}</Badge>
                 ) : null}
               </div>
             </div>
             <ProgressRing
               value={rate}
-              caption="نسبة الحضور"
+              caption={t("childProfile.attendanceRate")}
               color={
                 rate === null
                   ? "var(--mute)"
@@ -345,18 +350,18 @@ export default function StudentProfilePage({
 
           <div className="divider" style={{ margin: "18px 0" }} />
 
-          <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(4, minmax(0,1fr))" }}>
-            <MiniMetric label="جلسات مسجّلة" value={numberAr(profile.stats.totalSessions)} />
-            <MiniMetric label="غياب آخر 30 يومًا" value={numberAr(profile.stats.absencesLast30)} />
-            <MiniMetric label="متابعات نشطة" value={numberAr(profile.stats.openFollowUps)} />
+          <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
+            <MiniMetric label={t("childProfile.sessions")} value={number(profile.stats.totalSessions)} />
+            <MiniMetric label={t("childProfile.absences30")} value={number(profile.stats.absencesLast30)} />
+            <MiniMetric label={t("childProfile.openFollowUps")} value={number(profile.stats.openFollowUps)} />
             <MiniMetric
-              label="متوسط التقدم"
+              label={t("childProfile.avgProgress")}
               value={profile.stats.progressAverage === null ? "—" : `${profile.stats.progressAverage}`}
             />
           </div>
         </section>
 
-        <div className="tabs2" role="tablist" aria-label="أقسام ملف الطالب">
+        <div className="tabs2" role="tablist" aria-label={t("childProfile.tabsAria")}>
           {TABS.map((item) => (
             <button
               key={item.key}
@@ -366,12 +371,12 @@ export default function StudentProfilePage({
               onClick={() => setTab(item.key)}
             >
               {item.icon}
-              {item.label}
+              {t(item.labelKey as Parameters<typeof t>[0])}
               {item.key === "followups" && timelineCounts.followups > 0 ? (
-                <span className="count">{numberAr(timelineCounts.followups)}</span>
+                <span className="count">{number(timelineCounts.followups)}</span>
               ) : null}
               {item.key === "notes" && timelineCounts.notes > 0 ? (
-                <span className="count">{numberAr(timelineCounts.notes)}</span>
+                <span className="count">{number(timelineCounts.notes)}</span>
               ) : null}
             </button>
           ))}
@@ -425,7 +430,7 @@ export default function StudentProfilePage({
           onSaved={async () => {
             setEditOpen(false);
             await load();
-            showToast("تم تحديث بيانات الطفل");
+            showToast(t("childProfile.updated"));
           }}
         />
       ) : null}
@@ -467,6 +472,7 @@ function EditModal({
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [key]: event.target.value }));
@@ -487,41 +493,41 @@ function EditModal({
       });
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل حفظ البيانات");
+      setError(err instanceof Error ? err.message : t("childProfile.saveError"));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal title="تعديل بيانات الطفل" subtitle="البيانات الأساسية فقط — السجل الرعوي لا يُحذف." onClose={onClose} wide>
+    <Modal title={t("childProfile.editTitle")} subtitle={t("childProfile.editSubtitle")} onClose={onClose} wide>
       <form onSubmit={submit} className="f">
         <div className="form-grid">
           <div className="fld">
-            <label htmlFor="e_birth">تاريخ الميلاد</label>
+            <label htmlFor="e_birth">{t("childProfile.birthDate")}</label>
             <input id="e_birth" type="date" value={form.birthDate} onChange={set("birthDate")} />
           </div>
           <div className="fld">
-            <label htmlFor="e_phone">هاتف الطفل</label>
+            <label htmlFor="e_phone">{t("childProfile.childPhone")}</label>
             <input id="e_phone" dir="ltr" value={form.phone} onChange={set("phone")} />
           </div>
           <div className="fld">
-            <label htmlFor="e_parent_phone">هاتف ولي الأمر</label>
+            <label htmlFor="e_parent_phone">{t("childProfile.parentPhone")}</label>
             <input id="e_parent_phone" dir="ltr" value={form.parentPhone} onChange={set("parentPhone")} />
           </div>
           <div className="fld">
-            <label htmlFor="e_parent">اسم ولي الأمر</label>
+            <label htmlFor="e_parent">{t("childProfile.parentName")}</label>
             <input id="e_parent" value={form.parentName} onChange={set("parentName")} />
           </div>
           <div className="fld full">
             <label htmlFor="e_address">
-              <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> العنوان
+              <MapPin className="h-3.5 w-3.5" aria-hidden="true" /> {t("childProfile.address")}
             </label>
             <input id="e_address" value={form.address} onChange={set("address")} />
           </div>
           <div className="fld full">
             <label htmlFor="e_notes">
-              <Mail className="h-3.5 w-3.5" aria-hidden="true" /> ملاحظات أساسية
+              <Mail className="h-3.5 w-3.5" aria-hidden="true" /> {t("childProfile.notes")}
             </label>
             <textarea id="e_notes" rows={3} value={form.notes} onChange={set("notes")} />
           </div>
@@ -529,10 +535,10 @@ function EditModal({
         {error ? <p className="msg err">{error}</p> : null}
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={saving}>
-            {saving ? "جارٍ الحفظ…" : "حفظ"}
+            {saving ? t("common.savingShort") : t("common.save")}
           </button>
         </div>
       </form>

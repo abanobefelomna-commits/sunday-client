@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getChildren, getServants, type ChildItem, type ServantItem } from "../lib/api";
+import { SERVICE_ROLE_KEYS } from "../lib/format";
+import { useI18n } from "../lib/app-i18n";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -11,19 +12,19 @@ interface CommandPaletteProps {
 }
 
 const STATIC_LINKS = [
-  { title: "🏠 الرئيسية", href: "/dashboard" },
-  { title: "🧒 دليل الأطفال", href: "/children" },
-  { title: "📚 الفصول", href: "/classes" },
-  { title: "🤝 الخدام", href: "/servants" },
-  { title: "✅ سجل الحضور والغياب", href: "/attendance" },
-  { title: "📰 الأخبار والإعلانات", href: "/news" },
-];
+  { titleKey: "commandPalette.links.dashboard", href: "/dashboard", icon: "🏠" },
+  { titleKey: "commandPalette.links.children", href: "/children", icon: "🧒" },
+  { titleKey: "commandPalette.links.classes", href: "/classes", icon: "📚" },
+  { titleKey: "commandPalette.links.servants", href: "/servants", icon: "🤝" },
+  { titleKey: "commandPalette.links.attendance", href: "/attendance", icon: "✅" },
+  { titleKey: "commandPalette.links.news", href: "/news", icon: "📰" },
+] as const;
 
 export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [children, setChildren] = useState<ChildItem[]>([]);
   const [servants, setServants] = useState<ServantItem[]>([]);
-  const router = useRouter();
 
   useEffect(() => {
     if (isOpen) {
@@ -54,8 +55,8 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
 
   const q = query.trim().toLowerCase();
 
-  const filteredLinks = STATIC_LINKS.filter((l) =>
-    !q || l.title.toLowerCase().includes(q)
+  const filteredLinks = STATIC_LINKS.filter((link) =>
+    !q || t(link.titleKey).toLowerCase().includes(q)
   );
 
   const filteredChildren = q
@@ -67,14 +68,14 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     : [];
 
   return (
-    <div className="cp" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="cp" onClick={onClose} role="dialog" aria-modal="true" aria-label={t("commandPalette.aria")}>
       <div className="cpb" onClick={(e) => e.stopPropagation()}>
         <input
           autoFocus
-          placeholder="ابحث عن طفل أو خادم أو صفحة…"
+          placeholder={t("commandPalette.placeholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="بحث سريع"
+          aria-label={t("commandPalette.aria")}
         />
 
         <div className="max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
@@ -85,8 +86,10 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               className="ci"
               onClick={onClose}
             >
-              <span>{item.title}</span>
-              <small className="text-slate-400">انتقال</small>
+              <span>
+                {item.icon} {t(item.titleKey)}
+              </span>
+              <small className="text-slate-400">{t("commandPalette.goto")}</small>
             </Link>
           ))}
 
@@ -98,7 +101,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               onClick={onClose}
             >
               <span>🧒 {c.name}</span>
-              <small className="text-blue-500">{c.class?.name || "طفل"}</small>
+              <small className="text-blue-500">{c.class?.name || t("commandPalette.childFallback")}</small>
             </Link>
           ))}
 
@@ -110,16 +113,22 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
               onClick={onClose}
             >
               <span>🤝 {s.name}</span>
-              <small className="text-amber-500">{s.role || "خادم"}</small>
+              <small className="text-amber-500">
+                {s.role
+                  ? SERVICE_ROLE_KEYS[s.role]
+                    ? t(SERVICE_ROLE_KEYS[s.role] as Parameters<typeof t>[0])
+                    : s.role
+                  : t("commandPalette.servantFallback")}
+              </small>
             </Link>
           ))}
 
           {filteredLinks.length === 0 && filteredChildren.length === 0 && filteredServants.length === 0 && (
-            <div className="text-center py-6 text-slate-400">لا توجد نتائج بحث.</div>
+            <div className="text-center py-6 text-slate-400">{t("commandPalette.noResults")}</div>
           )}
         </div>
 
-        <small className="hint block pt-2 text-center">Ctrl+K للبحث السريع، Esc للإغلاق</small>
+        <small className="hint block pt-2 text-center">{t("commandPalette.hint")}</small>
       </div>
     </div>
   );

@@ -29,24 +29,42 @@ import type {
   StudentProfile,
 } from "../../../lib/api";
 import {
-  ATTENDANCE_LABELS,
-  FOLLOW_UP_STATUS_LABELS,
-  LEVEL_LABELS,
-  PRIORITY_LABELS,
-  VISIBILITY_LABELS,
-  VISIT_STATUS_LABELS,
-  VISIT_TYPE_LABELS,
+  SERVICE_ROLE_KEYS,
   attendanceTone,
-  formatDate,
-  formatDateTime,
+  formatDateFor,
+  formatDateTimeFor,
   followUpTone,
   initials,
-  numberAr,
-  percent,
   priorityTone,
   shiftIso,
   todayIso,
 } from "../../../lib/format";
+import { useI18n } from "../../../lib/app-i18n";
+
+const VISIT_TYPE_KEYS: Record<string, string> = {
+  home_visit: "tabs.visitHome",
+  phone_call: "tabs.visitPhone",
+  church_visit: "tabs.visitChurch",
+};
+
+const VISIT_STATUS_KEYS: Record<string, string> = {
+  planned: "tabs.visitPlanned",
+  completed: "tabs.visitCompleted",
+  cancelled: "tabs.visitCancelled",
+};
+
+const LEVEL_KEYS: Record<string, string> = {
+  beginner: "tabs.levelBeginner",
+  growing: "tabs.levelGrowing",
+  proficient: "tabs.levelProficient",
+  advanced: "tabs.levelAdvanced",
+};
+
+const VISIBILITY_KEYS: Record<string, string> = {
+  class: "tabs.visibilityClass",
+  leaders: "tabs.visibilityLeaders",
+  private: "tabs.visibilityPrivate",
+};
 
 /* ------------------------------- Overview ------------------------------- */
 
@@ -60,6 +78,7 @@ const TYPE_META: Record<string, { tone: string; icon: React.ReactNode }> = {
 };
 
 export function OverviewTab({ profile }: { profile: StudentProfile }) {
+  const { t, locale, number } = useI18n();
   const { student } = profile;
   const openFollowUp = profile.followUps.find(
     (item) => item.status === "open" || item.status === "in_progress",
@@ -67,13 +86,13 @@ export function OverviewTab({ profile }: { profile: StudentProfile }) {
 
   return (
     <div className="two-col">
-      <section className="surface surface-pad" aria-label="الخط الزمني">
+      <section className="surface surface-pad" aria-label={t("tabs.timelineAria")}>
         <div className="surface-head">
           <div>
-            <h2>الخط الزمني للرحلة</h2>
-            <p>أحدث الأحداث من الحضور والافتقاد والمتابعة والتقدم</p>
+            <h2>{t("tabs.timelineTitle")}</h2>
+            <p>{t("tabs.timelineHint")}</p>
           </div>
-          <Badge tone="muted">{numberAr(profile.timeline.length)} حدث</Badge>
+          <Badge tone="muted">{t("tabs.timelineCount", { count: number(profile.timeline.length) })}</Badge>
         </div>
         <Timeline
           items={profile.timeline.slice(0, 24).map((item) => ({
@@ -88,18 +107,17 @@ export function OverviewTab({ profile }: { profile: StudentProfile }) {
       </section>
 
       <div className="stack">
-        <section className="surface surface-pad" aria-label="بيانات التواصل">
+        <section className="surface surface-pad" aria-label={t("tabs.contactAria")}>
           <div className="surface-head">
-            <h2>بيانات التواصل</h2>
+            <h2>{t("tabs.contactTitle")}</h2>
           </div>
           <div className="stack-sm">
-            <InfoRow label="ولي الأمر" value={student.parentName || "غير مسجّل"} />
-            <InfoRow label="هاتف ولي الأمر" value={student.parentPhone || "غير مسجّل"} ltr />
-            <InfoRow label="هاتف الطفل" value={student.phone || "غير مسجّل"} ltr />
-            <InfoRow label="العنوان" value={student.address || "غير مسجّل"} />
-            <InfoRow label="تاريخ التسجيل" value={formatDate(student.createdAt)} />
-            <InfoRow label="آخر حضور" value={formatDate(profile.stats.lastAttendanceDate)} />
-            <InfoRow label="آخر افتقاد مكتمل" value={formatDate(profile.stats.lastVisitDate)} />
+            <InfoRow label={t("tabs.parent")} value={student.parentName || t("attendance.notRecorded")} />
+            <InfoRow label={t("tabs.parentPhone")} value={student.parentPhone || t("attendance.notRecorded")} ltr />
+            <InfoRow label={t("tabs.childPhone")} value={student.phone || t("attendance.notRecorded")} ltr />
+            <InfoRow label={t("tabs.registeredAt")} value={formatDateFor(student.createdAt, locale)} />
+            <InfoRow label={t("tabs.lastAttendance")} value={formatDateFor(profile.stats.lastAttendanceDate, locale)} />
+            <InfoRow label={t("tabs.lastVisit")} value={formatDateFor(profile.stats.lastVisitDate, locale)} />
           </div>
           {student.parentPhone ? (
             <a
@@ -107,15 +125,17 @@ export function OverviewTab({ profile }: { profile: StudentProfile }) {
               className="btn sm"
               style={{ width: "100%", marginTop: 14 }}
             >
-              <Phone className="h-4 w-4" aria-hidden="true" /> اتصال بولي الأمر
+              <Phone className="h-4 w-4" aria-hidden="true" /> {t("tabs.callParent")}
             </a>
           ) : null}
         </section>
 
-        <section className="surface surface-pad" aria-label="فريق الرعاية">
+        <section className="surface surface-pad" aria-label={t("tabs.careTeamAria")}>
           <div className="surface-head">
-            <h2>فريق الرعاية</h2>
-            <Badge tone="muted">{numberAr(student.responsibleServants.length)} خادم</Badge>
+            <h2>{t("tabs.careTeamTitle")}</h2>
+            <Badge tone="muted">
+              {t("tabs.servantCount", { count: number(student.responsibleServants.length) })}
+            </Badge>
           </div>
           {student.responsibleServants.length > 0 ? (
             <div className="list-stack">
@@ -125,11 +145,21 @@ export function OverviewTab({ profile }: { profile: StudentProfile }) {
                     {initials(servant.name)}
                   </span>
                   <span className="grow">
-                    <b>{servant.name || "خادم"}</b>
-                    <small>{servant.role}</small>
+                    <b>{servant.name || t("common.notAssigned")}</b>
+                    <small>
+                      {servant.role
+                        ? SERVICE_ROLE_KEYS[servant.role]
+                          ? t(SERVICE_ROLE_KEYS[servant.role] as Parameters<typeof t>[0])
+                          : servant.role
+                        : ""}
+                    </small>
                   </span>
                   {servant.phone ? (
-                    <a className="ib" href={`tel:${servant.phone}`} aria-label={`اتصال بـ ${servant.name}`}>
+                    <a
+                      className="ib"
+                      href={`tel:${servant.phone}`}
+                      aria-label={t("tabs.callAria", { name: servant.name || "" })}
+                    >
                       <Phone className="h-4 w-4" />
                     </a>
                   ) : null}
@@ -139,40 +169,40 @@ export function OverviewTab({ profile }: { profile: StudentProfile }) {
           ) : (
             <EmptyState
               icon={<UserRound className="h-5 w-5" />}
-              title="لا يوجد خادم مسؤول"
-              description="يمكن تعيين خادم مسؤول من شاشة تعديل بيانات الطفل."
+              title={t("tabs.noServantTitle")}
+              description={t("tabs.noServantHint")}
             />
           )}
         </section>
 
-        <section className="surface surface-pad" aria-label="حالة المتابعة">
+        <section className="surface surface-pad" aria-label={t("tabs.followUpAria")}>
           <div className="surface-head">
-            <h2>حالة المتابعة</h2>
+            <h2>{t("tabs.followUpTitle")}</h2>
           </div>
           {openFollowUp ? (
             <div className="stack-sm">
               <div className="grow-wrap">
                 <Badge tone={followUpTone(openFollowUp.status)} dot>
-                  {FOLLOW_UP_STATUS_LABELS[openFollowUp.status]}
+                  {t(`status.${openFollowUp.status}`)}
                 </Badge>
                 <Badge tone={priorityTone(openFollowUp.priority)}>
-                  {PRIORITY_LABELS[openFollowUp.priority]}
+                  {t(`priority.${openFollowUp.priority}`)}
                 </Badge>
-                {openFollowUp.isOverdue ? <Badge tone="danger">متأخرة</Badge> : null}
+                {openFollowUp.isOverdue ? <Badge tone="danger">{t("common.overdue")}</Badge> : null}
               </div>
               <p style={{ margin: 0, fontSize: ".9rem", color: "var(--mute)" }}>{openFollowUp.reason}</p>
               <p style={{ margin: 0, fontSize: ".82rem", color: "var(--mute)" }}>
-                الاستحقاق: {formatDate(openFollowUp.dueDate)}
+                {t("tabs.due", { date: formatDateFor(openFollowUp.dueDate, locale) })}
               </p>
               <Link href={`/follow-ups/${openFollowUp.id}`} className="link-quiet">
-                فتح المتابعة <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                {t("tabs.openFollowUp")} <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
               </Link>
             </div>
           ) : (
             <EmptyState
               icon={<CheckCircle2 className="h-5 w-5" />}
-              title="لا توجد متابعة نشطة"
-              description="الطفل غير مسجّل في أي متابعة مفتوحة حاليًا."
+              title={t("tabs.noActiveTitle")}
+              description={t("tabs.noActiveHint")}
             />
           )}
         </section>
@@ -202,6 +232,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function AttendanceTab({ profile }: { profile: StudentProfile }) {
+  const { t, locale, number, percent } = useI18n();
   const byDate = useMemo(() => {
     const map = new Map<string, StudentProfile["attendance"][number]>();
     profile.attendance.forEach((row) => map.set(row.date, row));
@@ -215,34 +246,40 @@ export function AttendanceTab({ profile }: { profile: StudentProfile }) {
 
   return (
     <div className="stack">
-      <section className="surface surface-pad" aria-label="ملخص الحضور">
+      <section className="surface surface-pad" aria-label={t("tabs.attendanceSummaryAria")}>
         <div className="surface-head">
           <div>
-            <h2>ملخص الحضور</h2>
-            <p>{numberAr(profile.stats.totalSessions)} جلسة مسجّلة · نسبة {percent(profile.stats.attendanceRate)}</p>
+            <h2>{t("tabs.attendanceSummaryTitle")}</h2>
+            <p>
+              {t("tabs.attendanceSummaryHint", {
+                count: number(profile.stats.totalSessions),
+                rate: percent(profile.stats.attendanceRate),
+              })}
+            </p>
           </div>
           <Badge tone={profile.stats.currentStreak > 0 ? "ok" : "muted"}>
-            سلسلة حضور: {numberAr(profile.stats.currentStreak)}
+            {t("tabs.streak", { count: number(profile.stats.currentStreak) })}
           </Badge>
         </div>
         <div className="kpi-grid">
-          <MiniCounter label="حاضر" value={profile.stats.present} color="var(--ok)" />
-          <MiniCounter label="غائب" value={profile.stats.absent} color="var(--danger)" />
-          <MiniCounter label="متأخر" value={profile.stats.late} color="var(--warn)" />
-          <MiniCounter label="بعذر" value={profile.stats.excused} color="var(--violet)" />
+          <MiniCounter label={t("attendance.present")} value={profile.stats.present} color="var(--ok)" />
+          <MiniCounter label={t("attendance.absent")} value={profile.stats.absent} color="var(--danger)" />
+          <MiniCounter label={t("attendance.late")} value={profile.stats.late} color="var(--warn)" />
+          <MiniCounter label={t("attendance.excused")} value={profile.stats.excused} color="var(--violet)" />
         </div>
       </section>
 
-      <section className="surface surface-pad" aria-label="خريطة آخر 35 يومًا">
+      <section className="surface surface-pad" aria-label={t("tabs.mapAria")}>
         <div className="surface-head">
           <div>
-            <h2>آخر 35 يومًا</h2>
-            <p>كل مربع يمثّل يومًا؛ الأيام الفارغة بلا تسجيل.</p>
+            <h2>{t("tabs.mapTitle")}</h2>
+            <p>{t("tabs.mapHint")}</p>
           </div>
           <div className="legend" style={{ margin: 0 }}>
             {Object.entries(STATUS_COLORS).map(([key, color]) => (
               <span key={key}>
-                <i style={{ ["--l-color" as string]: color }} /> {ATTENDANCE_LABELS[key]}
+                <i style={{ ["--l-color" as string]: color }} />{" "}
+                {t(`attendance.${key}` as Parameters<typeof t>[0])}
               </span>
             ))}
           </div>
@@ -254,7 +291,7 @@ export function AttendanceTab({ profile }: { profile: StudentProfile }) {
             gap: 6,
           }}
           role="img"
-          aria-label="خريطة الحضور اليومية"
+          aria-label={t("tabs.mapLegendAria")}
         >
           {days.map((day) => {
             const record = byDate.get(day);
@@ -262,7 +299,9 @@ export function AttendanceTab({ profile }: { profile: StudentProfile }) {
             return (
               <div
                 key={day}
-                title={`${formatDate(day)} — ${record ? ATTENDANCE_LABELS[record.status] : "لا تسجيل"}`}
+                title={`${formatDateFor(day, locale)} — ${
+                  record ? t(`attendance.${record.status}`) : t("tabs.noRecord")
+                }`}
                 style={{
                   aspectRatio: "1",
                   borderRadius: 9,
@@ -277,16 +316,16 @@ export function AttendanceTab({ profile }: { profile: StudentProfile }) {
         </div>
       </section>
 
-      <section className="surface surface-pad" aria-label="سجل الحضور">
+      <section className="surface surface-pad" aria-label={t("tabs.logAria")}>
         <div className="surface-head">
-          <h2>سجل الحضور</h2>
-          <Badge tone="muted">{numberAr(profile.attendance.length)} سجل</Badge>
+          <h2>{t("tabs.logTitle")}</h2>
+          <Badge tone="muted">{t("tabs.recordCount", { count: number(profile.attendance.length) })}</Badge>
         </div>
         {profile.attendance.length === 0 ? (
           <EmptyState
             icon={<CalendarCheck className="h-5 w-5" />}
-            title="لا توجد سجلات حضور"
-            description="سيظهر هنا كل حضور وغياب بمجرد تسجيله من صفحة الحضور."
+            title={t("tabs.noRecordsTitle")}
+            description={t("tabs.noRecordsHint")}
           />
         ) : (
           <div className="list-stack">
@@ -300,13 +339,13 @@ export function AttendanceTab({ profile }: { profile: StudentProfile }) {
                   <CalendarCheck className="h-4 w-4" />
                 </span>
                 <span className="grow">
-                  <b>{ATTENDANCE_LABELS[row.status]}</b>
+                  <b>{t(`attendance.${row.status}`)}</b>
                   <small>
-                    {formatDate(row.date)} · {row.className || "بدون فصل"}
+                    {formatDateFor(row.date, locale)} · {row.className || t("common.noClass")}
                   </small>
                 </span>
                 {row.notes ? <small style={{ maxWidth: 200, color: "var(--mute)" }}>{row.notes}</small> : null}
-                <Badge tone={attendanceTone(row.status)}>{ATTENDANCE_LABELS[row.status]}</Badge>
+                <Badge tone={attendanceTone(row.status)}>{t(`attendance.${row.status}`)}</Badge>
               </div>
             ))}
           </div>
@@ -317,13 +356,14 @@ export function AttendanceTab({ profile }: { profile: StudentProfile }) {
 }
 
 function MiniCounter({ label, value, color }: { label: string; value: number; color: string }) {
+  const { number } = useI18n();
   return (
     <div className="surface" style={{ padding: "12px 14px", boxShadow: "none" }}>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--mute)", fontSize: ".78rem", fontWeight: 700 }}>
         <i style={{ width: 8, height: 8, borderRadius: 3, background: color }} aria-hidden="true" />
         {label}
       </span>
-      <b style={{ display: "block", fontSize: "1.3rem" }}>{numberAr(value)}</b>
+      <b style={{ display: "block", fontSize: "1.3rem" }}>{number(value)}</b>
     </div>
   );
 }
@@ -365,21 +405,22 @@ export function FollowUpsTab({
   const [createOpen, setCreateOpen] = useState(false);
   const [resolveTarget, setResolveTarget] = useState<string | null>(null);
   const [activityTarget, setActivityTarget] = useState<string | null>(null);
+  const { t, number } = useI18n();
 
   const active = profile.followUps.filter((item) => item.status === "open" || item.status === "in_progress");
   const closed = profile.followUps.filter((item) => item.status !== "open" && item.status !== "in_progress");
 
   return (
     <div className="stack">
-      <section className="surface surface-pad" aria-label="متابعات الطالب">
+      <section className="surface surface-pad" aria-label={t("tabs.followUpsAria")}>
         <div className="surface-head">
           <div>
-            <h2>المتابعات الرعوية</h2>
-            <p>قرارات مبنية على وقائع مسجّلة وقواعد معلنة — دون تصنيف نفسي أو سلوكي.</p>
+            <h2>{t("tabs.followUpsTitle")}</h2>
+            <p>{t("tabs.followUpsHint")}</p>
           </div>
           {canWrite ? (
             <button type="button" className="btn sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" aria-hidden="true" /> متابعة جديدة
+              <Plus className="h-4 w-4" aria-hidden="true" /> {t("tabs.newFollowUp")}
             </button>
           ) : null}
         </div>
@@ -387,14 +428,14 @@ export function FollowUpsTab({
         {active.length === 0 && closed.length === 0 ? (
           <EmptyState
             icon={<HeartHandshake className="h-5 w-5" />}
-            title="لا توجد متابعات"
-            description="افتح متابعة يدوية أو شغّل قواعد المتابعة من صفحة المتابعات."
+            title={t("tabs.noFollowUpsTitle")}
+            description={t("tabs.noFollowUpsHint")}
           />
         ) : (
           <div className="stack">
             {active.length > 0 ? (
               <div className="stack-sm">
-                <h3 className="section-title">نشطة ({numberAr(active.length)})</h3>
+                <h3 className="section-title">{t("tabs.activeCount", { count: number(active.length) })}</h3>
                 {active.map((item) => (
                   <FollowUpCard
                     key={item.id}
@@ -411,7 +452,7 @@ export function FollowUpsTab({
 
             {closed.length > 0 ? (
               <div className="stack-sm">
-                <h3 className="section-title">مغلقة ({numberAr(closed.length)})</h3>
+                <h3 className="section-title">{t("tabs.closedCount", { count: number(closed.length) })}</h3>
                 {closed.map((item) => (
                   <FollowUpCard key={item.id} item={item} busy={busy} />
                 ))}
@@ -473,20 +514,27 @@ function FollowUpCard({
   onDismiss?: () => void;
   onActivity?: () => void;
 }) {
+  const { t, locale, number } = useI18n();
   const isActive = item.status === "open" || item.status === "in_progress";
   return (
     <article className="surface" style={{ padding: 16 }}>
       <div className="grow-wrap" style={{ justifyContent: "space-between", marginBottom: 8 }}>
         <div className="grow-wrap">
           <Badge tone={followUpTone(item.status)} dot>
-            {FOLLOW_UP_STATUS_LABELS[item.status]}
+            {t(`status.${item.status}`)}
           </Badge>
-          <Badge tone={priorityTone(item.priority)}>{PRIORITY_LABELS[item.priority]}</Badge>
-          {item.isOverdue ? <Badge tone="danger">متأخرة</Badge> : null}
-          <Badge tone="muted">{item.source === "rule" ? "قاعدة تلقائية" : item.source === "visitation" ? "افتقاد" : "يدوية"}</Badge>
+          <Badge tone={priorityTone(item.priority)}>{t(`priority.${item.priority}`)}</Badge>
+          {item.isOverdue ? <Badge tone="danger">{t("common.overdue")}</Badge> : null}
+          <Badge tone="muted">
+            {item.source === "rule"
+              ? t("followUps.sourceRule")
+              : item.source === "visitation"
+                ? t("followUps.sourceVisitation")
+                : t("followUps.sourceManual")}
+          </Badge>
         </div>
         <Link href={`/follow-ups/${item.id}`} className="link-quiet">
-          التفاصيل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("common.details")} <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
         </Link>
       </div>
 
@@ -494,16 +542,23 @@ function FollowUpCard({
 
       <div className="grow-wrap" style={{ color: "var(--mute)", fontSize: ".8rem" }}>
         <span>
-          <Clock className="h-3.5 w-3.5" aria-hidden="true" /> الاستحقاق: {formatDate(item.dueDate)}
+          <Clock className="h-3.5 w-3.5" aria-hidden="true" />{" "}
+          {t("tabs.due", { date: formatDateFor(item.dueDate, locale) })}
         </span>
-        <span>المسؤول: {item.servant?.name || "غير معيّن"}</span>
-        <span>الأنشطة: {numberAr(item.activityCount)}</span>
-        <span>آخر نشاط: {item.lastActivityAt ? formatDateTime(item.lastActivityAt) : "—"}</span>
+        <span>
+          {t("followUps.servant", { name: item.servant?.name || t("common.notAssigned") })}
+        </span>
+        <span>{t("tabs.activities", { count: number(item.activityCount) })}</span>
+        <span>
+          {t("tabs.lastActivity", {
+            date: item.lastActivityAt ? formatDateTimeFor(item.lastActivityAt, locale) : "—",
+          })}
+        </span>
       </div>
 
       {item.resolutionNotes ? (
         <p style={{ margin: "8px 0 0", fontSize: ".84rem", color: "var(--mute)" }}>
-          ملاحظات الإغلاق: {item.resolutionNotes}
+          {t("tabs.resolutionNotes", { notes: item.resolutionNotes })}
         </p>
       ) : null}
 
@@ -511,22 +566,22 @@ function FollowUpCard({
         <div className="grow-wrap" style={{ marginTop: 12 }}>
           {item.status === "open" && onStart ? (
             <button type="button" className="btn ghost sm" onClick={onStart} disabled={busy}>
-              بدء المتابعة
+              {t("tabs.start")}
             </button>
           ) : null}
           {onActivity ? (
             <button type="button" className="btn ghost sm" onClick={onActivity} disabled={busy}>
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> تسجيل نشاط
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" /> {t("tabs.logActivity")}
             </button>
           ) : null}
           {onResolve ? (
             <button type="button" className="btn sm" onClick={onResolve} disabled={busy}>
-              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> إغلاق
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {t("tabs.close")}
             </button>
           ) : null}
           {onDismiss ? (
             <button type="button" className="btn ghost sm" onClick={onDismiss} disabled={busy}>
-              استبعاد
+              {t("tabs.dismiss")}
             </button>
           ) : null}
         </div>
@@ -556,15 +611,16 @@ function CreateFollowUpModal({
   const [servantId, setServantId] = useState(servants[0]?.id ?? "");
   const [dueDate, setDueDate] = useState(shiftIso(todayIso(), 7));
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   return (
-    <Modal title="فتح متابعة جديدة" subtitle="اكتب سببًا واضحًا مبنيًا على وقائع يمكن مراجعتها." onClose={onClose}>
+    <Modal title={t("tabs.createTitle")} subtitle={t("tabs.createSubtitle")} onClose={onClose}>
       <form
         className="f"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!reason.trim()) {
-            setError("سبب المتابعة مطلوب");
+            setError(t("tabs.requiredReason"));
             return;
           }
           setError(null);
@@ -577,32 +633,32 @@ function CreateFollowUpModal({
         }}
       >
         <div className="fld">
-          <label htmlFor="fu_reason">سبب المتابعة *</label>
+          <label htmlFor="fu_reason">{t("tabs.reasonLabel")}</label>
           <textarea
             id="fu_reason"
             rows={3}
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="مثال: غياب متكرر خلال آخر أسبوعين دون تواصل مع الأسرة."
+            placeholder={t("tabs.reasonPlaceholder")}
             disabled={busy}
           />
         </div>
         <div className="form-grid">
           <div className="fld">
-            <label htmlFor="fu_priority">الأولوية</label>
+            <label htmlFor="fu_priority">{t("common.priority")}</label>
             <select
               id="fu_priority"
               value={priority}
               onChange={(event) => setPriority(event.target.value as FollowUpPriority)}
               disabled={busy}
             >
-              <option value="low">منخفضة</option>
-              <option value="medium">متوسطة</option>
-              <option value="high">عالية</option>
+              <option value="low">{t("priority.low")}</option>
+              <option value="medium">{t("priority.medium")}</option>
+              <option value="high">{t("priority.high")}</option>
             </select>
           </div>
           <div className="fld">
-            <label htmlFor="fu_due">تاريخ الاستحقاق</label>
+            <label htmlFor="fu_due">{t("tabs.dueLabel")}</label>
             <input
               id="fu_due"
               type="date"
@@ -612,17 +668,20 @@ function CreateFollowUpModal({
             />
           </div>
           <div className="fld full">
-            <label htmlFor="fu_servant">الخادم المسؤول</label>
+            <label htmlFor="fu_servant">{t("tabs.servantLabel")}</label>
             <select
               id="fu_servant"
               value={servantId}
               onChange={(event) => setServantId(event.target.value)}
               disabled={busy || servants.length === 0}
             >
-              <option value="">بدون تعيين</option>
+              <option value="">{t("tabs.noServantOption")}</option>
               {servants.map((servant) => (
                 <option key={servant.id} value={servant.id}>
-                  {servant.name} — {servant.role}
+                  {servant.name} —{" "}
+                  {SERVICE_ROLE_KEYS[servant.role]
+                    ? t(SERVICE_ROLE_KEYS[servant.role] as Parameters<typeof t>[0])
+                    : servant.role}
                 </option>
               ))}
             </select>
@@ -631,10 +690,10 @@ function CreateFollowUpModal({
         {error ? <p className="msg err">{error}</p> : null}
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={busy}>
-            {busy ? "جارٍ الفتح…" : "فتح المتابعة"}
+            {busy ? t("tabs.opening") : t("tabs.openAction")}
           </button>
         </div>
       </form>
@@ -652,8 +711,9 @@ function ResolveModal({
   onSave: (notes: string) => Promise<void>;
 }) {
   const [notes, setNotes] = useState("");
+  const { t } = useI18n();
   return (
-    <Modal title="إغلاق المتابعة" subtitle="ملاحظات الإغلاق إلزامية لتوثيق ما تم." onClose={onClose}>
+    <Modal title={t("tabs.resolveTitle")} subtitle={t("tabs.resolveSubtitle")} onClose={onClose}>
       <form
         className="f"
         onSubmit={async (event) => {
@@ -663,22 +723,22 @@ function ResolveModal({
         }}
       >
         <div className="fld">
-          <label htmlFor="res_notes">ملاحظات الإغلاق *</label>
+          <label htmlFor="res_notes">{t("tabs.resolveNotesLabel")}</label>
           <textarea
             id="res_notes"
             rows={3}
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="ما الذي تم عمله؟ وما نتيجة المتابعة؟"
+            placeholder={t("tabs.resolveNotesPlaceholder")}
             disabled={busy}
           />
         </div>
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={busy || !notes.trim()}>
-            {busy ? "جارٍ الإغلاق…" : "تأكيد الإغلاق"}
+            {busy ? t("tabs.closing") : t("tabs.confirmClose")}
           </button>
         </div>
       </form>
@@ -698,9 +758,10 @@ function ActivityModal({
   const [type, setType] = useState<"note" | "call" | "message" | "visit">("call");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const { t } = useI18n();
 
   return (
-    <Modal title="تسجيل نشاط رعوي" subtitle="سجّل ما تم فعليًا: مكالمة، رسالة، زيارة أو ملاحظة." onClose={onClose}>
+    <Modal title={t("tabs.activityTitle")} subtitle={t("tabs.activitySubtitle")} onClose={onClose}>
       <form
         className="f"
         onSubmit={async (event) => {
@@ -711,31 +772,31 @@ function ActivityModal({
       >
         <div className="form-grid">
           <div className="fld">
-            <label htmlFor="act_type">نوع النشاط</label>
+            <label htmlFor="act_type">{t("tabs.activityType")}</label>
             <select
               id="act_type"
               value={type}
               onChange={(event) => setType(event.target.value as typeof type)}
               disabled={busy}
             >
-              <option value="call">اتصال هاتفي</option>
-              <option value="message">رسالة</option>
-              <option value="visit">زيارة</option>
-              <option value="note">ملاحظة</option>
+              <option value="call">{t("tabs.call")}</option>
+              <option value="message">{t("tabs.message")}</option>
+              <option value="visit">{t("tabs.visit")}</option>
+              <option value="note">{t("tabs.note")}</option>
             </select>
           </div>
           <div className="fld full">
-            <label htmlFor="act_title">العنوان *</label>
+            <label htmlFor="act_title">{t("tabs.titleLabel")}</label>
             <input
               id="act_title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               disabled={busy}
-              placeholder="مثال: اتصال بولي الأمر للاطمئنان"
+              placeholder={t("tabs.titlePlaceholder")}
             />
           </div>
           <div className="fld full">
-            <label htmlFor="act_notes">تفاصيل</label>
+            <label htmlFor="act_notes">{t("tabs.detailsLabel")}</label>
             <textarea
               id="act_notes"
               rows={3}
@@ -747,10 +808,10 @@ function ActivityModal({
         </div>
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={busy || !title.trim()}>
-            {busy ? "جارٍ التسجيل…" : "تسجيل"}
+            {busy ? t("tabs.logging") : t("tabs.log")}
           </button>
         </div>
       </form>
@@ -787,17 +848,18 @@ export function ProgressTab({
   onDelete: (id: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const { t, locale } = useI18n();
 
   return (
-    <section className="surface surface-pad" aria-label="التقدم التعليمي">
+    <section className="surface surface-pad" aria-label={t("tabs.progressAria")}>
       <div className="surface-head">
         <div>
-          <h2>التقدم التعليمي</h2>
-          <p>تقييم تعليمي صريح فقط — لا يُستخدم لتصنيف السلوك أو الشخصية.</p>
+          <h2>{t("tabs.progressTitle")}</h2>
+          <p>{t("tabs.progressHint")}</p>
         </div>
         {canWrite ? (
           <button type="button" className="btn sm" onClick={() => setOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden="true" /> تسجيل تقييم
+            <Plus className="h-4 w-4" aria-hidden="true" /> {t("tabs.addAssessment")}
           </button>
         ) : null}
       </div>
@@ -805,8 +867,8 @@ export function ProgressTab({
       {profile.progress.length === 0 ? (
         <EmptyState
           icon={<TrendingUp className="h-5 w-5" />}
-          title="لا توجد تقييمات تعليمية"
-          description="أضف أول تقييم لمادة معيّنة لتظهر في الخط الزمني ومتوسط التقدم."
+          title={t("tabs.noProgressTitle")}
+          description={t("tabs.noProgressHint")}
         />
       ) : (
         <div className="list-stack">
@@ -815,7 +877,11 @@ export function ProgressTab({
               <div className="grow-wrap" style={{ justifyContent: "space-between" }}>
                 <div className="grow-wrap">
                   <b>{item.subject}</b>
-                  <Badge tone={LEVEL_TONE[item.level] ?? "default"}>{LEVEL_LABELS[item.level] ?? item.level}</Badge>
+                  <Badge tone={LEVEL_TONE[item.level] ?? "default"}>
+                    {LEVEL_KEYS[item.level]
+                      ? t(LEVEL_KEYS[item.level] as Parameters<typeof t>[0])
+                      : item.level}
+                  </Badge>
                   {item.score !== null && item.score !== undefined ? (
                     <Badge tone="muted">{Number(item.score)} / 100</Badge>
                   ) : null}
@@ -827,14 +893,14 @@ export function ProgressTab({
                     style={{ color: "var(--danger)" }}
                     onClick={() => onDelete(item.id)}
                     disabled={busy}
-                    aria-label={`حذف تقييم ${item.subject}`}
+                    aria-label={t("tabs.assessDeleteAria", { subject: item.subject })}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 ) : null}
               </div>
               <p style={{ margin: "6px 0 0", color: "var(--mute)", fontSize: ".84rem" }}>
-                {formatDate(item.assessedAt)} · {item.assessorName || "غير محدد"}
+                {formatDateFor(item.assessedAt, locale)} · {item.assessorName || t("tabs.notSpecified")}
               </p>
               {item.notes ? <p style={{ margin: "6px 0 0", fontSize: ".88rem" }}>{item.notes}</p> : null}
             </article>
@@ -876,9 +942,10 @@ function AddProgressModal({
   const [score, setScore] = useState("");
   const [notes, setNotes] = useState("");
   const [assessedAt, setAssessedAt] = useState(todayIso());
+  const { t } = useI18n();
 
   return (
-    <Modal title="تسجيل تقييم تعليمي" subtitle="المادة والمستوى والدرجة (اختيارية)." onClose={onClose}>
+    <Modal title={t("tabs.assessmentTitle")} subtitle={t("tabs.assessmentSubtitle")} onClose={onClose}>
       <form
         className="f"
         onSubmit={async (event) => {
@@ -895,31 +962,31 @@ function AddProgressModal({
       >
         <div className="form-grid">
           <div className="fld full">
-            <label htmlFor="pr_subject">المادة *</label>
+            <label htmlFor="pr_subject">{t("tabs.subject")}</label>
             <input
               id="pr_subject"
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
-              placeholder="مثال: الكتاب المقدس / التسبيح"
+              placeholder={t("tabs.subjectPlaceholder")}
               disabled={busy}
             />
           </div>
           <div className="fld">
-            <label htmlFor="pr_level">المستوى</label>
+            <label htmlFor="pr_level">{t("tabs.level")}</label>
             <select
               id="pr_level"
               value={level}
               onChange={(event) => setLevel(event.target.value as EducationalProgress["level"])}
               disabled={busy}
             >
-              <option value="beginner">مبتدئ</option>
-              <option value="growing">ينمو</option>
-              <option value="proficient">متمكن</option>
-              <option value="advanced">متقدم</option>
+              <option value="beginner">{t("tabs.levelBeginner")}</option>
+              <option value="growing">{t("tabs.levelGrowing")}</option>
+              <option value="proficient">{t("tabs.levelProficient")}</option>
+              <option value="advanced">{t("tabs.levelAdvanced")}</option>
             </select>
           </div>
           <div className="fld">
-            <label htmlFor="pr_score">الدرجة (0–100)</label>
+            <label htmlFor="pr_score">{t("tabs.score")}</label>
             <input
               id="pr_score"
               type="number"
@@ -931,7 +998,7 @@ function AddProgressModal({
             />
           </div>
           <div className="fld">
-            <label htmlFor="pr_date">تاريخ التقييم</label>
+            <label htmlFor="pr_date">{t("tabs.assessmentDate")}</label>
             <input
               id="pr_date"
               type="date"
@@ -942,7 +1009,7 @@ function AddProgressModal({
             />
           </div>
           <div className="fld full">
-            <label htmlFor="pr_notes">ملاحظات تعليمية</label>
+            <label htmlFor="pr_notes">{t("tabs.educationalNotes")}</label>
             <textarea
               id="pr_notes"
               rows={3}
@@ -954,10 +1021,10 @@ function AddProgressModal({
         </div>
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={busy || !subject.trim()}>
-            {busy ? "جارٍ الحفظ…" : "حفظ التقييم"}
+            {busy ? t("tabs.savingAssessment") : t("tabs.saveAssessment")}
           </button>
         </div>
       </form>
@@ -982,13 +1049,14 @@ export function NotesTab({
 }) {
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<"class" | "leaders" | "private">("class");
+  const { t, locale, number } = useI18n();
 
   return (
     <div className="stack">
       {canWrite ? (
-        <section className="surface surface-pad" aria-label="إضافة ملاحظة">
+        <section className="surface surface-pad" aria-label={t("tabs.notesAddAria")}>
           <div className="surface-head">
-            <h2>إضافة ملاحظة موثّقة</h2>
+            <h2>{t("tabs.notesAddTitle")}</h2>
           </div>
           <form
             className="f"
@@ -1000,51 +1068,53 @@ export function NotesTab({
             }}
           >
             <div className="fld">
-              <label htmlFor="note_body">نص الملاحظة *</label>
+              <label htmlFor="note_body">{t("tabs.noteLabel")}</label>
               <textarea
                 id="note_body"
                 rows={3}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
-                placeholder="اكتب واقعة محددة وقابلة للمراجعة…"
+                placeholder={t("tabs.notePlaceholder")}
                 disabled={busy}
               />
             </div>
             <div className="grow-wrap" style={{ justifyContent: "space-between", marginTop: 10 }}>
               <label className="fld" style={{ maxWidth: 200 }}>
-                <span>مستوى الظهور</span>
+                <span>{t("tabs.visibility")}</span>
                 <select
                   value={visibility}
                   onChange={(event) => setVisibility(event.target.value as typeof visibility)}
                   disabled={busy}
                 >
-                  <option value="class">الفصل</option>
-                  {profile.permissions.manager ? <option value="leaders">القيادة</option> : null}
-                  <option value="private">خاصة بي</option>
+                  <option value="class">{t("tabs.visibilityClass")}</option>
+                  {profile.permissions.manager ? (
+                    <option value="leaders">{t("tabs.visibilityLeaders")}</option>
+                  ) : null}
+                  <option value="private">{t("tabs.visibilityPrivate")}</option>
                 </select>
               </label>
               <button type="submit" className="btn sm" disabled={busy || !body.trim()}>
-                <Plus className="h-4 w-4" aria-hidden="true" /> إضافة
+                <Plus className="h-4 w-4" aria-hidden="true" /> {t("tabs.add")}
               </button>
             </div>
           </form>
         </section>
       ) : null}
 
-      <section className="surface surface-pad" aria-label="الملاحظات">
+      <section className="surface surface-pad" aria-label={t("tabs.notesAria")}>
         <div className="surface-head">
           <div>
-            <h2>الملاحظات</h2>
-            <p>الملاحظات الخاصة تظهر لكاتبها فقط، وملاحظات القيادة للمسؤولين.</p>
+            <h2>{t("tabs.notesTitle")}</h2>
+            <p>{t("tabs.notesHint")}</p>
           </div>
-          <Badge tone="muted">{numberAr(profile.notes.length)}</Badge>
+          <Badge tone="muted">{number(profile.notes.length)}</Badge>
         </div>
 
         {profile.notes.length === 0 ? (
           <EmptyState
             icon={<NotebookPen className="h-5 w-5" />}
-            title="لا توجد ملاحظات"
-            description="سجّل ملاحظة واضحة تساعد فريق الرعاية على المتابعة."
+            title={t("tabs.noNotesTitle")}
+            description={t("tabs.noNotesHint")}
           />
         ) : (
           <div className="list-stack">
@@ -1061,10 +1131,13 @@ export function NotesTab({
                             : "default"
                       }
                     >
-                      {VISIBILITY_LABELS[note.visibility] ?? note.visibility}
+                      {VISIBILITY_KEYS[note.visibility]
+                        ? t(VISIBILITY_KEYS[note.visibility] as Parameters<typeof t>[0])
+                        : note.visibility}
                     </Badge>
                     <small style={{ color: "var(--mute)" }}>
-                      {note.authorName || "غير معروف"} · {formatDateTime(note.createdAt)}
+                      {note.authorName || t("tabs.unknownAuthor")} ·{" "}
+                      {formatDateTimeFor(note.createdAt, locale)}
                     </small>
                   </div>
                   {canWrite ? (
@@ -1074,7 +1147,7 @@ export function NotesTab({
                       style={{ color: "var(--danger)" }}
                       onClick={() => onDelete(note.id)}
                       disabled={busy}
-                      aria-label="حذف الملاحظة"
+                      aria-label={t("tabs.deleteNoteAria")}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1093,21 +1166,22 @@ export function NotesTab({
 /* ------------------------------- Visitations ----------------------------- */
 
 export function VisitationsTab({ profile }: { profile: StudentProfile }) {
+  const { t, locale, number } = useI18n();
   return (
-    <section className="surface surface-pad" aria-label="سجل الافتقاد">
+    <section className="surface surface-pad" aria-label={t("tabs.visitationsAria")}>
       <div className="surface-head">
         <div>
-          <h2>سجل الافتقاد</h2>
-          <p>افتقاد منزلي، اتصال هاتفي، وزيارات الكنيسة.</p>
+          <h2>{t("tabs.visitationsTitle")}</h2>
+          <p>{t("tabs.visitationsHint")}</p>
         </div>
-        <Badge tone="muted">{numberAr(profile.visitations.length)}</Badge>
+        <Badge tone="muted">{number(profile.visitations.length)}</Badge>
       </div>
 
       {profile.visitations.length === 0 ? (
         <EmptyState
           icon={<HeartHandshake className="h-5 w-5" />}
-          title="لا يوجد سجل افتقاد"
-          description="سيظهر هنا كل افتقاد مسجّل مع حالته وتاريخه والخادم المسؤول."
+          title={t("tabs.noVisitsTitle")}
+          description={t("tabs.noVisitsHint")}
         />
       ) : (
         <div className="list-stack">
@@ -1117,16 +1191,25 @@ export function VisitationsTab({ profile }: { profile: StudentProfile }) {
                 <HeartHandshake className="h-4 w-4" />
               </span>
               <span className="grow">
-                <b>{VISIT_TYPE_LABELS[visit.type] ?? visit.type}</b>
+                <b>
+                  {VISIT_TYPE_KEYS[visit.type]
+                    ? t(VISIT_TYPE_KEYS[visit.type] as Parameters<typeof t>[0])
+                    : visit.type}
+                </b>
                 <small>
-                  {formatDate(visit.date)} · {visit.servantName || "غير محدد"}
+                  {formatDateFor(visit.date, locale)} ·{" "}
+                  {visit.servantName || t("common.notAssigned")}
                 </small>
               </span>
               <Badge tone={visit.status === "completed" ? "ok" : visit.status === "cancelled" ? "muted" : "warn"}>
-                {VISIT_STATUS_LABELS[visit.status] ?? visit.status}
+                {VISIT_STATUS_KEYS[visit.status]
+                  ? t(VISIT_STATUS_KEYS[visit.status] as Parameters<typeof t>[0])
+                  : visit.status}
               </Badge>
               {visit.followUpDate ? (
-                <small style={{ color: "var(--mute)" }}>متابعة: {formatDate(visit.followUpDate)}</small>
+                <small style={{ color: "var(--mute)" }}>
+                  {t("tabs.followUpOn", { date: formatDateFor(visit.followUpDate, locale) })}
+                </small>
               ) : null}
             </div>
           ))}

@@ -13,6 +13,8 @@ import {
   type AuthUser,
   type ClassItem,
 } from "../../lib/api";
+import { SERVICE_ROLE_KEYS } from "../../lib/format";
+import { useI18n } from "../../lib/app-i18n";
 
 export default function ClassDetailsPage({
   params,
@@ -20,6 +22,7 @@ export default function ClassDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useI18n();
   const [classData, setClassData] = useState<ClassItem | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,15 +31,15 @@ export default function ClassDetailsPage({
     Promise.resolve().then(() => setCurrentUser(getStoredUser()));
     getClass(id)
       .then((data) => setClassData(data))
-      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "تعذّر تحميل تفاصيل الفصل"))
+      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : t("classDetail.loadError")))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, t]);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32">
         <AppHeader />
-        <div className="pg text-center py-20 text-slate-400">جارٍ تحميل تفاصيل الفصل...</div>
+        <div className="pg text-center py-20 text-slate-400">{t("classDetail.loading")}</div>
         <BottomNav />
       </div>
     );
@@ -47,9 +50,9 @@ export default function ClassDetailsPage({
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32">
         <AppHeader />
         <div className="pg text-center py-20">
-          <h2 className="text-xl font-bold mb-4">الفصل غير موجود</h2>
+          <h2 className="text-xl font-bold mb-4">{t("classDetail.notFound")}</h2>
           <Link href="/classes" className="btn">
-            العودة لكل الفصول
+            {t("classDetail.backAll")}
           </Link>
         </div>
         <BottomNav />
@@ -67,16 +70,16 @@ export default function ClassDetailsPage({
 
       <main className="pg">
         <Link href="/classes" className="hint inline-block mb-1">
-          ← العودة لكل الفصول
+          ← {t("classDetail.backAll")}
         </Link>
 
         {/* Cover Header */}
         <div className="cover bg-gradient-to-tr from-blue-700 to-indigo-500 min-h-44 rounded-3xl p-6 text-white flex flex-col justify-end shadow-xl">
           <small className="opacity-80">
-            {classData.grade === "general" ? "المجموعة العامة" : "فصل الخدمة"}
+            {classData.grade === "general" ? t("classDetail.general") : t("classDetail.serviceClass")}
           </small>
           <h1 className="text-3xl font-extrabold mt-1">{classData.name}</h1>
-          <p className="text-sm opacity-90 mt-1">السنة الدراسية: {classData.academicYear}</p>
+          <p className="text-sm opacity-90 mt-1">{t("classDetail.academicYear", { year: classData.academicYear })}</p>
           {classData.description && <p className="text-sm opacity-90 mt-1">{classData.description}</p>}
         </div>
 
@@ -86,15 +89,14 @@ export default function ClassDetailsPage({
               href={`/attendance?classId=${classData.id}`}
               className="btn big flex-1 text-center"
             >
-              ✅ تسجيل حضور هذا الفصل اليوم
+              ✅ {t("classDetail.recordAttendance")}
             </Link>
           </div>
         ) : (
           <div className="notice">
             <Eye size={18} aria-hidden="true" />
             <span>
-              أنت تستعرض هذا الفصل للقراءة فقط. يمكنك رؤية الخدام والأطفال،
-              لكن التعديل متاح لخدام الفصل والمسؤولين فقط.
+              {t("classDetail.readOnly")}
             </span>
           </div>
         )}
@@ -103,18 +105,18 @@ export default function ClassDetailsPage({
         <div className="card">
           <div className="ch">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              الأطفال المسجلين ({children.length})
+              {t("classDetail.childrenTitle", { count: children.length })}
             </h3>
             {canManage ? (
               <Link
                 href="/children"
                 className="text-sm text-blue-600 dark:text-blue-400 font-bold"
               >
-                + إضافة طفل
+                {t("classDetail.addChild")}
               </Link>
             ) : (
               <span className="text-xs text-slate-400 inline-flex items-center gap-1">
-                <LockKeyhole size={13} aria-hidden="true" /> عرض فقط
+                <LockKeyhole size={13} aria-hidden="true" /> {t("common.viewOnly")}
               </span>
             )}
           </div>
@@ -132,13 +134,13 @@ export default function ClassDetailsPage({
                     {c.phone}
                   </a>
                 ) : (
-                  <span className="text-xs text-slate-400">الهاتف غير متوفر</span>
+                  <span className="text-xs text-slate-400">{t("classDetail.phoneMissing")}</span>
                 )}
               </div>
             ))
           ) : (
             <div className="text-center py-8 text-slate-400">
-              لا يوجد أطفال مسجلين في هذا الفصل حتى الآن.
+              {t("classDetail.noChildren")}
             </div>
           )}
         </div>
@@ -147,13 +149,13 @@ export default function ClassDetailsPage({
         <div className="card">
           <div className="ch">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              خدام الفصل ({servants.length})
+              {t("classDetail.servantsTitle", { count: servants.length })}
             </h3>
             <Link
               href="/servants"
               className="text-sm text-blue-600 dark:text-blue-400 font-bold"
             >
-              دليل الخدام
+              {t("classDetail.servantsDirectory")}
             </Link>
           </div>
 
@@ -177,7 +179,7 @@ export default function ClassDetailsPage({
                           isLeader ? "text-amber-700 dark:text-amber-300" : "text-slate-500"
                         }`}
                       >
-                        {s.role}
+                        {SERVICE_ROLE_KEYS[s.role] ? t(SERVICE_ROLE_KEYS[s.role] as Parameters<typeof t>[0]) : s.role}
                       </span>
                     )}
                   </div>
@@ -190,14 +192,14 @@ export default function ClassDetailsPage({
                       {s.phone}
                     </a>
                   ) : (
-                    <span className="text-xs text-slate-400">الهاتف غير متوفر</span>
+                    <span className="text-xs text-slate-400">{t("classDetail.phoneMissing")}</span>
                   )}
                 </div>
               );
             })
           ) : (
             <div className="text-center py-8 text-slate-400">
-              لا يوجد خدام معينين لهذا الفصل حتى الآن.
+              {t("classDetail.noServants")}
             </div>
           )}
         </div>

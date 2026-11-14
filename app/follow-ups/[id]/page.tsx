@@ -37,29 +37,26 @@ import {
   type FollowUpStatus,
 } from "../../lib/api";
 import {
-  FOLLOW_UP_STATUS_LABELS,
-  PRIORITY_LABELS,
-  formatDate,
-  formatDateTime,
   followUpTone,
-  numberAr,
+  formatDateFor,
+  formatDateTimeFor,
   priorityTone,
-  relativeTime,
 } from "../../lib/format";
+import { useI18n } from "../../lib/app-i18n";
 
 type ActivityType = "note" | "call" | "message" | "visit";
 
 const ACTIVITY_META: Record<
   string,
-  { label: string; icon: React.ReactNode; tone: string }
+  { labelKey: string; icon: React.ReactNode; tone: string }
 > = {
-  note: { label: "ملاحظة", icon: <NotebookPen className="h-4 w-4" />, tone: "pri" },
-  call: { label: "اتصال", icon: <Phone className="h-4 w-4" />, tone: "violet" },
-  message: { label: "رسالة", icon: <MessageSquare className="h-4 w-4" />, tone: "warn" },
-  visit: { label: "افتقاد", icon: <Home className="h-4 w-4" />, tone: "ok" },
-  status_change: { label: "تغيير حالة", icon: <RefreshCw className="h-4 w-4" />, tone: "pri" },
-  resolution: { label: "إغلاق", icon: <CheckCircle2 className="h-4 w-4" />, tone: "ok" },
-  assignment: { label: "إسناد", icon: <UserRound className="h-4 w-4" />, tone: "violet" },
+  note: { labelKey: "followUpDetail.note", icon: <NotebookPen className="h-4 w-4" />, tone: "pri" },
+  call: { labelKey: "followUpDetail.call", icon: <Phone className="h-4 w-4" />, tone: "violet" },
+  message: { labelKey: "followUpDetail.message", icon: <MessageSquare className="h-4 w-4" />, tone: "warn" },
+  visit: { labelKey: "followUpDetail.visit", icon: <Home className="h-4 w-4" />, tone: "ok" },
+  status_change: { labelKey: "followUpDetail.statusChange", icon: <RefreshCw className="h-4 w-4" />, tone: "pri" },
+  resolution: { labelKey: "followUpDetail.resolution", icon: <CheckCircle2 className="h-4 w-4" />, tone: "ok" },
+  assignment: { labelKey: "followUpDetail.assignment", icon: <UserRound className="h-4 w-4" />, tone: "violet" },
 };
 
 export default function FollowUpDetailPage({
@@ -68,6 +65,7 @@ export default function FollowUpDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t, locale } = useI18n();
 
   const [detail, setDetail] = useState<FollowUpDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -90,7 +88,7 @@ export default function FollowUpDetailPage({
       setDetail(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل المتابعة");
+      setError(err instanceof Error ? err.message : t("followUpDetail.loadError"));
     } finally {
       setLoading(false);
     }
@@ -110,13 +108,13 @@ export default function FollowUpDetailPage({
       await load();
       showToast(
         status === "resolved"
-          ? "تم إغلاق المتابعة وتوثيق القرار"
+          ? t("followUpDetail.closedToast")
           : status === "dismissed"
-            ? "تم استبعاد المتابعة"
-            : "تم تحديث حالة المتابعة",
+            ? t("followUpDetail.dismissedToast")
+            : t("followUpDetail.updatedToast"),
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تحديث المتابعة");
+      showToast(err instanceof Error ? err.message : t("followUpDetail.failedToast"));
     } finally {
       setBusy(false);
     }
@@ -128,9 +126,9 @@ export default function FollowUpDetailPage({
     try {
       await updateFollowUp(id, { priority });
       await load();
-      showToast("تم تحديث الأولوية");
+      showToast(t("followUpDetail.priorityUpdated"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تحديث الأولوية");
+      showToast(err instanceof Error ? err.message : t("followUpDetail.priorityError"));
     } finally {
       setBusy(false);
     }
@@ -151,9 +149,9 @@ export default function FollowUpDetailPage({
       });
       setActivityOpen(false);
       await load();
-      showToast("تم تسجيل النشاط");
+      showToast(t("followUpDetail.activityAdded"));
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تسجيل النشاط");
+      showToast(err instanceof Error ? err.message : t("followUpDetail.activityError"));
     } finally {
       setBusy(false);
     }
@@ -179,10 +177,10 @@ export default function FollowUpDetailPage({
       <div className="min-h-screen pb-32">
         <AppHeader />
         <main className="pg">
-          <Notice tone="danger">{error || "المتابعة غير موجودة"}</Notice>
+          <Notice tone="danger">{error || t("followUpDetail.notFound")}</Notice>
           <Link href="/follow-ups" className="btn ghost sm" style={{ alignSelf: "flex-start" }}>
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            رجوع للمتابعات
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+            {t("followUpDetail.backAll")}
           </Link>
         </main>
         <BottomNav />
@@ -200,21 +198,21 @@ export default function FollowUpDetailPage({
       <main className="pg">
         <div className="grow-wrap" style={{ justifyContent: "space-between" }}>
           <Link href="/follow-ups" className="link-quiet">
-            <ArrowRight className="h-4 w-4" aria-hidden="true" /> كل المتابعات
+            <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" /> {t("followUpDetail.backAll")}
           </Link>
           <PageHeader
             eyebrow={
               <>
-                <HeartHandshake className="h-4 w-4" aria-hidden="true" /> بطاقة متابعة
+                <HeartHandshake className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.eyebrow")}
               </>
             }
             title={child.name}
             subtitle={
               followUp.source === "rule"
-                ? "فُتحت تلقائيًا من قاعدة رعاية معلنة"
+                ? t("followUpDetail.sourceRule")
                 : followUp.source === "visitation"
-                  ? "مرتبطة بافتقاد مسجّل"
-                  : "متابعة يدوية موثّقة"
+                  ? t("followUpDetail.sourceVisitation")
+                  : t("followUpDetail.sourceManual")
             }
             actions={
               <>
@@ -225,7 +223,7 @@ export default function FollowUpDetailPage({
                     disabled={busy}
                     onClick={() => changeStatus("in_progress")}
                   >
-                    <PlayCircle className="h-4 w-4" aria-hidden="true" /> بدء المتابعة
+                    <PlayCircle className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.start")}
                   </button>
                 ) : null}
                 {active ? (
@@ -236,7 +234,7 @@ export default function FollowUpDetailPage({
                       disabled={busy}
                       onClick={() => setResolveOpen(true)}
                     >
-                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> إغلاق
+                      <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.close")}
                     </button>
                     <button
                       type="button"
@@ -244,7 +242,7 @@ export default function FollowUpDetailPage({
                       disabled={busy}
                       onClick={() => setDismissOpen(true)}
                     >
-                      <XCircle className="h-4 w-4" aria-hidden="true" /> استبعاد
+                      <XCircle className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.dismiss")}
                     </button>
                   </>
                 ) : (
@@ -254,7 +252,7 @@ export default function FollowUpDetailPage({
                     disabled={busy}
                     onClick={() => changeStatus("open")}
                   >
-                    <RefreshCw className="h-4 w-4" aria-hidden="true" /> إعادة فتح
+                    <RefreshCw className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.reopen")}
                   </button>
                 )}
               </>
@@ -262,65 +260,65 @@ export default function FollowUpDetailPage({
           />
         </div>
 
-        <section className="surface surface-pad" aria-label="ملخص المتابعة">
+        <section className="surface surface-pad" aria-label={t("followUpDetail.summaryAria")}>
           <div className="grow-wrap" style={{ justifyContent: "space-between", marginBottom: 10 }}>
             <div className="grow-wrap">
               <Badge tone={followUpTone(followUp.status)} dot>
-                {FOLLOW_UP_STATUS_LABELS[followUp.status]}
+                {t(`status.${followUp.status}`)}
               </Badge>
-              <Badge tone={priorityTone(followUp.priority)}>{PRIORITY_LABELS[followUp.priority]}</Badge>
-              {followUp.isOverdue ? <Badge tone="danger">متأخرة</Badge> : null}
+              <Badge tone={priorityTone(followUp.priority)}>{t(`priority.${followUp.priority}`)}</Badge>
+              {followUp.isOverdue ? <Badge tone="danger">{t("common.overdue")}</Badge> : null}
               <Badge tone="muted">
                 {followUp.source === "rule"
-                  ? "قاعدة رعاية"
+                  ? t("followUpDetail.sourceRuleBadge")
                   : followUp.source === "visitation"
-                    ? "افتقاد"
-                    : "يدوية"}
+                    ? t("followUpDetail.sourceVisitationBadge")
+                    : t("followUpDetail.sourceManualBadge")}
               </Badge>
             </div>
             <Link href={`/children/${child.id}`} className="link-quiet">
-              <UserRound className="h-4 w-4" aria-hidden="true" /> ملف الطالب
+              <UserRound className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.studentFile")}
             </Link>
           </div>
 
           <p style={{ margin: "0 0 14px", fontSize: "1rem", lineHeight: 1.8 }}>{followUp.reason}</p>
 
           <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))" }}>
-            <Meta label="الفصل" value={child.className || "بدون فصل"} icon={<Home className="h-3.5 w-3.5" />} />
+            <Meta label={t("common.class")} value={child.className || t("common.noClass")} icon={<Home className="h-3.5 w-3.5" />} />
             <Meta
-              label="الخادم المسؤول"
-              value={followUp.servant?.name || "غير معيّن"}
+              label={t("children.servantLabel")}
+              value={followUp.servant?.name || t("common.notAssigned")}
               icon={<UserRound className="h-3.5 w-3.5" />}
             />
             <Meta
-              label="تاريخ الاستحقاق"
-              value={followUp.dueDate ? formatDate(followUp.dueDate) : "غير محدد"}
+              label={t("followUpDetail.due")}
+              value={followUp.dueDate ? formatDateFor(followUp.dueDate, locale) : t("common.notSet")}
               icon={<CalendarDays className="h-3.5 w-3.5" />}
             />
             <Meta
-              label="آخر نشاط"
-              value={followUp.lastActivityAt ? relativeTime(followUp.lastActivityAt) : "لا يوجد"}
+              label={t("followUpDetail.lastActivity")}
+              value={followUp.lastActivityAt ? formatDateTimeFor(followUp.lastActivityAt, locale) : t("followUpDetail.none")}
               icon={<Clock className="h-3.5 w-3.5" />}
             />
           </div>
 
           <div className="grow-wrap" style={{ marginTop: 14 }}>
             <label className="fld" style={{ maxWidth: 220 }}>
-              <span>الأولوية</span>
+              <span>{t("common.priority")}</span>
               <select
                 value={followUp.priority}
                 disabled={busy}
                 onChange={(event) => changePriority(event.target.value as FollowUpPriority)}
-                aria-label="تغيير أولوية المتابعة"
+                aria-label={t("followUpDetail.changePriorityAria")}
               >
-                <option value="low">منخفضة</option>
-                <option value="medium">متوسطة</option>
-                <option value="high">عالية</option>
+                <option value="low">{t("priority.low")}</option>
+                <option value="medium">{t("priority.medium")}</option>
+                <option value="high">{t("priority.high")}</option>
               </select>
             </label>
             {active ? (
               <button type="button" className="btn sm" onClick={() => setActivityOpen(true)} disabled={busy}>
-                <NotebookPen className="h-4 w-4" aria-hidden="true" /> تسجيل نشاط
+                <NotebookPen className="h-4 w-4" aria-hidden="true" /> {t("followUpDetail.logActivity")}
               </button>
             ) : null}
           </div>
@@ -329,30 +327,30 @@ export default function FollowUpDetailPage({
             <div className="notice" style={{ marginTop: 14 }}>
               <CheckCircle2 className="h-4 w-4 flex-none" aria-hidden="true" />
               <span>
-                <b>ملاحظات الإغلاق:</b> {followUp.resolutionNotes}
-                {followUp.resolvedAt ? ` — ${formatDateTime(followUp.resolvedAt)}` : ""}
+                <b>{t("followUpDetail.resolutionNotes")}</b> {followUp.resolutionNotes}
+                {followUp.resolvedAt ? ` — ${formatDateTimeFor(followUp.resolvedAt, locale)}` : ""}
               </span>
             </div>
           ) : null}
         </section>
 
-        <section className="surface surface-pad" aria-label="سجل الأنشطة">
+        <section className="surface surface-pad" aria-label={t("followUpDetail.activityLog")}>
           <div className="surface-head" style={{ marginBottom: 14 }}>
             <div>
-              <h2>سجل المتابعة</h2>
-              <p>{numberAr(activities.length)} نشاط موثّق — كل خطوة تحمل وقتها وفاعلها.</p>
+              <h2>{t("followUpDetail.activityLog")}</h2>
+              <p>{t("followUpDetail.activityCount", { count: activities.length })}</p>
             </div>
           </div>
 
           {activities.length === 0 ? (
             <EmptyState
               icon={<HeartHandshake className="h-5 w-5" />}
-              title="لا توجد أنشطة بعد"
-              description="سجّل مكالمة أو رسالة أو افتقادًا ليبدأ السجل الرعوي."
+              title={t("followUpDetail.noActivities")}
+              description={t("followUpDetail.noActivitiesHint")}
               action={
                 active ? (
                   <button type="button" className="btn ghost sm" onClick={() => setActivityOpen(true)}>
-                    تسجيل أول نشاط
+                    {t("followUpDetail.firstActivity")}
                   </button>
                 ) : undefined
               }
@@ -373,9 +371,9 @@ export default function FollowUpDetailPage({
 
       {resolveOpen ? (
         <NotesModal
-          title="إغلاق المتابعة"
-          subtitle="اكتب ما تم عمله والنتيجة — هذه الملاحظات جزء من السجل."
-          confirmLabel="إغلاق المتابعة"
+          title={t("followUpDetail.closeTitle")}
+          subtitle={t("followUpDetail.closeSubtitle")}
+          confirmLabel={t("followUpDetail.closeConfirm")}
           busy={busy}
           required
           onClose={() => setResolveOpen(false)}
@@ -385,9 +383,9 @@ export default function FollowUpDetailPage({
 
       {dismissOpen ? (
         <NotesModal
-          title="استبعاد المتابعة"
-          subtitle="وضّح سبب الاستبعاد إن أمكن. يمكن إعادة فتح المتابعة لاحقًا."
-          confirmLabel="استبعاد"
+          title={t("followUpDetail.dismissTitle")}
+          subtitle={t("followUpDetail.dismissSubtitle")}
+          confirmLabel={t("followUpDetail.dismissConfirm")}
           busy={busy}
           onClose={() => setDismissOpen(false)}
           onSubmit={(notes) => changeStatus("dismissed", notes || undefined)}
@@ -414,11 +412,12 @@ function Meta({ label, value, icon }: { label: string; value: string; icon: Reac
 }
 
 function ActivityTimeline({ activities }: { activities: FollowUpActivity[] }) {
+  const { t, locale } = useI18n();
   return (
     <div className="timeline">
       {activities.map((activity) => {
         const meta = ACTIVITY_META[activity.type] ?? {
-          label: activity.type,
+          labelKey: "",
           icon: <Clock className="h-4 w-4" />,
           tone: "pri",
         };
@@ -435,9 +434,9 @@ function ActivityTimeline({ activities }: { activities: FollowUpActivity[] }) {
               <b>{activity.title}</b>
               {activity.notes ? <p>{activity.notes}</p> : null}
               <time dateTime={activity.occurredAt}>
-                {formatDateTime(activity.occurredAt)}
+                {formatDateTimeFor(activity.occurredAt, locale)}
                 {activity.actorName ? ` · ${activity.actorName}` : ""}
-                {` · ${meta.label}`}
+                {meta.labelKey ? ` · ${t(meta.labelKey as Parameters<typeof t>[0])}` : ""}
               </time>
             </div>
           </div>
@@ -460,11 +459,12 @@ function ActivityModal({
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   return (
     <Modal
-      title="تسجيل نشاط"
-      subtitle="سجّل الواقعة بدقة: ماذا حدث، ومتى، وما الخطوة التالية."
+      title={t("followUpDetail.activityModalTitle")}
+      subtitle={t("followUpDetail.activityModalSubtitle")}
       onClose={onClose}
       wide
     >
@@ -473,7 +473,7 @@ function ActivityModal({
         onSubmit={(event) => {
           event.preventDefault();
           if (!title.trim()) {
-            setError("عنوان النشاط مطلوب");
+            setError(t("followUpDetail.requiredTitle"));
             return;
           }
           setError(null);
@@ -482,35 +482,35 @@ function ActivityModal({
       >
         <div className="form-grid">
           <label className="fld">
-            <span>نوع النشاط</span>
+            <span>{t("followUpDetail.activityType")}</span>
             <select
               value={type}
               onChange={(event) => setType(event.target.value as ActivityType)}
               disabled={busy}
             >
-              <option value="call">اتصال هاتفي</option>
-              <option value="message">رسالة</option>
-              <option value="visit">افتقاد</option>
-              <option value="note">ملاحظة</option>
+              <option value="call">{t("followUpDetail.call")}</option>
+              <option value="message">{t("followUpDetail.message")}</option>
+              <option value="visit">{t("followUpDetail.visit")}</option>
+              <option value="note">{t("followUpDetail.note")}</option>
             </select>
           </label>
           <label className="fld">
-            <span>العنوان *</span>
+            <span>{t("followUpDetail.titleLabel")}</span>
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="مثال: اتصال بولي الأمر"
+              placeholder={t("followUpDetail.titlePlaceholder")}
               maxLength={180}
               disabled={busy}
             />
           </label>
           <label className="fld full">
-            <span>تفاصيل</span>
+            <span>{t("followUpDetail.details")}</span>
             <textarea
               rows={4}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="ما تم مناقشته، وما الخطوة التالية…"
+              placeholder={t("followUpDetail.detailsPlaceholder")}
               maxLength={2000}
               disabled={busy}
             />
@@ -519,10 +519,10 @@ function ActivityModal({
         {error ? <p className="msg err">{error}</p> : null}
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={busy}>
-            {busy ? "جارٍ التسجيل…" : "تسجيل النشاط"}
+            {busy ? t("followUpDetail.savingActivity") : t("followUpDetail.saveActivity")}
           </button>
         </div>
       </form>
@@ -549,6 +549,7 @@ function NotesModal({
 }) {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   return (
     <Modal title={title} subtitle={subtitle} onClose={onClose} wide>
@@ -557,7 +558,7 @@ function NotesModal({
         onSubmit={(event) => {
           event.preventDefault();
           if (required && !notes.trim()) {
-            setError("ملاحظات الإغلاق مطلوبة");
+            setError(t("followUpDetail.requiredNotes"));
             return;
           }
           setError(null);
@@ -565,23 +566,27 @@ function NotesModal({
         }}
       >
         <label className="fld full">
-          <span>{required ? "ملاحظات الإغلاق *" : "سبب الاستبعاد"}</span>
+          <span>{required ? t("followUpDetail.closeNotesLabel") : t("followUpDetail.dismissReasonLabel")}</span>
           <textarea
             rows={4}
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             maxLength={2000}
             disabled={busy}
-            placeholder={required ? "ما تم عمله والنتيجة…" : "سبب اختياري…"}
+            placeholder={
+              required
+                ? t("followUpDetail.closeNotesPlaceholder")
+                : t("followUpDetail.dismissReasonPlaceholder")
+            }
           />
         </label>
         {error ? <p className="msg err">{error}</p> : null}
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={busy}>
-            {busy ? "جارٍ الحفظ…" : confirmLabel}
+            {busy ? t("common.savingShort") : confirmLabel}
           </button>
         </div>
       </form>

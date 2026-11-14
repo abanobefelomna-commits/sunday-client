@@ -83,10 +83,12 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: localeBootstrap }} />
       </head>
       <body className="antialiased min-h-screen">
-        <LocaleProvider initialLocale={locale}>{children}</LocaleProvider>
-        <Analytics />
-        <Toaster position="top-center" richColors closeButton duration={3500} />
-        <BibleWidget />
+        <LocaleProvider initialLocale={locale}>
+          {children}
+          <Analytics />
+          <Toaster position="top-center" richColors closeButton duration={3500} />
+          <BibleWidget />
+        </LocaleProvider>
       </body>
     </html>
   );

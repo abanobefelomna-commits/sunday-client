@@ -32,25 +32,26 @@ import {
   type ClassItem,
 } from "../lib/api";
 import {
-  ATTENDANCE_LABELS,
   attendanceTone,
-  formatShortDate,
-  numberAr,
+  formatShortDateFor,
+  initials,
   percent,
   shiftIso,
   todayIso,
 } from "../lib/format";
+import { useI18n } from "../lib/app-i18n";
 
 type Status = "present" | "absent" | "late" | "excused";
 
-const STATUS_META: Array<{ value: Status; label: string; color: string }> = [
-  { value: "present", label: "حاضر", color: "var(--ok)" },
-  { value: "absent", label: "غائب", color: "var(--danger)" },
-  { value: "late", label: "متأخر", color: "var(--warn)" },
-  { value: "excused", label: "بعذر", color: "var(--violet)" },
+const STATUS_META: Array<{ value: Status; labelKey: string; color: string }> = [
+  { value: "present", labelKey: "attendance.present", color: "var(--ok)" },
+  { value: "absent", labelKey: "attendance.absent", color: "var(--danger)" },
+  { value: "late", labelKey: "attendance.late", color: "var(--warn)" },
+  { value: "excused", labelKey: "attendance.excused", color: "var(--violet)" },
 ];
 
 export default function AttendancePage() {
+  const { t, locale, number } = useI18n();
   const today = todayIso();
   const [selectedDate, setSelectedDate] = useState(today);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -93,7 +94,7 @@ export default function AttendancePage() {
       setSessions(resSessions.data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل بيانات الحضور");
+      setError(err instanceof Error ? err.message : t("attendance.loadError"));
     } finally {
       setLoading(false);
     }
@@ -130,7 +131,7 @@ export default function AttendancePage() {
       setSyncing(true);
       const classId = child.classId || (selectedClassId !== "all" ? selectedClassId : classes[0]?.id);
       if (!classId) {
-        showToast("الطفل غير مرتبط بفصل — عيّن فصلًا أولًا");
+        showToast(t("attendance.noClassToast"));
         return;
       }
       await recordAttendanceBulk({
@@ -145,7 +146,7 @@ export default function AttendancePage() {
         else delete copy[child.id];
         return copy;
       });
-      showToast(err instanceof Error ? err.message : "تعذر حفظ الحضور");
+      showToast(err instanceof Error ? err.message : t("attendance.saveError"));
     } finally {
       setSyncing(false);
     }
@@ -178,11 +179,11 @@ export default function AttendancePage() {
           records: childIds.map((childId) => ({ childId, status: "present" as const })),
         });
       }
-      showToast("تم تسجيل الكل حاضر");
+      showToast(t("attendance.markedAll"));
       loadData();
     } catch (err) {
       setAttendanceMap(snapshot);
-      showToast(err instanceof Error ? err.message : "تعذر حفظ الحضور");
+      showToast(err instanceof Error ? err.message : t("attendance.saveError"));
     } finally {
       setSyncing(false);
     }
@@ -191,12 +192,12 @@ export default function AttendancePage() {
   const handleExport = () => {
     if (children.length === 0) return;
     const rows = [
-      ["التاريخ", "اسم الطفل", "الفصل", "الحالة"],
+      [t("attendance.csvDate"), t("attendance.csvName"), t("attendance.csvClass"), t("attendance.csvStatus")],
       ...children.map((child) => [
         selectedDate,
         child.name,
-        child.class?.name || "بدون فصل",
-        attendanceMap[child.id] ? ATTENDANCE_LABELS[attendanceMap[child.id]] : "لم يسجل بعد",
+        child.class?.name || t("common.noClass"),
+        attendanceMap[child.id] ? t(`attendance.${attendanceMap[child.id]}`) : t("attendance.csvPending"),
       ]),
     ];
     const csv = "\ufeff" + rows.map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\r\n");
@@ -208,15 +209,15 @@ export default function AttendancePage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("تم تصدير ملف الحضور");
+    showToast(t("attendance.exported"));
   };
 
-  const dateLabel = new Date(`${selectedDate}T12:00:00`).toLocaleDateString("ar-EG", {
+  const dateLabel = new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
-  });
+  }).format(new Date(`${selectedDate}T12:00:00`));
 
   return (
     <div className="min-h-screen pb-32">
@@ -226,18 +227,18 @@ export default function AttendancePage() {
         <PageHeader
           eyebrow={
             <>
-              <CalendarCheck className="h-4 w-4" aria-hidden="true" /> جلسة اليوم
+              <CalendarCheck className="h-4 w-4" aria-hidden="true" /> {t("attendance.eyebrow")}
             </>
           }
-          title="سجل الحضور"
+          title={t("attendance.title")}
           subtitle={dateLabel}
           actions={
             <>
               <Link href="/analytics" className="btn ghost sm">
-                <BarChart3 className="h-4 w-4" aria-hidden="true" /> التحليلات
+                <BarChart3 className="h-4 w-4" aria-hidden="true" /> {t("attendance.analytics")}
               </Link>
               <button type="button" className="btn ghost sm" onClick={handleExport} disabled={children.length === 0}>
-                <Download className="h-4 w-4" aria-hidden="true" /> CSV
+                <Download className="h-4 w-4" aria-hidden="true" /> {t("attendance.export")}
               </button>
               <button
                 type="button"
@@ -245,7 +246,7 @@ export default function AttendancePage() {
                 onClick={handleMarkAllPresent}
                 disabled={syncing || children.length === 0}
               >
-                <Check className="h-4 w-4" aria-hidden="true" /> الكل حاضر
+                <Check className="h-4 w-4" aria-hidden="true" /> {t("attendance.markAll")}
               </button>
             </>
           }
@@ -254,11 +255,11 @@ export default function AttendancePage() {
         <div className="surface surface-pad">
           <div className="filters" style={{ justifyContent: "space-between" }}>
             <div className="grow-wrap">
-              <button type="button" className="ib" onClick={() => changeDate(-1)} aria-label="اليوم السابق">
+              <button type="button" className="ib" onClick={() => changeDate(-1)} aria-label={t("attendance.prevDayAria")}>
                 <ChevronRight className="h-4 w-4" />
               </button>
               <label className="fld" style={{ minWidth: 165 }}>
-                <span className="sr-only">تاريخ الحضور</span>
+                <span className="sr-only">{t("attendance.dateAria")}</span>
                 <input
                   type="date"
                   value={selectedDate}
@@ -266,7 +267,7 @@ export default function AttendancePage() {
                   onChange={(event) => {
                     if (event.target.value && event.target.value <= today) setSelectedDate(event.target.value);
                   }}
-                  aria-label="تاريخ الحضور"
+                  aria-label={t("attendance.dateAria")}
                 />
               </label>
               <button
@@ -274,25 +275,25 @@ export default function AttendancePage() {
                 className="ib"
                 onClick={() => changeDate(1)}
                 disabled={selectedDate >= today}
-                aria-label="اليوم التالي"
+                aria-label={t("attendance.nextDayAria")}
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               {selectedDate !== today ? (
                 <button type="button" className="chip on" onClick={() => setSelectedDate(today)}>
-                  اليوم
+                  {t("common.today")}
                 </button>
               ) : null}
             </div>
 
             <label className="fld" style={{ minWidth: 180 }}>
-              <span className="sr-only">الفصل</span>
+              <span className="sr-only">{t("common.class")}</span>
               <select
                 value={selectedClassId}
                 onChange={(event) => setSelectedClassId(event.target.value)}
-                aria-label="تصفية بالفصل"
+                aria-label={t("attendance.filterClassAria")}
               >
-                <option value="all">كل الفصول</option>
+                <option value="all">{t("common.allClasses")}</option>
                 {classes.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -304,12 +305,16 @@ export default function AttendancePage() {
         </div>
 
         <div className="two-col">
-          <section className="surface surface-pad" aria-label="ملخص الجلسة">
+          <section className="surface surface-pad" aria-label={t("attendance.summaryAria")}>
             <div className="surface-head">
               <div>
-                <h2>ملخص الجلسة</h2>
+                <h2>{t("attendance.summaryTitle")}</h2>
                 <p>
-                  {numberAr(children.length)} طفل · {numberAr(attended)} حضور · {numberAr(counts.pending)} بانتظار التسجيل
+                  {t("attendance.summaryHint", {
+                    children: number(children.length),
+                    attended: number(attended),
+                    pending: number(counts.pending),
+                  })}
                 </p>
               </div>
               <Badge tone={rate === null ? "muted" : rate >= 85 ? "ok" : rate >= 70 ? "warn" : "danger"}>
@@ -331,19 +336,19 @@ export default function AttendancePage() {
                     }}
                   >
                     <i style={{ width: 8, height: 8, borderRadius: 3, background: item.color }} aria-hidden="true" />
-                    {item.label}
+                    {t(item.labelKey as Parameters<typeof t>[0])}
                   </span>
-                  <b style={{ display: "block", fontSize: "1.35rem" }}>{numberAr(counts[item.value])}</b>
+                  <b style={{ display: "block", fontSize: "1.35rem" }}>{number(counts[item.value])}</b>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="surface surface-pad" aria-label="نسبة الحضور">
+          <section className="surface surface-pad" aria-label={t("attendance.rateAria")}>
             <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
               <ProgressRing
                 value={rate}
-                caption="حضور اليوم"
+                caption={t("attendance.todayRate")}
                 color={
                   rate === null
                     ? "var(--mute)"
@@ -359,27 +364,27 @@ export default function AttendancePage() {
                   <div key={item.value} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "var(--mute)", fontSize: ".84rem" }}>
                       <i style={{ width: 8, height: 8, borderRadius: 3, background: item.color }} aria-hidden="true" />
-                      {item.label}
+                      {t(item.labelKey as Parameters<typeof t>[0])}
                     </span>
-                    <b>{numberAr(counts[item.value])}</b>
+                    <b>{number(counts[item.value])}</b>
                   </div>
                 ))}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--mute)", fontSize: ".84rem" }}>لم يُسجّل</span>
-                  <b>{numberAr(counts.pending)}</b>
+                  <span style={{ color: "var(--mute)", fontSize: ".84rem" }}>{t("attendance.notRecorded")}</span>
+                  <b>{number(counts.pending)}</b>
                 </div>
               </div>
             </div>
           </section>
         </div>
 
-        <section className="surface surface-pad" aria-label="قائمة الأطفال">
+        <section className="surface surface-pad" aria-label={t("attendance.listAria")}>
           <div className="surface-head">
             <div>
-              <h2>تسجيل الحضور</h2>
-              <p>اختر حالة لكل طفل — تُحفظ فورًا في الخادم.</p>
+              <h2>{t("attendance.recordTitle")}</h2>
+              <p>{t("attendance.recordHint")}</p>
             </div>
-            {syncing ? <Badge tone="warn">جارٍ الحفظ…</Badge> : null}
+            {syncing ? <Badge tone="warn">{t("attendance.saving")}</Badge> : null}
           </div>
 
           {error ? <div className="notice danger" style={{ marginBottom: 12 }}>{error}</div> : null}
@@ -389,11 +394,11 @@ export default function AttendancePage() {
           ) : children.length === 0 ? (
             <EmptyState
               icon={<CalendarCheck className="h-5 w-5" />}
-              title="لا يوجد أطفال في هذا الفصل"
-              description="أضف أطفالًا أو اختر فصلًا آخر لتسجيل الحضور."
+              title={t("attendance.noChildren")}
+              description={t("attendance.noChildrenHint")}
               action={
                 <Link href="/children" className="btn sm">
-                  إدارة الأطفال
+                  {t("attendance.manageChildren")}
                 </Link>
               }
             />
@@ -402,29 +407,31 @@ export default function AttendancePage() {
               {children.map((child) => {
                 const status = attendanceMap[child.id];
                 return (
-                  <div key={child.id} className="listrow">
-                    <span className="avatar-md" aria-hidden="true">
-                      {child.name.charAt(0)}
-                    </span>
-                    <span className="grow">
-                      <b>{child.name}</b>
-                      <small>
-                        {child.class?.name || "بدون فصل"}
-                        {child.assignedServant?.name ? ` · ${child.assignedServant.name}` : ""}
-                      </small>
-                    </span>
+                  <div key={child.id} className="listrow listrow-person">
+                    <div className="listrow-main">
+                      <span className="avatar-md" aria-hidden="true">
+                        {initials(child.name)}
+                      </span>
+                      <span className="grow">
+                        <b>{child.name}</b>
+                        <small>
+                          {child.class?.name || t("common.noClass")}
+                          {child.assignedServant?.name ? ` · ${child.assignedServant.name}` : ""}
+                        </small>
+                      </span>
 
-                    {status ? (
-                      <Badge tone={attendanceTone(status)} dot>
-                        {ATTENDANCE_LABELS[status]}
-                      </Badge>
-                    ) : (
-                      <Badge tone="muted">
-                        <Clock className="h-3 w-3" aria-hidden="true" /> لم يُسجّل
-                      </Badge>
-                    )}
+                      {status ? (
+                        <Badge tone={attendanceTone(status)} dot>
+                          {t(`attendance.${status}`)}
+                        </Badge>
+                      ) : (
+                        <Badge tone="muted">
+                          <Clock className="h-3 w-3" aria-hidden="true" /> {t("attendance.notRecorded")}
+                        </Badge>
+                      )}
+                    </div>
 
-                    <div className="grow-wrap" role="group" aria-label={`حضور ${child.name}`}>
+                    <div className="listrow-actions" role="group" aria-label={t("attendance.childAria", { name: child.name })}>
                       {STATUS_META.map((item) => (
                         <button
                           key={item.value}
@@ -435,7 +442,7 @@ export default function AttendancePage() {
                           disabled={syncing}
                           aria-pressed={status === item.value}
                         >
-                          {item.label}
+                          {t(item.labelKey as Parameters<typeof t>[0])}
                         </button>
                       ))}
                     </div>
@@ -446,41 +453,48 @@ export default function AttendancePage() {
           )}
         </section>
 
-        <section className="surface surface-pad" aria-label="آخر الجلسات">
+        <section className="surface surface-pad" aria-label={t("attendance.sessionsAria")}>
           <div className="surface-head">
             <div>
-              <h2>آخر الجلسات</h2>
-              <p>سجل الجلسات المحفوظة ونسب الحضور</p>
+              <h2>{t("attendance.sessionsTitle")}</h2>
+              <p>{t("attendance.sessionsHint")}</p>
             </div>
             <Link href="/analytics" className="link-quiet">
-              تقرير كامل <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
+              {t("attendance.fullReport")} <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
             </Link>
           </div>
 
           {sessions.length === 0 ? (
             <EmptyState
               icon="🗓️"
-              title="لا توجد جلسات محفوظة"
-              description="ستظهر الجلسة هنا بعد حفظ أول حضور."
+              title={t("attendance.noSessions")}
+              description={t("attendance.noSessionsHint")}
             />
           ) : (
             <div className="list-stack">
               {sessions.map((session) => (
-                <div key={session.id} className="listrow">
-                  <span className="avatar-md" aria-hidden="true">
-                    <CalendarCheck className="h-4 w-4" />
-                  </span>
-                  <span className="grow">
-                    <b>{session.className || "فصل"}</b>
-                    <small>
-                      {formatShortDate(session.date)} · {numberAr(session.total)} طفل · {numberAr(session.present)} حاضر
-                    </small>
-                  </span>
-                  <div className="grow-wrap" style={{ justifyContent: "flex-end" }}>
-                    <Badge tone="ok">{numberAr(session.present)}</Badge>
-                    <Badge tone="danger">{numberAr(session.absent)}</Badge>
-                    <Badge tone="warn">{numberAr(session.late)}</Badge>
-                    <Badge tone="violet">{numberAr(session.excused)}</Badge>
+                <div key={session.id} className="listrow listrow-person">
+                  <div className="listrow-main">
+                    <span className="avatar-md" aria-hidden="true">
+                      <CalendarCheck className="h-4 w-4" />
+                    </span>
+                    <span className="grow">
+                      <b>{session.className || t("attendance.sessionClassFallback")}</b>
+                      <small>
+                        {t("attendance.sessionSummary", {
+                          count: number(session.total),
+                          present: number(session.present),
+                        })}
+                        {" · "}
+                        {formatShortDateFor(session.date, locale)}
+                      </small>
+                    </span>
+                  </div>
+                  <div className="listrow-actions">
+                    <Badge tone="ok">{number(session.present)}</Badge>
+                    <Badge tone="danger">{number(session.absent)}</Badge>
+                    <Badge tone="warn">{number(session.late)}</Badge>
+                    <Badge tone="violet">{number(session.excused)}</Badge>
                     <Badge tone={session.rate == null ? "muted" : session.rate >= 85 ? "ok" : "warn"}>
                       {percent(session.rate ?? null)}
                     </Badge>

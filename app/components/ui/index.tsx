@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { MOTION } from "../motion";
+import { useI18n } from "../../lib/app-i18n";
+import { formatDateTimeFor } from "../../lib/format";
 
 export function PageHeader({
   eyebrow,
@@ -124,7 +126,9 @@ export function ProgressRing({
   caption?: string;
   color?: string;
 }) {
+  const { t } = useI18n();
   const safe = Math.max(0, Math.min(100, value ?? 0));
+  const shownLabel = label ?? t("ui.ringDefault");
   return (
     <div
       className="ring"
@@ -133,11 +137,14 @@ export function ProgressRing({
         ["--ok" as string]: color ?? "var(--ok)",
       }}
       role="img"
-      aria-label={`${label ?? "النسبة"}: ${value === null ? "غير متاح" : `${value}%`}`}
+      aria-label={t("ui.ringAria", {
+        label: shownLabel,
+        value: value === null ? t("ui.ringNoValue") : `${value}%`,
+      })}
     >
       <div>
         <strong>{value === null ? "—" : `${value}%`}</strong>
-        <small>{caption ?? label ?? "النسبة"}</small>
+        <small>{caption ?? shownLabel}</small>
       </div>
     </div>
   );
@@ -151,9 +158,10 @@ export function MiniBars({
   height?: number;
 }) {
   const reduceMotion = useReducedMotion();
+  const { t } = useI18n();
   const max = Math.max(1, ...data.map((item) => item.value));
   return (
-    <div className="mini-bars" style={{ height }} role="img" aria-label="مخطط بياني">
+    <div className="mini-bars" style={{ height }} role="img" aria-label={t("ui.chartAria")}>
       {data.map((item) => (
         <div key={item.label} title={item.hint ?? `${item.label}: ${item.value}`}>
           <motion.i
@@ -184,12 +192,13 @@ export function Timeline({
     icon?: ReactNode;
   }>;
 }) {
+  const { t, locale } = useI18n();
   if (items.length === 0) {
     return (
       <EmptyState
         icon="🕊️"
-        title="لا توجد أحداث بعد"
-        description="ستظهر هنا سجلات الحضور والافتقاد والمتابعات والملاحظات."
+        title={t("ui.timelineEmpty")}
+        description={t("ui.timelineEmptyHint")}
       />
     );
   }
@@ -207,23 +216,12 @@ export function Timeline({
           <div className="t-body">
             <b>{item.title}</b>
             {item.description ? <p>{item.description}</p> : null}
-            <time dateTime={item.date}>{relative(item.date)}</time>
+            <time dateTime={item.date}>{formatDateTimeFor(item.date, locale)}</time>
           </div>
         </div>
       ))}
     </div>
   );
-}
-
-function relative(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ar-EG", {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 export function Modal({
@@ -239,6 +237,7 @@ export function Modal({
   children: ReactNode;
   wide?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className="sheet-backdrop"
@@ -262,7 +261,7 @@ export function Modal({
             <h2>{title}</h2>
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          <button type="button" className="ib" onClick={onClose} aria-label="إغلاق">
+          <button type="button" className="ib" onClick={onClose} aria-label={t("common.close")}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -281,3 +280,6 @@ export function Notice({
 }) {
   return <div className={`notice ${tone === "default" ? "" : tone}`}>{children}</div>;
 }
+
+export { FloatingLabelInput, type FloatingLabelInputProps } from "./FloatingInput";
+

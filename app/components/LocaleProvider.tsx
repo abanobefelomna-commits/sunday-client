@@ -99,10 +99,13 @@ export function LocaleProvider({
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
 }
 
+const DEFAULT_VALUE: LocaleContextValue = {
+  locale: "ar",
+  direction: "rtl",
+  setLocale: () => {},
+};
+
 export function useLocale(): LocaleContextValue {
   const context = useContext(LocaleContext);
-  if (!context) {
-    throw new Error("useLocale must be used inside LocaleProvider");
-  }
-  return context;
+  return context ?? DEFAULT_VALUE;
 }

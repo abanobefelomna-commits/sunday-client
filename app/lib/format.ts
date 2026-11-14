@@ -45,6 +45,20 @@ export const VISIT_STATUS_LABELS: Record<string, string> = {
   cancelled: 'ملغي',
 };
 
+/**
+ * Service roles are stored in Arabic in the database, so the value stays as
+ * data while the label is resolved through the active dictionary.
+ */
+export const SERVICE_ROLE_KEYS: Record<string, string> = {
+  'خادم': 'servants.roleServant',
+  'خادم فقرة عامة': 'servants.roleGeneral',
+  'قائد فصل': 'servants.roleClassLeader',
+  'مسؤول': 'servants.roleAdmin',
+  'أب كاهن': 'servants.rolePriest',
+  'خادم رئيسي': 'servants.roleChief',
+  'مشرف': 'servants.roleSupervisor',
+};
+
 export function attendanceTone(status: string): string {
   switch (status) {
     case 'present':
@@ -124,6 +138,49 @@ export function formatDateTime(value?: string | Date | null): string {
   });
 }
 
+/** Locale-aware date formatting used by the authenticated UI. */
+export function formatDateFor(
+  value: string | Date | null | undefined,
+  locale: Locale,
+): string {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-US', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+}
+
+export function formatShortDateFor(
+  value: string | Date | null | undefined,
+  locale: Locale,
+): string {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-US', {
+    day: 'numeric',
+    month: 'short',
+  }).format(date);
+}
+
+export function formatDateTimeFor(
+  value: string | Date | null | undefined,
+  locale: Locale,
+): string {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-US', {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
 export function relativeTime(value?: string | Date | null): string {
   if (!value) return '—';
   const date = value instanceof Date ? value : new Date(value);
@@ -176,8 +233,8 @@ export function ageFromBirthDate(birthDate?: string | null): number | null {
 }
 
 export function initials(name?: string | null): string {
-  if (!name) return '؟';
-  return name.replace(/^أ\.\s*/, '').trim().charAt(0) || '؟';
+  if (!name) return '?';
+  return name.replace(/^أ\.\s*/, '').trim().charAt(0) || '?';
 }
 
 export function percent(value?: number | null): string {

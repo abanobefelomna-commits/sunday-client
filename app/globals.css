@@ -411,6 +411,157 @@ h1.hero-title {
   color: var(--accent);
 }
 
+/* Floating Label Inputs */
+.floating-fld {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  margin-top: 14px;
+  text-align: start;
+}
+
+.floating-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.floating-input {
+  width: 100%;
+  height: 56px;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: var(--ink);
+  background-color: color-mix(in srgb, var(--card) 85%, var(--bg));
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding-block-start: 22px;
+  padding-block-end: 6px;
+  padding-inline: 16px;
+  min-width: 0;
+  transition: border-color 0.2s cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 0.2s cubic-bezier(0.2, 0, 0, 1),
+              background-color 0.2s ease;
+}
+
+.floating-input.has-start-icon {
+  padding-inline-start: 44px;
+}
+
+.floating-input.has-end-action {
+  padding-inline-end: 46px;
+}
+
+.floating-input:focus {
+  outline: none;
+  border-color: var(--pri);
+  background-color: var(--card);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pri) 16%, transparent);
+}
+
+.floating-fld.has-error .floating-input {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.14);
+}
+
+.floating-start-icon {
+  position: absolute;
+  inset-inline-start: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mute);
+  pointer-events: none;
+  transition: color 0.2s ease;
+  z-index: 1;
+}
+
+.floating-fld.is-focused .floating-start-icon {
+  color: var(--pri);
+}
+
+.floating-fld.has-error .floating-start-icon {
+  color: #ef4444;
+}
+
+.floating-label {
+  position: absolute;
+  inset-inline-start: 16px;
+  top: 17px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--mute);
+  pointer-events: none;
+  transform-origin: top start;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1),
+              top 0.2s cubic-bezier(0.2, 0, 0, 1),
+              color 0.2s cubic-bezier(0.2, 0, 0, 1),
+              font-weight 0.2s ease;
+  user-select: none;
+  z-index: 1;
+}
+
+.floating-label.has-start-icon {
+  inset-inline-start: 44px;
+}
+
+.floating-fld.is-floating .floating-label {
+  top: 13px;
+  transform: translateY(-6px) scale(0.78);
+  font-weight: 600;
+}
+
+.floating-fld.is-focused .floating-label {
+  color: var(--pri);
+}
+
+.floating-fld.has-error .floating-label {
+  color: #ef4444;
+}
+
+.floating-required {
+  color: #ef4444;
+}
+
+.floating-pass-toggle {
+  position: absolute;
+  inset-inline-end: 10px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--mute);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  z-index: 2;
+}
+
+.floating-pass-toggle:hover {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+.floating-error {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #ef4444;
+  margin-top: 2px;
+  padding-inline-start: 4px;
+}
+
+.floating-helper {
+  font-size: 0.8rem;
+  color: var(--mute);
+  margin-top: 2px;
+  padding-inline-start: 4px;
+}
+
 @keyframes auth-drift {
   to {
     transform: translate3d(14px, -18px, 0) rotate(12deg);
@@ -1885,18 +2036,16 @@ h2 {
 .listrow .grow b {
   display: block;
   font-size: 0.98rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .listrow .grow small {
   display: block;
   color: var(--mute);
   font-size: 0.8rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .avatar-lg {
@@ -2534,6 +2683,180 @@ table.data tbody tr:hover { background: color-mix(in srgb, var(--pri) 4%, transp
     max-width: 46px;
     text-align: center;
     white-space: normal;
+  }
+}
+
+/* Person rows: the identity link gets the available width, actions wrap below
+   when the viewport is too narrow instead of squeezing the name. */
+.listrow-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 220px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.listrow-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.listrow-person {
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .listrow {
+    align-items: flex-start;
+    row-gap: 9px;
+  }
+
+  .listrow-main {
+    flex-basis: 100%;
+  }
+
+  .listrow-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    padding-inline-start: 54px;
+  }
+
+  .pc {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  .pc .pi {
+    flex: 1 1 180px;
+  }
+
+  .pc .ac {
+    flex-basis: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    padding-inline-start: 66px;
+  }
+
+  .row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .ch {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .filters > .sb,
+  .filters > .fld,
+  .filters > .grow-wrap,
+  .filters > .chip,
+  .filters > button {
+    width: 100%;
+    min-width: 0 !important;
+    max-width: none;
+  }
+
+  .filters > .grow-wrap {
+    justify-content: space-between;
+  }
+
+  .page-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .page-head h1 {
+    overflow-wrap: anywhere;
+  }
+
+  .head-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .head-actions .btn,
+  .head-actions > a.btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .sheet-backdrop {
+    padding: 8px;
+    align-items: end;
+  }
+
+  .sheet {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    border-radius: 22px;
+    padding: 18px;
+  }
+
+  .tabs2 {
+    padding: 5px;
+  }
+
+  .tabs2 button {
+    padding: 10px 13px;
+    font-size: 0.82rem;
+  }
+
+  .status-btn {
+    min-height: 40px;
+  }
+
+  .sb {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .listrow {
+    padding: 11px 12px;
+    gap: 10px;
+  }
+
+  .listrow-actions {
+    padding-inline-start: 0;
+  }
+
+  .pc {
+    padding: 13px;
+  }
+
+  .pc .ac {
+    padding-inline-start: 0;
+  }
+
+  .avatar-lg {
+    width: 62px;
+    height: 62px;
+    border-radius: 20px;
+    font-size: 1.55rem;
+  }
+
+  .page-head h1 {
+    font-size: clamp(1.35rem, 7vw, 1.7rem);
   }
 }
 

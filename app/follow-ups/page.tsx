@@ -46,19 +46,19 @@ import {
   type FollowUpStatus,
 } from "../lib/api";
 import {
-  FOLLOW_UP_STATUS_LABELS,
-  PRIORITY_LABELS,
-  formatDate,
   followUpTone,
-  numberAr,
+  formatDateFor,
+  initials,
   priorityTone,
   shiftIso,
   todayIso,
 } from "../lib/format";
+import { useI18n } from "../lib/app-i18n";
 
 type StatusFilter = FollowUpStatus | "active" | "all";
 
 export default function FollowUpsPage() {
+  const { t, locale, number } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [data, setData] = useState<FollowUpListResponse | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -119,7 +119,7 @@ export default function FollowUpsPage() {
       setClasses(resClasses);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل المتابعات");
+      setError(err instanceof Error ? err.message : t("followUps.loadError"));
     } finally {
       setLoading(false);
     }
@@ -157,11 +157,11 @@ export default function FollowUpsPage() {
       if (!dryRun) await load();
       showToast(
         dryRun
-          ? `تجربة جاهزة: ${numberAr(result.alerts.length)} تنبيه محتمل`
-          : `تم فتح ${numberAr(result.created)} متابعة جديدة`,
+          ? t("followUps.toastDry", { count: number(result.alerts.length) })
+          : t("followUps.toastCreated", { count: number(result.created) }),
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "فشل تشغيل القواعد");
+      showToast(err instanceof Error ? err.message : t("followUps.toastFailed"));
     } finally {
       setBusy(false);
     }
@@ -175,55 +175,55 @@ export default function FollowUpsPage() {
         <PageHeader
           eyebrow={
             <>
-              <HeartHandshake className="h-4 w-4" aria-hidden="true" /> الرعاية المبنية على الوقائع
+              <HeartHandshake className="h-4 w-4" aria-hidden="true" /> {t("followUps.eyebrow")}
             </>
           }
-          title="المتابعات الرعوية"
-          subtitle="قواعد معلنة، أسباب واضحة، وقرارات قابلة للمراجعة — دون أي تصنيف نفسي أو سلوكي."
+          title={t("nav.followUps")}
+          subtitle={t("followUps.subtitle")}
           actions={
             <>
               <button type="button" className="btn ghost sm" onClick={() => setRulesOpen(true)}>
-                <Settings2 className="h-4 w-4" aria-hidden="true" /> القواعد
+                <Settings2 className="h-4 w-4" aria-hidden="true" /> {t("followUps.rules")}
               </button>
               <button type="button" className="btn ghost sm" onClick={() => runEvaluation(true)} disabled={busy}>
-                <Sparkles className="h-4 w-4" aria-hidden="true" /> تجربة القواعد
+                <Sparkles className="h-4 w-4" aria-hidden="true" /> {t("followUps.dryRun")}
               </button>
               <button type="button" className="btn ghost sm" onClick={() => runEvaluation(false)} disabled={busy}>
-                <RefreshCw className="h-4 w-4" aria-hidden="true" /> تشغيل الآن
+                <RefreshCw className="h-4 w-4" aria-hidden="true" /> {t("followUps.runNow")}
               </button>
               <button type="button" className="btn sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4" aria-hidden="true" /> متابعة يدوية
+                <Plus className="h-4 w-4" aria-hidden="true" /> {t("followUps.manual")}
               </button>
             </>
           }
         />
 
-        <section className="kpi-grid" aria-label="ملخص المتابعات">
+        <section className="kpi-grid" aria-label={t("followUps.summaryAria")}>
           <StatCard
-            label="مفتوحة"
-            value={numberAr(summary.open)}
-            hint="بانتظار بدء العمل"
+            label={t("followUps.open")}
+            value={number(summary.open)}
+            hint={t("followUps.openHint")}
             icon={<HeartHandshake className="h-4 w-4" />}
             color="var(--danger)"
           />
           <StatCard
-            label="قيد المتابعة"
-            value={numberAr(summary.inProgress)}
-            hint="جارٍ العمل عليها"
+            label={t("followUps.inProgress")}
+            value={number(summary.inProgress)}
+            hint={t("followUps.inProgressHint")}
             icon={<PlayCircle className="h-4 w-4" />}
             color="var(--warn)"
           />
           <StatCard
-            label="متأخرة"
-            value={numberAr(summary.overdue)}
-            hint="تجاوزت تاريخ الاستحقاق"
+            label={t("followUps.overdueTitle")}
+            value={number(summary.overdue)}
+            hint={t("followUps.overdueHint")}
             icon={<AlertTriangle className="h-4 w-4" />}
             color="var(--violet)"
           />
           <StatCard
-            label="مغلقة"
-            value={numberAr(summary.resolved)}
-            hint="تم حلها وتوثيقها"
+            label={t("followUps.closed")}
+            value={number(summary.resolved)}
+            hint={t("followUps.closedHint")}
             icon={<CheckCircle2 className="h-4 w-4" />}
             color="var(--ok)"
           />
@@ -233,22 +233,26 @@ export default function FollowUpsPage() {
           <Notice tone={evaluation.created > 0 ? "warn" : "default"}>
             <Sparkles className="h-4 w-4 flex-none" aria-hidden="true" />
             <span>
-              تم تقييم {numberAr(evaluation.evaluatedStudents)} طفلًا: فُتحت {numberAr(evaluation.created)} متابعة،
-              تم تخطي {numberAr(evaluation.skipped)} مكررة، وأُرسل {numberAr(evaluation.flagged)} تنبيه.
+              {t("followUps.evaluation", {
+                evaluated: number(evaluation.evaluatedStudents),
+                created: number(evaluation.created),
+                skipped: number(evaluation.skipped),
+                flagged: number(evaluation.flagged),
+              })}
             </span>
           </Notice>
         ) : null}
 
         <section className="surface surface-pad stack">
-          <div className="tabs2" role="tablist" aria-label="تصفية الحالة">
+          <div className="tabs2" role="tablist" aria-label={t("followUps.filterAria")}>
             {(
               [
-                ["active", "النشطة"],
-                ["all", "الكل"],
-                ["open", "مفتوحة"],
-                ["in_progress", "قيد المتابعة"],
-                ["resolved", "مغلقة"],
-                ["dismissed", "مستبعدة"],
+                ["active", t("followUps.tabActive")],
+                ["all", t("followUps.tabAll")],
+                ["open", t("followUps.tabOpen")],
+                ["in_progress", t("followUps.tabInProgress")],
+                ["resolved", t("followUps.tabResolved")],
+                ["dismissed", t("followUps.tabDismissed")],
               ] as Array<[StatusFilter, string]>
             ).map(([value, label]) => (
               <button
@@ -272,22 +276,22 @@ export default function FollowUpsPage() {
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="ابحث باسم الطفل أو سبب المتابعة…"
-                aria-label="بحث في المتابعات"
+                placeholder={t("followUps.searchPlaceholder")}
+                aria-label={t("followUps.searchAria")}
               />
             </label>
 
             <label className="fld" style={{ minWidth: 150 }}>
-              <span className="sr-only">الفصل</span>
+              <span className="sr-only">{t("common.class")}</span>
               <select
                 value={classId}
                 onChange={(event) => {
                   setClassId(event.target.value);
                   setPage(1);
                 }}
-                aria-label="تصفية بالفصل"
+                aria-label={t("followUps.classAria")}
               >
-                <option value="all">كل الفصول</option>
+                <option value="all">{t("common.allClasses")}</option>
                 {classes.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -297,19 +301,19 @@ export default function FollowUpsPage() {
             </label>
 
             <label className="fld" style={{ minWidth: 140 }}>
-              <span className="sr-only">الأولوية</span>
+              <span className="sr-only">{t("common.priority")}</span>
               <select
                 value={priority}
                 onChange={(event) => {
                   setPriority(event.target.value as FollowUpPriority | "all");
                   setPage(1);
                 }}
-                aria-label="تصفية بالأولوية"
+                aria-label={t("followUps.priorityAria")}
               >
-                <option value="all">كل الأولويات</option>
-                <option value="high">عالية</option>
-                <option value="medium">متوسطة</option>
-                <option value="low">منخفضة</option>
+                <option value="all">{t("followUps.allPriorities")}</option>
+                <option value="high">{t("priority.high")}</option>
+                <option value="medium">{t("priority.medium")}</option>
+                <option value="low">{t("priority.low")}</option>
               </select>
             </label>
 
@@ -322,7 +326,7 @@ export default function FollowUpsPage() {
               }}
               aria-pressed={overdue}
             >
-              <Filter className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> المتأخرة فقط
+              <Filter className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> {t("followUps.overdueOnly")}
             </button>
           </div>
 
@@ -333,11 +337,11 @@ export default function FollowUpsPage() {
           ) : cases.length === 0 ? (
             <EmptyState
               icon={<HeartHandshake className="h-5 w-5" />}
-              title="لا توجد متابعات مطابقة"
-              description="غيّر الفلاتر أو شغّل قواعد المتابعة لاكتشاف الحالات المحتاجة."
+              title={t("followUps.noResults")}
+              description={t("followUps.noResultsHint")}
               action={
                 <button type="button" className="btn ghost sm" onClick={() => setRulesOpen(true)}>
-                  إدارة القواعد
+                  {t("followUps.manageRules")}
                 </button>
               }
             />
@@ -350,15 +354,15 @@ export default function FollowUpsPage() {
           )}
 
           {totalPages > 1 ? (
-            <nav className="grow-wrap" style={{ justifyContent: "center" }} aria-label="ترقيم الصفحات">
+            <nav className="grow-wrap" style={{ justifyContent: "center" }} aria-label={t("common.paginationAria")}>
               <button type="button" className="btn ghost sm" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1}>
-                السابق
+                {t("common.prev")}
               </button>
               <span style={{ fontSize: ".85rem", color: "var(--mute)" }}>
-                صفحة {numberAr(page)} من {numberAr(totalPages)}
+                {t("common.pageOf", { page: number(page), total: number(totalPages) })}
               </span>
               <button type="button" className="btn ghost sm" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={page >= totalPages}>
-                التالي
+                {t("common.next")}
               </button>
             </nav>
           ) : null}
@@ -371,7 +375,7 @@ export default function FollowUpsPage() {
           onSaved={async () => {
             setCreateOpen(false);
             await load();
-            showToast("تم فتح متابعة جديدة");
+            showToast(t("followUps.toastManual"));
           }}
         />
       ) : null}
@@ -386,25 +390,32 @@ export default function FollowUpsPage() {
 }
 
 function CaseRow({ item }: { item: FollowUpCase }) {
+  const { t, locale, number } = useI18n();
   return (
     <article className="surface" style={{ padding: 15 }}>
       <div className="grow-wrap" style={{ justifyContent: "space-between", marginBottom: 6 }}>
         <div className="grow-wrap">
           <Link href={`/children/${item.childId}`} className="grow-wrap" style={{ gap: 8 }}>
             <span className="avatar-md" aria-hidden="true">
-              {item.child.name.charAt(0)}
+              {initials(item.child.name)}
             </span>
             <b>{item.child.name}</b>
           </Link>
           <Badge tone={followUpTone(item.status)} dot>
-            {FOLLOW_UP_STATUS_LABELS[item.status]}
+            {t(`status.${item.status}`)}
           </Badge>
-          <Badge tone={priorityTone(item.priority)}>{PRIORITY_LABELS[item.priority]}</Badge>
-          {item.isOverdue ? <Badge tone="danger">متأخرة</Badge> : null}
-          <Badge tone="muted">{item.source === "rule" ? "قاعدة" : item.source === "visitation" ? "افتقاد" : "يدوية"}</Badge>
+          <Badge tone={priorityTone(item.priority)}>{t(`priority.${item.priority}`)}</Badge>
+          {item.isOverdue ? <Badge tone="danger">{t("common.overdue")}</Badge> : null}
+          <Badge tone="muted">
+            {item.source === "rule"
+              ? t("followUps.sourceRule")
+              : item.source === "visitation"
+                ? t("followUps.sourceVisitation")
+                : t("followUps.sourceManual")}
+          </Badge>
         </div>
         <Link href={`/follow-ups/${item.id}`} className="link-quiet">
-          التفاصيل <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("common.details")} <ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" aria-hidden="true" />
         </Link>
       </div>
 
@@ -412,11 +423,11 @@ function CaseRow({ item }: { item: FollowUpCase }) {
 
       <div className="grow-wrap" style={{ color: "var(--mute)", fontSize: ".8rem" }}>
         <span>
-          <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {formatDate(item.dueDate)}
+          <Clock className="h-3.5 w-3.5" aria-hidden="true" /> {formatDateFor(item.dueDate, locale)}
         </span>
-        <span>{item.class?.name || "بدون فصل"}</span>
-        <span>المسؤول: {item.servant?.name || "غير معيّن"}</span>
-        <span>أنشطة: {numberAr(item.activityCount)}</span>
+        <span>{item.class?.name || t("common.noClass")}</span>
+        <span>{t("followUps.servant", { name: item.servant?.name || t("common.notAssigned") })}</span>
+        <span>{t("followUps.activities", { count: number(item.activityCount) })}</span>
       </div>
     </article>
   );
@@ -437,6 +448,7 @@ function CreateCaseModal({
   const [dueDate, setDueDate] = useState(shiftIso(todayIso(), 7));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     getChildren({ search: search.trim() || undefined, limit: 50 })
@@ -445,17 +457,22 @@ function CreateCaseModal({
   }, [search]);
 
   return (
-    <Modal title="فتح متابعة يدوية" subtitle="اختر الطفل واكتب سببًا واضحًا مبنيًا على وقائع." onClose={onClose} wide>
+    <Modal
+      title={t("followUps.createTitle")}
+      subtitle={t("followUps.createSubtitle")}
+      onClose={onClose}
+      wide
+    >
       <form
         className="f"
         onSubmit={async (event) => {
           event.preventDefault();
           if (!childId) {
-            setError("اختر الطفل أولًا");
+            setError(t("followUps.requiredChild"));
             return;
           }
           if (!reason.trim()) {
-            setError("سبب المتابعة مطلوب");
+            setError(t("followUps.requiredReason"));
             return;
           }
           setSaving(true);
@@ -469,7 +486,7 @@ function CreateCaseModal({
             });
             onSaved();
           } catch (err) {
-            setError(err instanceof Error ? err.message : "فشل إنشاء المتابعة");
+            setError(err instanceof Error ? err.message : t("followUps.createError"));
           } finally {
             setSaving(false);
           }
@@ -477,57 +494,59 @@ function CreateCaseModal({
       >
         <div className="form-grid">
           <div className="fld full">
-            <label htmlFor="case_search">بحث عن الطفل</label>
+            <label htmlFor="case_search">{t("followUps.childSearch")}</label>
             <input
               id="case_search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="اكتب اسم الطفل…"
+              placeholder={t("followUps.childSearchPlaceholder")}
               disabled={saving}
             />
           </div>
           <div className="fld full">
-            <label htmlFor="case_child">الطفل *</label>
+            <label htmlFor="case_child">{t("followUps.childLabel")}</label>
             <select
               id="case_child"
               value={childId}
               onChange={(event) => setChildId(event.target.value)}
               disabled={saving || children.length === 0}
             >
-              <option value="">{children.length === 0 ? "لا يوجد أطفال" : "اختر الطفل"}</option>
+              <option value="">
+                {children.length === 0 ? t("followUps.noChildren") : t("followUps.chooseChild")}
+              </option>
               {children.map((child) => (
                 <option key={child.id} value={child.id}>
-                  {child.name} — {child.class?.name || "بدون فصل"}
+                  {child.name} — {child.class?.name || t("common.noClass")}
                 </option>
               ))}
             </select>
           </div>
           <div className="fld full">
-            <label htmlFor="case_reason">سبب المتابعة *</label>
+            <label htmlFor="case_reason">{t("followUps.reasonLabel")}</label>
             <textarea
               id="case_reason"
               rows={3}
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="اكتب الواقعة المحددة التي تستدعي المتابعة…"
+              placeholder={t("followUps.reasonPlaceholder")}
               disabled={saving}
             />
           </div>
           <div className="fld">
-            <label htmlFor="case_priority">الأولوية</label>
+            <label htmlFor="case_priority">{t("common.priority")}</label>
             <select
               id="case_priority"
               value={priority}
               onChange={(event) => setPriority(event.target.value as FollowUpPriority)}
               disabled={saving}
             >
-              <option value="low">منخفضة</option>
-              <option value="medium">متوسطة</option>
-              <option value="high">عالية</option>
+              <option value="low">{t("priority.low")}</option>
+              <option value="medium">{t("priority.medium")}</option>
+              <option value="high">{t("priority.high")}</option>
             </select>
           </div>
           <div className="fld">
-            <label htmlFor="case_due">تاريخ الاستحقاق</label>
+            <label htmlFor="case_due">{t("followUps.dueLabel")}</label>
             <input
               id="case_due"
               type="date"
@@ -540,10 +559,10 @@ function CreateCaseModal({
         {error ? <p className="msg err">{error}</p> : null}
         <div className="grow-wrap" style={{ justifyContent: "flex-end", marginTop: 16 }}>
           <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
-            إلغاء
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn" disabled={saving}>
-            {saving ? "جارٍ الفتح…" : "فتح المتابعة"}
+            {saving ? t("followUps.opening") : t("followUps.openAction")}
           </button>
         </div>
       </form>
@@ -564,6 +583,7 @@ function RulesModal({
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   const load = useCallback(async () => {
     try {
@@ -571,11 +591,11 @@ function RulesModal({
       setRules(res.data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل القواعد");
+      setError(err instanceof Error ? err.message : t("followUps.rulesLoadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -589,7 +609,7 @@ function RulesModal({
       await load();
       onChanged();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل تحديث القاعدة");
+      setError(err instanceof Error ? err.message : t("followUps.ruleUpdateError"));
     } finally {
       setSavingId(null);
     }
@@ -597,14 +617,14 @@ function RulesModal({
 
   return (
     <Modal
-      title="قواعد المتابعة"
-      subtitle="كل قاعدة قابلة للتفسير: حد واضح ونافذة زمنية معلنة."
+      title={t("followUps.rulesTitle")}
+      subtitle={t("followUps.rulesSubtitle")}
       onClose={onClose}
       wide
     >
       {!isManager ? (
         <Notice tone="warn">
-          عرض فقط — تعديل القواعد متاح للمسؤول والكاهن.
+          {t("followUps.rulesReadOnly")}
         </Notice>
       ) : null}
       {error ? <Notice tone="danger">{error}</Notice> : null}
@@ -623,13 +643,13 @@ function RulesModal({
                   </p>
                 </div>
                 <Badge tone={rule.isActive ? "ok" : "muted"} dot>
-                  {rule.isActive ? "مفعّلة" : "متوقفة"}
+                  {rule.isActive ? t("common.enabled") : t("common.disabled")}
                 </Badge>
               </div>
 
               <div className="form-grid" style={{ marginTop: 10 }}>
                 <label className="fld">
-                  <span>الحد</span>
+                  <span>{t("followUps.ruleThreshold")}</span>
                   <input
                     type="number"
                     min={0}
@@ -643,7 +663,7 @@ function RulesModal({
                   />
                 </label>
                 <label className="fld">
-                  <span>النافذة (أيام)</span>
+                  <span>{t("followUps.ruleWindow")}</span>
                   <input
                     type="number"
                     min={1}
@@ -657,26 +677,26 @@ function RulesModal({
                   />
                 </label>
                 <label className="fld">
-                  <span>الأولوية</span>
+                  <span>{t("followUps.rulePriority")}</span>
                   <select
                     defaultValue={rule.priority}
                     disabled={!isManager || savingId === rule.id}
                     onChange={(event) => patch(rule, { priority: event.target.value as FollowUpPriority })}
                   >
-                    <option value="low">منخفضة</option>
-                    <option value="medium">متوسطة</option>
-                    <option value="high">عالية</option>
+                    <option value="low">{t("priority.low")}</option>
+                    <option value="medium">{t("priority.medium")}</option>
+                    <option value="high">{t("priority.high")}</option>
                   </select>
                 </label>
                 <label className="fld" style={{ justifyContent: "flex-end" }}>
-                  <span>التشغيل</span>
+                  <span>{t("followUps.ruleRun")}</span>
                   <button
                     type="button"
                     className={`chip ${rule.isActive ? "on" : ""}`}
                     disabled={!isManager || savingId === rule.id}
                     onClick={() => patch(rule, { isActive: !rule.isActive })}
                   >
-                    {rule.isActive ? "مفعّلة" : "متوقفة"}
+                    {rule.isActive ? t("common.enabled") : t("common.disabled")}
                   </button>
                 </label>
               </div>
@@ -687,10 +707,7 @@ function RulesModal({
 
       <div className="notice" style={{ marginTop: 14 }}>
         <Sparkles className="h-4 w-4 flex-none" aria-hidden="true" />
-        <span>
-          القواعد تعتمد فقط على وقائع مسجّلة (حضور، افتقاد، ومتابعة مفتوحة). لا تُنتج أي وصف نفسي أو سلوكي،
-          وكل قرار يظهر مع سببه وبياناته.
-        </span>
+        <span>{t("followUps.ruleFooter")}</span>
       </div>
     </Modal>
   );

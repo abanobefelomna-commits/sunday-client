@@ -15,24 +15,29 @@ import {
   type AuthUser,
 } from "../lib/api";
 import { toast } from "sonner";
-import { Camera, Trash2, Save, KeyRound, User, Phone, Mail, GraduationCap, ShieldCheck } from "lucide-react";
+import { Camera, Trash2, Save, KeyRound, User, GraduationCap, ShieldCheck } from "lucide-react";
+import { initials } from "../lib/format";
+import { useI18n } from "../lib/app-i18n";
 
 const GRADES = [
-  { value: "first", label: "سنة أولى ابتدائي" },
-  { value: "second", label: "سنة ثانية ابتدائي" },
-  { value: "third", label: "سنة ثالثة ابتدائي" },
-  { value: "fourth", label: "سنة رابعة ابتدائي" },
-  { value: "fifth", label: "سنة خامسة ابتدائي" },
-  { value: "sixth", label: "سنة سادسة ابتدائي" },
-  { value: "general", label: "الفقرة العامة" },
-];
+  "first",
+  "second",
+  "third",
+  "fourth",
+  "fifth",
+  "sixth",
+  "general",
+] as const;
+
+type Grade = (typeof GRADES)[number];
 
 export default function ProfilePage() {
+  const { t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [grade, setGrade] = useState("first");
+  const [grade, setGrade] = useState<Grade>("first");
   const [avatar, setAvatar] = useState<string | null>(null);
 
   // States
@@ -57,7 +62,7 @@ export default function ProfilePage() {
           setName(stored.name || "");
           setPhone(stored.phone || "");
           setEmail(stored.email || "");
-          setGrade(stored.grades?.[0] || "first");
+          setGrade((stored.grades?.[0] as Grade) || "first");
           setAvatar(stored.avatar || null);
         }
 
@@ -67,7 +72,7 @@ export default function ProfilePage() {
           setName(fresh.name || "");
           setPhone(fresh.phone || "");
           setEmail(fresh.email || "");
-          setGrade(fresh.grades?.[0] || "first");
+          setGrade((fresh.grades?.[0] as Grade) || "first");
           setAvatar(fresh.avatar || null);
         }
       } catch {
@@ -85,20 +90,20 @@ export default function ProfilePage() {
     if (!file || !user?.id) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("حجم الصورة كبير جداً، الحد الأقصى ٥ ميجابايت");
+      toast.error(t("profile.photoTooLarge"));
       return;
     }
 
     setUploadingAvatar(true);
-    const toastId = toast.loading("جارٍ رفع صورتك الشخصية...");
+    const toastId = toast.loading(t("profile.photoUploading"));
 
     try {
       const res = await uploadUserAvatar(user.id, file);
       setAvatar(res.avatar);
       setUser((prev) => (prev ? { ...prev, avatar: res.avatar } : null));
-      toast.success("تم تحديث صورتك الشخصية بنجاح 🖼️", { id: toastId });
+      toast.success(t("profile.photoUpdated"), { id: toastId });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "فشل رفع الصورة";
+      const msg = err instanceof Error ? err.message : t("profile.photoError");
       toast.error(msg, { id: toastId });
     } finally {
       setUploadingAvatar(false);
@@ -107,18 +112,18 @@ export default function ProfilePage() {
 
   const handleRemoveAvatar = async () => {
     if (!user?.id) return;
-    if (!confirm("هل أنت متأكد من حذف الصورة الشخصية؟")) return;
+    if (!confirm(t("profile.removeConfirm"))) return;
 
     setUploadingAvatar(true);
-    const toastId = toast.loading("جارٍ حذف الصورة...");
+    const toastId = toast.loading(t("profile.photoRemoving"));
 
     try {
       await deleteUserAvatar(user.id);
       setAvatar(null);
       setUser((prev) => (prev ? { ...prev, avatar: null } : null));
-      toast.success("تم حذف الصورة الشخصية بنجاح ✓", { id: toastId });
+      toast.success(t("profile.photoRemoved"), { id: toastId });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "فشل حذف الصورة";
+      const msg = err instanceof Error ? err.message : t("profile.photoRemoveError");
       toast.error(msg, { id: toastId });
     } finally {
       setUploadingAvatar(false);
@@ -129,12 +134,12 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!user?.id) return;
     if (!name.trim() || !phone.trim()) {
-      toast.error("يرجى ملء الاسم ورقم الهاتف.");
+      toast.error(t("profile.namePhoneRequired"));
       return;
     }
 
     setSavingProfile(true);
-    const toastId = toast.loading("جارٍ حفظ التغييرات...");
+    const toastId = toast.loading(t("profile.savingToast"));
 
     try {
       const updated = await updateUserProfile(user.id, {
@@ -144,9 +149,9 @@ export default function ProfilePage() {
       });
 
       setUser(updated);
-      toast.success("تم حفظ بياناتك بنجاح ومزامنة الفصل! ✓", { id: toastId });
+      toast.success(t("profile.saved"), { id: toastId });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "تعذر حفظ التعديلات";
+      const msg = err instanceof Error ? err.message : t("profile.saveError");
       toast.error(msg, { id: toastId });
     } finally {
       setSavingProfile(false);
@@ -157,20 +162,20 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!user?.id) return;
     if (!oldPassword || !newPassword) {
-      toast.error("يرجى كتابة كلمة المرور الحالية والجديدة.");
+      toast.error(t("profile.fillPasswords"));
       return;
     }
     if (newPassword.length < 8) {
-      toast.error("كلمة المرور الجديدة يجب أن تكون ٨ أحرف على الأقل.");
+      toast.error(t("profile.passwordLength"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("كلمة المرور الجديدة وتأكيدها غير متطابقين.");
+      toast.error(t("profile.passwordMismatch"));
       return;
     }
 
     setSavingPassword(true);
-    const toastId = toast.loading("جارٍ تحديث كلمة المرور...");
+    const toastId = toast.loading(t("profile.passwordUpdating"));
 
     try {
       await changeUserPassword(user.id, {
@@ -181,17 +186,17 @@ export default function ProfilePage() {
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      toast.success("تم تغيير كلمة المرور بنجاح 🔒", { id: toastId });
+      toast.success(t("profile.passwordUpdated"), { id: toastId });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "فشل تغيير كلمة المرور";
+      const msg = err instanceof Error ? err.message : t("profile.passwordError");
       toast.error(msg, { id: toastId });
     } finally {
       setSavingPassword(false);
     }
   };
 
-  const initial = user?.name ? user.name.replace(/^أ\. /, "").trim().charAt(0) : "✝";
-  const gradeLabel = GRADES.find((g) => g.value === grade)?.label || "سنة أولى ابتدائي";
+  const initial = initials(user?.name || "") === "?" ? "✝" : initials(user?.name || "");
+  const gradeLabel = t(`grade.${grade}` as Parameters<typeof t>[0]);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32">
@@ -199,15 +204,15 @@ export default function ProfilePage() {
 
       <main className="pg max-w-2xl mx-auto">
         {/* Navigation Breadcrumb */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <Link
             href="/dashboard"
             className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
           >
-            ← العودة للوحة التحكم
+            ← {t("profile.back")}
           </Link>
           <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-bold px-3 py-1 rounded-full">
-            الملف الشخصي (بروفايل الخادم)
+            {t("profile.badge")}
           </span>
         </div>
 
@@ -222,7 +227,7 @@ export default function ProfilePage() {
                 {avatar ? (
                   <img
                     src={getImageUrl(avatar)}
-                    alt={user?.name || "صورة الخادم"}
+                    alt={user?.name || t("profile.avatarAlt")}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -238,8 +243,8 @@ export default function ProfilePage() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
                 className="absolute bottom-1 left-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2.5 shadow-lg transition transform hover:scale-110 flex items-center justify-center cursor-pointer"
-                title="تغيير صورتك الشخصية"
-                aria-label="تغيير صورتك الشخصية"
+                title={t("profile.changePhoto")}
+                aria-label={t("profile.changePhoto")}
               >
                 <Camera className="w-4 h-4" />
               </button>
@@ -254,14 +259,14 @@ export default function ProfilePage() {
             </div>
 
             {/* User Meta Summary */}
-            <div className="text-center sm:text-right flex-1 min-w-0">
+            <div className="text-center sm:text-start flex-1 min-w-0">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                  {user?.name || "خادم المسيح"}
+                  {user?.name || t("profile.defaultName")}
                 </h1>
                 <span className="bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  {user?.role === "admin" ? "مسؤول الخدمة" : "خادم معتمد"}
+                  {user?.role === "admin" ? t("profile.roleAdmin") : t("profile.roleServant")}
                 </span>
               </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center justify-center sm:justify-start gap-1">
@@ -277,10 +282,10 @@ export default function ProfilePage() {
                 onClick={handleRemoveAvatar}
                 disabled={uploadingAvatar}
                 className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 flex items-center gap-1 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
-                title="إزالة الصورة والرجوع للحرف الأولي"
+                title={t("profile.removePhotoTitle")}
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>إزالة الصورة</span>
+                <span>{t("profile.removePhoto")}</span>
               </button>
             )}
           </div>
@@ -291,14 +296,14 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              البيانات الشخصية والخدمة
+              {t("profile.formTitle")}
             </h2>
           </div>
 
-          <form onSubmit={handleUpdateProfile} className="space-y-4 text-right">
+          <form onSubmit={handleUpdateProfile} className="space-y-4 text-start">
             <div>
               <label htmlFor="p-name" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                الاسم بالكامل
+                {t("profile.name")}
               </label>
               <div className="relative">
                 <input
@@ -307,7 +312,7 @@ export default function ProfilePage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="مثال: أ. مينا سامي"
+                  placeholder={t("profile.namePlaceholder")}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -316,7 +321,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="p-phone" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  رقم الموبايل
+                  {t("profile.phone")}
                 </label>
                 <div className="relative">
                   <input
@@ -334,17 +339,17 @@ export default function ProfilePage() {
 
               <div>
                 <label htmlFor="p-grade" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  المرحلة / الفصل الذي تخدم به
+                  {t("profile.grade")}
                 </label>
                 <select
                   id="p-grade"
                   value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
+                  onChange={(e) => setGrade(e.target.value as Grade)}
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {GRADES.map((g) => (
-                    <option key={g.value} value={g.value}>
-                      {g.label}
+                  {GRADES.map((value) => (
+                    <option key={value} value={value}>
+                      {t(`grade.${value}` as Parameters<typeof t>[0])}
                     </option>
                   ))}
                 </select>
@@ -353,7 +358,7 @@ export default function ProfilePage() {
 
             <div>
               <label htmlFor="p-email" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                البريد الإلكتروني (المعرف الأساسي للحساب)
+                {t("profile.email")}
               </label>
               <input
                 id="p-email"
@@ -364,7 +369,7 @@ export default function ProfilePage() {
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed"
               />
               <span className="text-xs text-slate-400 mt-1 block">
-                لتغيير البريد الإلكتروني، يرجى التواصل مع أمين أو مسؤول الخدمة.
+                {t("profile.emailHint")}
               </span>
             </div>
 
@@ -374,7 +379,7 @@ export default function ProfilePage() {
               className="btn big w-full mt-4 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
-              <span>{savingProfile ? "جارٍ حفظ البيانات..." : "حفظ التغييرات"}</span>
+              <span>{savingProfile ? t("profile.saving") : t("profile.save")}</span>
             </button>
           </form>
         </div>
@@ -384,14 +389,14 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2 mb-6 pb-3 border-b border-slate-100 dark:border-slate-800">
             <KeyRound className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              أمان الحساب وكلمة المرور
+              {t("profile.securityTitle")}
             </h2>
           </div>
 
-          <form onSubmit={handleChangePassword} className="space-y-4 text-right">
+          <form onSubmit={handleChangePassword} className="space-y-4 text-start">
             <div>
               <label htmlFor="old-pass" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                كلمة المرور الحالية
+                {t("profile.oldPassword")}
               </label>
               <input
                 id="old-pass"
@@ -407,7 +412,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="new-pass" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  كلمة المرور الجديدة (٨ أحرف فأكثر)
+                  {t("profile.newPassword")}
                 </label>
                 <input
                   id="new-pass"
@@ -422,7 +427,7 @@ export default function ProfilePage() {
 
               <div>
                 <label htmlFor="conf-pass" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  تأكيد كلمة المرور الجديدة
+                  {t("profile.confirmPassword")}
                 </label>
                 <input
                   id="conf-pass"
@@ -442,7 +447,7 @@ export default function ProfilePage() {
               className="btn big ghost w-full mt-4 flex items-center justify-center gap-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30"
             >
               <KeyRound className="w-4 h-4" />
-              <span>{savingPassword ? "جارٍ التحديث..." : "تحديث كلمة المرور"}</span>
+              <span>{savingPassword ? t("profile.updating") : t("profile.updatePassword")}</span>
             </button>
           </form>
         </div>

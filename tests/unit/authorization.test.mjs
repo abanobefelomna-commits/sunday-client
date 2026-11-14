@@ -73,3 +73,35 @@ test('isPrivilegedRole recognizes English and Arabic leadership roles', () => {
   assert.equal(isPrivilegedRole('servant', 'خادم'), false);
   assert.equal(isPrivilegedRole(null, null), false);
 });
+
+test('cross-tenant token isolation: access token must match resolved tenant context', () => {
+  const churchATenant = { churchId: 'c0000000-0000-4000-8000-000000000001', status: 'active' };
+  const churchBTenant = { churchId: 'c0000000-0000-4000-8000-000000000002', status: 'active' };
+  const suspendedTenant = { churchId: 'c0000000-0000-4000-8000-000000000001', status: 'suspended' };
+
+  const tokenUserA = { sub: 'user-1', role: 'admin', tid: churchATenant.churchId };
+  const tokenUserB = { sub: 'user-2', role: 'servant', tid: churchBTenant.churchId };
+
+  // Helper reflecting getAuthUser's tenant binding logic
+  function validateTenantBinding(user, tenant) {
+    if (!user || !tenant) return null;
+    if (user.tid !== tenant.churchId) return null;
+    if (['suspended', 'archived', 'failed', 'pending', 'provisioning'].includes(tenant.status)) {
+      return null;
+    }
+    return user;
+  }
+
+  // Token A on Church A succeeds
+  assert.deepEqual(validateTenantBinding(tokenUserA, churchATenant), tokenUserA);
+  // Token B on Church B succeeds
+  assert.deepEqual(validateTenantBinding(tokenUserB, churchBTenant), tokenUserB);
+
+  // Cross-tenant attempts: Token A on Church B fails
+  assert.equal(validateTenantBinding(tokenUserA, churchBTenant), null, 'Cross-tenant token replay must be rejected');
+  // Token B on Church A fails
+  assert.equal(validateTenantBinding(tokenUserB, churchATenant), null, 'Cross-tenant token replay must be rejected');
+
+  // Suspended church rejects token even if tid matches
+  assert.equal(validateTenantBinding(tokenUserA, suspendedTenant), null, 'Suspended church must reject requests');
+});

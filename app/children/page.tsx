@@ -37,11 +37,13 @@ import {
   type ClassItem,
   type ServantItem,
 } from "../lib/api";
-import { formatDate, initials, numberAr } from "../lib/format";
+import { formatDateFor, initials } from "../lib/format";
+import { useI18n } from "../lib/app-i18n";
 
 const PAGE_SIZE = 24;
 
 export default function ChildrenPage() {
+  const { t, locale, number } = useI18n();
   const [children, setChildren] = useState<ChildItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -99,7 +101,7 @@ export default function ChildrenPage() {
       setClasses(resCl);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "تعذر تحميل بيانات الأطفال");
+      setError(err instanceof Error ? err.message : t("children.loadError"));
     } finally {
       setLoading(false);
     }
@@ -182,7 +184,7 @@ export default function ChildrenPage() {
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!formName.trim()) {
-      setFormError("يرجى إدخال اسم الطفل.");
+      setFormError(t("children.nameRequired"));
       return;
     }
 
@@ -214,7 +216,7 @@ export default function ChildrenPage() {
       setShowModal(false);
       fetchData();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "تعذر حفظ بيانات الطفل");
+      setFormError(err instanceof Error ? err.message : t("children.saveError"));
     } finally {
       setSaving(false);
     }
@@ -227,7 +229,7 @@ export default function ChildrenPage() {
       setDeletingId(null);
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل حذف الطفل");
+      setError(err instanceof Error ? err.message : t("children.deleteError"));
     } finally {
       setDeleting(false);
     }
@@ -241,26 +243,26 @@ export default function ChildrenPage() {
         <PageHeader
           eyebrow={
             <>
-              <Baby className="h-4 w-4" aria-hidden="true" /> دليل الرحلة
+              <Baby className="h-4 w-4" aria-hidden="true" /> {t("children.eyebrow")}
             </>
           }
-          title="الأطفال"
-          subtitle="كل طفل ملف رعوي كامل: الحضور، الافتقاد، المتابعة والتقدم التعليمي."
+          title={t("nav.children")}
+          subtitle={t("children.subtitle")}
           actions={
             canAddChild ? (
               <button type="button" className="btn" onClick={openAddModal}>
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                إضافة طفل
+                {t("children.add")}
               </button>
             ) : null
           }
         />
 
-        <div className="kpi-grid" aria-label="ملخص الأطفال">
-          <MiniStat label="إجمالي الأطفال" value={numberAr(total)} hint="حسب البحث الحالي" />
-          <MiniStat label="الفصول" value={numberAr(classCount)} hint="فصول الخدمة المتاحة" />
-          <MiniStat label="لديهم خادم مسؤول" value={numberAr(withServant)} hint="في الصفحة الحالية" />
-          <MiniStat label="الصفحة" value={`${numberAr(page)} / ${numberAr(totalPages)}`} hint={`${PAGE_SIZE} طفل لكل صفحة`} />
+        <div className="kpi-grid" aria-label={t("children.summaryAria")}>
+          <MiniStat label={t("children.total")} value={number(total)} hint={t("children.totalHint")} />
+          <MiniStat label={t("children.classes")} value={number(classCount)} hint={t("children.classesHint")} />
+          <MiniStat label={t("children.withServant")} value={number(withServant)} hint={t("children.withServantHint")} />
+          <MiniStat label={t("children.pageLabel")} value={`${number(page)} / ${number(totalPages)}`} hint={t("children.pageHint", { count: number(PAGE_SIZE) })} />
         </div>
 
         <div className="surface surface-pad stack">
@@ -268,23 +270,23 @@ export default function ChildrenPage() {
             <label className="sb" style={{ flex: 1, minWidth: 220 }}>
               <Search className="h-4 w-4 opacity-50" aria-hidden="true" />
               <input
-                placeholder="ابحث بالاسم أو هاتف ولي الأمر…"
+                placeholder={t("children.searchPlaceholder")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                aria-label="بحث في الأطفال"
+                aria-label={t("children.searchAria")}
               />
             </label>
             <label className="fld" style={{ minWidth: 170 }}>
-              <span className="sr-only">تصفية بالفصل</span>
+              <span className="sr-only">{t("children.filterClassAria")}</span>
               <select
                 value={selectedClassId}
                 onChange={(event) => {
                   setSelectedClassId(event.target.value);
                   setPage(1);
                 }}
-                aria-label="تصفية بالفصل"
+                aria-label={t("children.filterClassAria")}
               >
-                <option value="all">كل الفصول</option>
+                <option value="all">{t("common.allClasses")}</option>
                 {classes.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name}
@@ -301,16 +303,16 @@ export default function ChildrenPage() {
           ) : children.length === 0 ? (
             <EmptyState
               icon="🧒"
-              title={debouncedSearch ? "لا نتائج مطابقة" : "لا يوجد أطفال مسجلين"}
+              title={debouncedSearch ? t("children.noResults") : t("children.noChildren")}
               description={
                 debouncedSearch
-                  ? "جرّب اسمًا مختلفًا أو أزل تصفية الفصل."
-                  : "ابدأ بإضافة أول طفل؛ سيُنشأ له ملف رحلة كامل تلقائيًا."
+                  ? t("children.noResultsHint")
+                  : t("children.noChildrenHint")
               }
               action={
                 canAddChild ? (
                   <button type="button" className="btn sm" onClick={openAddModal}>
-                    إضافة طفل
+                    {t("children.add")}
                   </button>
                 ) : null
               }
@@ -318,11 +320,11 @@ export default function ChildrenPage() {
           ) : (
             <div className="list-stack">
               {children.map((child) => (
-                <article key={child.id} className="listrow">
+                <article key={child.id} className="listrow listrow-person">
                   <Link
                     href={`/children/${child.id}`}
-                    style={{ display: "contents" }}
-                    aria-label={`فتح ملف ${child.name}`}
+                    className="listrow-main"
+                    aria-label={t("children.openAria", { name: child.name })}
                   >
                     <span
                       className="avatar-md"
@@ -334,27 +336,27 @@ export default function ChildrenPage() {
                     <span className="grow">
                       <b>{child.name}</b>
                       <small>
-                        {child.class?.name || "بدون فصل"} ·{" "}
+                        {child.class?.name || t("common.noClass")} ·{" "}
                         {child.assignedServant?.name
-                          ? `المسؤول: ${child.assignedServant.name}`
-                          : "لا يوجد خادم مسؤول"}
+                          ? t("children.responsibleName", { name: child.assignedServant.name })
+                          : t("children.noServant")}
                       </small>
-                      <small dir="ltr" style={{ textAlign: "start" }}>
-                        {child.parentPhone || "لا يوجد هاتف"}
+                      <small>
+                        <bdi dir="ltr">{child.parentPhone || t("common.noPhone")}</bdi>
                       </small>
                     </span>
                   </Link>
 
-                  <div className="grow-wrap" style={{ justifyContent: "flex-end" }}>
+                  <div className="listrow-actions">
                     <Badge
                       tone={
                         child.gender === "female" ? "violet" : "default"
                       }
                     >
-                      {child.gender === "female" ? "بنت" : "ولد"}
+                      {child.gender === "female" ? t("children.female") : t("children.male")}
                     </Badge>
                     {child.birthDate ? (
-                      <Badge tone="muted">{formatDate(child.birthDate)}</Badge>
+                      <Badge tone="muted">{formatDateFor(child.birthDate, locale)}</Badge>
                     ) : null}
                     {canWriteChild(child) ? (
                       <>
@@ -362,8 +364,8 @@ export default function ChildrenPage() {
                           type="button"
                           className="ib"
                           onClick={() => openEditModal(child)}
-                          aria-label={`تعديل بيانات ${child.name}`}
-                          title="تعديل"
+                          aria-label={t("children.editAria", { name: child.name })}
+                          title={t("common.edit")}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -372,14 +374,14 @@ export default function ChildrenPage() {
                           className="ib"
                           style={{ color: "var(--danger)" }}
                           onClick={() => setDeletingId(child.id)}
-                          aria-label={`حذف ${child.name}`}
-                          title="حذف"
+                          aria-label={t("children.deleteAria", { name: child.name })}
+                          title={t("common.delete")}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </>
                     ) : (
-                      <Badge tone="muted">عرض فقط</Badge>
+                      <Badge tone="muted">{t("common.viewOnly")}</Badge>
                     )}
                   </div>
                 </article>
@@ -388,18 +390,18 @@ export default function ChildrenPage() {
           )}
 
           {totalPages > 1 ? (
-            <nav className="grow-wrap" style={{ justifyContent: "center" }} aria-label="ترقيم الصفحات">
+            <nav className="grow-wrap" style={{ justifyContent: "center" }} aria-label={t("common.paginationAria")}>
               <button
                 type="button"
                 className="btn ghost sm"
                 onClick={() => setPage((value) => Math.max(1, value - 1))}
                 disabled={page <= 1}
               >
-                <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                السابق
+                <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
+                {t("common.prev")}
               </button>
               <span style={{ fontSize: ".85rem", color: "var(--mute)" }}>
-                صفحة {numberAr(page)} من {numberAr(totalPages)}
+                {t("common.pageOf", { page: number(page), total: number(totalPages) })}
               </span>
               <button
                 type="button"
@@ -407,8 +409,8 @@ export default function ChildrenPage() {
                 onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
                 disabled={page >= totalPages}
               >
-                التالي
-                <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                {t("common.next")}
+                <ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
               </button>
             </nav>
           ) : null}
@@ -417,19 +419,19 @@ export default function ChildrenPage() {
 
       {showModal ? (
         <Modal
-          title={editingChild ? "تعديل بيانات الطفل" : "إضافة طفل جديد"}
-          subtitle="البيانات الأساسية تُنشئ ملف الرحلة تلقائيًا."
+          title={editingChild ? t("children.editTitle") : t("children.addTitle")}
+          subtitle={t("children.modalSubtitle")}
           onClose={() => setShowModal(false)}
           wide
         >
           <form onSubmit={handleSave} className="f">
             <div className="form-grid">
               <div className="fld full">
-                <label htmlFor="c_name">اسم الطفل الكامل *</label>
+                <label htmlFor="c_name">{t("children.nameLabel")}</label>
                 <input
                   id="c_name"
                   required
-                  placeholder="مثال: يوسف هاني فهمي"
+                  placeholder={t("children.namePlaceholder")}
                   value={formName}
                   onChange={(event) => setFormName(event.target.value)}
                   disabled={saving}
@@ -437,7 +439,7 @@ export default function ChildrenPage() {
               </div>
 
               <div className="fld">
-                <label htmlFor="c_class">الفصل</label>
+                <label htmlFor="c_class">{t("children.classLabel")}</label>
                 <select
                   id="c_class"
                   value={formClassId}
@@ -448,7 +450,7 @@ export default function ChildrenPage() {
                   }}
                   disabled={saving}
                 >
-                  <option value="">بدون فصل محدد</option>
+                  <option value="">{t("children.noClassOption")}</option>
                   {writableClasses.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name} ({item.grade})
@@ -458,14 +460,14 @@ export default function ChildrenPage() {
               </div>
 
               <div className="fld">
-                <label htmlFor="c_servant">الخادم المسؤول</label>
+                <label htmlFor="c_servant">{t("children.servantLabel")}</label>
                 <select
                   id="c_servant"
                   value={formServantId}
                   onChange={(event) => setFormServantId(event.target.value)}
                   disabled={saving || classServants.length === 0}
                 >
-                  <option value="">بدون تعيين</option>
+                  <option value="">{t("children.noServantOption")}</option>
                   {classServants.map((servant) => (
                     <option key={servant.id} value={servant.id}>
                       {servant.name} — {servant.role}
@@ -473,12 +475,12 @@ export default function ChildrenPage() {
                   ))}
                 </select>
                 {formClassId && classServants.length === 0 ? (
-                  <small style={{ fontWeight: 500 }}>لا يوجد خدام معيّنون على هذا الفصل.</small>
+                  <small style={{ fontWeight: 500 }}>{t("children.noClassServants")}</small>
                 ) : null}
               </div>
 
               <div className="fld">
-                <label htmlFor="c_birth">تاريخ الميلاد</label>
+                <label htmlFor="c_birth">{t("children.birthDate")}</label>
                 <input
                   id="c_birth"
                   type="date"
@@ -489,20 +491,20 @@ export default function ChildrenPage() {
               </div>
 
               <div className="fld">
-                <label htmlFor="c_gender">النوع</label>
+                <label htmlFor="c_gender">{t("common.gender")}</label>
                 <select
                   id="c_gender"
                   value={formGender}
                   onChange={(event) => setFormGender(event.target.value as "male" | "female")}
                   disabled={saving}
                 >
-                  <option value="male">ولد</option>
-                  <option value="female">بنت</option>
+                  <option value="male">{t("children.male")}</option>
+                  <option value="female">{t("children.female")}</option>
                 </select>
               </div>
 
               <div className="fld">
-                <label htmlFor="c_phone">هاتف ولي الأمر</label>
+                <label htmlFor="c_phone">{t("children.parentPhone")}</label>
                 <input
                   id="c_phone"
                   type="tel"
@@ -515,7 +517,7 @@ export default function ChildrenPage() {
               </div>
 
               <div className="fld">
-                <label htmlFor="c_parent">اسم ولي الأمر</label>
+                <label htmlFor="c_parent">{t("children.parentName")}</label>
                 <input
                   id="c_parent"
                   value={formParentName}
@@ -525,7 +527,7 @@ export default function ChildrenPage() {
               </div>
 
               <div className="fld full">
-                <label htmlFor="c_address">العنوان</label>
+                <label htmlFor="c_address">{t("common.address")}</label>
                 <input
                   id="c_address"
                   value={formAddress}
@@ -535,7 +537,7 @@ export default function ChildrenPage() {
               </div>
 
               <div className="fld full">
-                <label htmlFor="c_notes">ملاحظات أساسية</label>
+                <label htmlFor="c_notes">{t("common.notes")}</label>
                 <textarea
                   id="c_notes"
                   rows={2}
@@ -555,10 +557,10 @@ export default function ChildrenPage() {
                 onClick={() => setShowModal(false)}
                 disabled={saving}
               >
-                إلغاء
+                {t("common.cancel")}
               </button>
               <button type="submit" className="btn" disabled={saving}>
-                {saving ? "جارٍ الحفظ…" : "حفظ البيانات"}
+                {saving ? t("common.savingShort") : t("common.save")}
               </button>
             </div>
           </form>
@@ -567,17 +569,17 @@ export default function ChildrenPage() {
 
       {deletingId ? (
         <Modal
-          title="تأكيد حذف الطفل"
-          subtitle="الحذف يحافظ على سجل الحضور والافتقاد والمتابعات للأرشيف."
+          title={t("children.deleteTitle")}
+          subtitle={t("children.deleteSubtitle")}
           onClose={() => setDeletingId(null)}
         >
           <div className="notice warn" style={{ marginBottom: 16 }}>
             <Trash2 className="h-5 w-5 flex-none" aria-hidden="true" />
-            سيتم إخفاء الطفل من القوائم النشطة، لكن سجله التاريخي يبقى محفوظًا للمراجعة الرعوية.
+            {t("children.deleteNotice")}
           </div>
           <div className="grow-wrap" style={{ justifyContent: "flex-end" }}>
             <button type="button" className="btn ghost" onClick={() => setDeletingId(null)} disabled={deleting}>
-              إلغاء
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -586,7 +588,7 @@ export default function ChildrenPage() {
               onClick={() => handleDelete(deletingId)}
               disabled={deleting}
             >
-              {deleting ? "جارٍ الحذف…" : "حذف من القوائم"}
+              {deleting ? t("common.deleting") : t("children.deleteConfirm")}
             </button>
           </div>
         </Modal>
