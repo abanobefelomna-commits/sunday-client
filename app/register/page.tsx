@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { registerUser, uploadUserAvatar } from "../lib/api";
+import { registerUser, ApiError } from "../lib/api";
+import {
+  passwordPolicyIssue,
+  passwordPolicyMessageKey,
+} from "../lib/password-policy";
 import { toast } from "sonner";
-import { Camera, X, User, Mail, Phone, Lock, Languages, ArrowLeft, ArrowRight } from "lucide-react";
+import { User, Mail, Phone, Lock, Languages, ArrowLeft, ArrowRight } from "lucide-react";
 import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 import { FloatingLabelInput } from "../components/ui/FloatingInput";
 import { MotionInView } from "../components/motion";
@@ -27,30 +31,9 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { t, locale, setLocale, direction } = useI18n();
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error(t("register.photoTooLarge"));
-        return;
-      }
-      setSelectedFile(file);
-      setFilePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const removeSelectedFile = () => {
-    setSelectedFile(null);
-    setFilePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,13 +43,15 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setError(t("register.passwordMin"));
-      toast.error(t("register.passwordMin"));
+    const policyIssue = passwordPolicyIssue(password);
+    if (policyIssue) {
+      const message = t(passwordPolicyMessageKey(policyIssue) as AppMessageKey);
+      setError(message);
+      toast.error(message);
       return;
     }
 
-    if (confirmPassword && password !== confirmPassword) {
+    if (password !== confirmPassword) {
       setError(t("register.passwordMismatch"));
       toast.error(t("register.passwordMismatch"));
       return;
@@ -76,31 +61,32 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const authData = await registerUser({
+      // Registration intentionally creates an inactive account and returns no
+      // tokens. The account becomes usable only after the emailed code is
+      // confirmed on /verify-email, which is also why no avatar is uploaded
+      // here: there is no authenticated session yet.
+      const result = await registerUser({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password,
-        servantRole,
-        grades: ["admin", "priest"].includes(servantRole) ? [] : [grade],
+        servantRole: servantRole === "class_leader" ? "class_leader" : "servant",
+        grades: [grade],
       });
 
-      // Upload avatar if selected
-      if (selectedFile && authData?.user?.id) {
-        try {
-          await uploadUserAvatar(authData.user.id, selectedFile);
-        } catch {
-          // Avatar upload failure is non-fatal
-        }
-      }
-
+      const destination = result.email || email.trim().toLowerCase();
       toast.success(t("register.welcome", { name: name.trim() }), {
-        description: t("register.welcomeHint"),
+        description: t("register.welcomeHint", { email: destination }),
       });
 
-      window.location.href = "/dashboard";
+      window.location.href = `/verify-email?email=${encodeURIComponent(destination)}`;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t("register.failed");
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : t("register.failed");
       setError(msg);
       toast.error(msg);
       setLoading(false);
@@ -149,51 +135,6 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="text-start space-y-4">
-            {/* Avatar upload */}
-            <div className="flex flex-col items-center justify-center pb-2">
-              <div className="relative group">
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-24 h-24 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden cursor-pointer bg-slate-50 dark:bg-slate-800/60 hover:border-indigo-500 transition shadow-inner"
-                >
-                  {filePreview ? (
-                    <img
-                      src={filePreview}
-                      alt={t("register.photoPreview")}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center text-slate-400 group-hover:text-indigo-500 transition">
-                      <Camera className="w-8 h-8 mb-1" />
-                      <span className="text-[11px] font-medium">{t("register.photo")}</span>
-                    </div>
-                  )}
-                </div>
-
-                {filePreview && (
-                  <button
-                    type="button"
-                    onClick={removeSelectedFile}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition"
-                    title={t("register.removePhoto")}
-                    aria-label={t("register.removePhoto")}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-                className="hidden"
-              />
-              <span className="text-xs text-slate-400 mt-2">{t("register.photoHint")}</span>
-            </div>
-
-            {/* Floating label inputs */}
             <FloatingLabelInput
               id="name"
               label={t("register.name")}
@@ -221,31 +162,27 @@ export default function RegisterPage() {
                 >
                   <option value="servant">{t("register.roleServant")}</option>
                   <option value="class_leader">{t("register.roleClassLeader")}</option>
-                  <option value="admin">{t("register.roleAdmin")}</option>
-                  <option value="priest">{t("register.rolePriest")}</option>
                 </select>
               </div>
 
-              {!["admin", "priest"].includes(servantRole) && (
-                <div className="fld">
-                  <label htmlFor="grade" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                    {t("register.grade")}
-                  </label>
-                  <select
-                    id="grade"
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    disabled={loading}
-                    className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60"
-                  >
-                    {GRADE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {t(option.key)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="fld">
+                <label htmlFor="grade" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  {t("register.grade")}
+                </label>
+                <select
+                  id="grade"
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  disabled={loading}
+                  className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60"
+                >
+                  {GRADE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(option.key)}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <FloatingLabelInput

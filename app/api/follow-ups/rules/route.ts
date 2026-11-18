@@ -15,7 +15,7 @@ async function GETHandler(req: Request) {
     return jsonResponse({ data: rules });
   } catch (error: unknown) {
     console.error('List follow-up rules error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب قواعد المتابعة');
+    return serverError('فشل جلب قواعد المتابعة');
   }
 }
 

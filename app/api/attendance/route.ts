@@ -1,6 +1,15 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, getAccessContext, canReadClass, jsonResponse, forbidden, unauthorized, serverError } from '@/src/server/middleware';
+import {
+  getAuthUser,
+  getAccessContext,
+  canReadClass,
+  hasBroadClassRead,
+  jsonResponse,
+  forbidden,
+  unauthorized,
+  serverError,
+} from '@/src/server/middleware';
 import { isUuid, oneOf, ATTENDANCE_STATUSES } from '@/src/server/validation';
 
 async function GETHandler(req: Request) {
@@ -8,7 +17,7 @@ async function GETHandler(req: Request) {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
     const access = await getAccessContext(auth);
-    if (!access.privileged && access.classIds.length === 0) {
+    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
       return jsonResponse({ data: [], total: 0, meta: { total: 0, page: 1, limit: 50, totalPages: 0 } });
     }
 
@@ -24,7 +33,7 @@ async function GETHandler(req: Request) {
     const offset = (page - 1) * limit;
 
     if (classId && !canReadClass(access, classId)) return forbidden();
-    const scopeIds = access.privileged ? null : access.classIds;
+    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
 
     const rows = await query<{
       id: string;
@@ -102,7 +111,7 @@ async function GETHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('Get attendance error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب سجلات الحضور');
+    return serverError('فشل جلب سجلات الحضور');
   }
 }
 

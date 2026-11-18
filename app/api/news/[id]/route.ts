@@ -7,6 +7,9 @@ async function GETHandler(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized('لازم تسجّل الدخول أولاً');
+
     const { id } = await params;
 
     const row = await queryOne<{
@@ -51,9 +54,9 @@ async function GETHandler(
           }
         : null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get news item error:', error);
-    return serverError(error.message || 'فشل جلب تفاصيل الخبر');
+    return serverError('فشل جلب تفاصيل الخبر');
   }
 }
 
@@ -102,9 +105,9 @@ async function PATCHHandler(
     );
 
     return jsonResponse(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update news error:', error);
-    return serverError(error.message || 'فشل تعديل الخبر');
+    return serverError('فشل تعديل الخبر');
   }
 }
 
@@ -132,9 +135,9 @@ async function DELETEHandler(
 
     await query(`DELETE FROM "news" WHERE "id" = $1`, [id]);
     return jsonResponse({ message: 'تم حذف الخبر بنجاح' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete news error:', error);
-    return serverError(error.message || 'فشل حذف الخبر');
+    return serverError('فشل حذف الخبر');
   }
 }
 

@@ -64,7 +64,7 @@ async function GETHandler(
     return jsonResponse(data);
   } catch (error: unknown) {
     console.error('Get child visitations error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب افتقادات الطفل');
+    return serverError('فشل جلب افتقادات الطفل');
   }
 }
 

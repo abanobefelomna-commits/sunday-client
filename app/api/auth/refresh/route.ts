@@ -1,14 +1,16 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { query, queryOne } from '@/src/server/db';
+import { queryOne } from '@/src/server/db';
 import {
   verifyAndRotateRefreshToken,
   issueRefreshToken,
   signAccessToken,
+  refreshCookie,
   sessionCookie,
+  REFRESH_COOKIE,
 } from '@/src/server/auth';
-import { unauthorized, serverError } from '@/src/server/middleware';
+import { unauthorized, serverError, getAccessContext } from '@/src/server/middleware';
 import { requireTenantContext } from '@/src/server/tenant/context';
 import { getRequestIp, rateLimit, rateLimitedResponse, requireSameOrigin } from '@/src/server/security';
 
@@ -20,22 +22,11 @@ async function POSTHandler(req: Request) {
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
   try {
-    let token: string | undefined;
-
     const cookieStore = await cookies();
-    token = cookieStore.get('refresh_token')?.value;
+    const token = cookieStore.get(REFRESH_COOKIE)?.value;
 
     if (!token) {
-      try {
-        const body = await req.json();
-        token = body.refreshToken;
-      } catch {
-        // no body
-      }
-    }
-
-    if (!token) {
-      return unauthorized('توكن التجديد غير موجود');
+      return unauthorized('جلسة الدخول منتهية أو غير موجودة');
     }
 
     const rotated = await verifyAndRotateRefreshToken(token);
@@ -66,36 +57,15 @@ async function POSTHandler(req: Request) {
 
     const { isActive: _active, ...safeUser } = user;
 
-    const servant = await queryOne<{ id: string; role: string }>(
-      `SELECT "id", "role" FROM "servants"
-       WHERE "phone" = $1 OR ("email" IS NOT NULL AND lower("email") = lower($2))
-       LIMIT 1`,
-      [user.phone, user.email],
-    );
-
-    const classIds: string[] = [];
-    if (servant) {
-      const sc = await query<{ classesId: string }>(
-        `SELECT "classesId" FROM "servants_classes" WHERE "servantsId" = $1`,
-        [servant.id],
-      );
-      classIds.push(...sc.map((row) => row.classesId));
-    }
-    if (user.grades && user.grades.length > 0) {
-      const gc = await query<{ id: string }>(
-        `SELECT "id" FROM "classes" WHERE "grade"::text = ANY($1::text[])`,
-        [user.grades],
-      );
-      classIds.push(...gc.map((row) => row.id));
-    }
-
-    const accessToken = await signAccessToken({
+    const payload = {
       sub: user.id,
       role: user.role,
       name: user.name,
       email: user.email,
       tid: tenant.churchId,
-    });
+    };
+    const access = await getAccessContext(payload);
+    const accessToken = await signAccessToken(payload);
 
     const newRefreshToken = await issueRefreshToken(user.id);
 
@@ -103,20 +73,18 @@ async function POSTHandler(req: Request) {
       accessToken,
       user: {
         ...safeUser,
-        servantRole: servant?.role || null,
-        classIds: [...new Set(classIds)],
+        servantRole: access.servantRole,
+        classIds: access.classIds,
+        permissions: access.permissions,
       },
-      refreshToken: newRefreshToken.token,
       church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },
     });
 
-    res.cookies.set('refresh_token', newRefreshToken.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      path: '/api/auth',
-      expires: newRefreshToken.expiresAt,
-    });
+    const [refreshName, refreshVal, refreshOpts] = refreshCookie(
+      newRefreshToken.token,
+      newRefreshToken.expiresAt,
+    );
+    res.cookies.set(refreshName, refreshVal, refreshOpts);
 
     const [sessionName, sessionValue, sessionOptions] = sessionCookie(newRefreshToken.expiresAt);
     res.cookies.set(sessionName, sessionValue, sessionOptions);

@@ -1,8 +1,8 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { getAuthUser, jsonResponse, notFound, unauthorized, forbidden, badRequest, serverError } from '@/src/server/middleware';
-import { processUploadedImage } from '@/src/server/upload';
-import { syncServantAvatarByPhone } from '@/src/server/servants';
+import { processUploadedImage, UploadValidationError } from '@/src/server/upload';
+import { syncServantAvatarForUser } from '@/src/server/servants';
 
 async function PATCHHandler(
   req: Request,
@@ -42,15 +42,18 @@ async function PATCHHandler(
       [url, id],
     );
 
-    await syncServantAvatarByPhone(user.phone, url);
+    await syncServantAvatarForUser(user.id, url);
 
     return jsonResponse({
       message: 'تم رفع الصورة بنجاح',
       avatar: url,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof UploadValidationError) {
+      return badRequest(error.message);
+    }
     console.error('Upload avatar error:', error);
-    return badRequest(error.message || 'فشل رفع الصورة');
+    return serverError('فشل رفع الصورة');
   }
 }
 
@@ -83,12 +86,12 @@ async function DELETEHandler(
       [id],
     );
 
-    await syncServantAvatarByPhone(user.phone, null);
+    await syncServantAvatarForUser(user.id, null);
 
     return jsonResponse({ message: 'تم حذف الصورة بنجاح' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete avatar error:', error);
-    return serverError(error.message || 'فشل حذف الصورة');
+    return serverError('فشل حذف الصورة');
   }
 }
 

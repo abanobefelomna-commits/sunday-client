@@ -62,7 +62,7 @@ async function GETHandler(
     });
   } catch (error: unknown) {
     console.error('Get attendance record error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب سجل الحضور');
+    return serverError('فشل جلب سجل الحضور');
   }
 }
 
@@ -117,7 +117,7 @@ async function PATCHHandler(
     return jsonResponse(updated);
   } catch (error: unknown) {
     console.error('Update attendance record error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تعديل سجل الحضور');
+    return serverError('فشل تعديل سجل الحضور');
   }
 }
 
@@ -153,7 +153,7 @@ async function DELETEHandler(
     return jsonResponse({ message: 'تم حذف سجل الحضور' });
   } catch (error: unknown) {
     console.error('Delete attendance record error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل حذف سجل الحضور');
+    return serverError('فشل حذف سجل الحضور');
   }
 }
 

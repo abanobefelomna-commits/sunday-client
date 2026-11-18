@@ -1,19 +1,23 @@
-import { createHmac, randomInt, timingSafeEqual } from 'crypto';
 import { query, queryOne } from './db';
-import { getOtpSecret } from './platform/config';
+import {
+  evaluateOtpCandidate,
+  generateOtpCode,
+  hashOtp,
+  hashesEqual,
+  OTP_MAX_ATTEMPTS,
+  OTP_TTL_MINUTES,
+  type OtpVerificationOutcome,
+} from './otp-core';
 
-const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
-const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
-
-function hashOtp(code: string): string {
-  return createHmac('sha256', getOtpSecret()).update(code).digest('hex');
-}
-
-function hashesEqual(left: string, right: string): boolean {
-  const a = Buffer.from(left, 'hex');
-  const b = Buffer.from(right, 'hex');
-  return a.length === b.length && timingSafeEqual(a, b);
-}
+export {
+  evaluateOtpCandidate,
+  generateOtpCode,
+  hashOtp,
+  hashesEqual,
+  OTP_MAX_ATTEMPTS,
+  OTP_TTL_MINUTES,
+  type OtpVerificationOutcome,
+};
 
 export async function createOtp(
   userId: string,
@@ -26,7 +30,7 @@ export async function createOtp(
     [userId, purpose],
   );
 
-  const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
+  const code = generateOtpCode();
   const codeHash = hashOtp(code);
   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000);
 
@@ -48,48 +52,60 @@ export async function verifyOtp(
     return { valid: false, message: 'كود التحقق يجب أن يتكون من 6 أرقام' };
   }
 
-  const record = await queryOne<{
+  const candidateHash = hashOtp(code);
+
+  // Atomically select candidate row with FOR UPDATE, increment attempts,
+  // and conditionally mark as consumed if valid and unexpired in a single CTE statement.
+  const updated = await queryOne<{
     id: string;
-    codeHash: string;
-    expiresAt: Date;
-    attempts: number;
-    consumedAt: Date | null;
+    previousAttempts: number;
+    expired: boolean;
+    exhausted: boolean;
+    hashMatched: boolean;
+    consumed: boolean;
   }>(
-    `SELECT "id", "codeHash", "expiresAt", "attempts", "consumedAt"
-     FROM "otp_codes"
-     WHERE "userId" = $1 AND "purpose" = $2 AND "consumedAt" IS NULL
-     ORDER BY "createdAt" DESC LIMIT 1`,
-    [userId, purpose],
+    `WITH candidate AS (
+       SELECT "id", "codeHash", "expiresAt", "attempts"
+       FROM "otp_codes"
+       WHERE "userId" = $1 AND "purpose" = $2 AND "consumedAt" IS NULL
+       ORDER BY "createdAt" DESC
+       LIMIT 1
+       FOR UPDATE
+     )
+     UPDATE "otp_codes" AS o
+     SET "attempts" = o."attempts" + 1,
+         "consumedAt" = CASE
+           WHEN c."attempts" < $3 AND c."expiresAt" > now() AND c."codeHash" = $4
+           THEN now()
+           ELSE o."consumedAt"
+         END
+     FROM candidate c
+     WHERE o."id" = c."id"
+     RETURNING
+       c."id",
+       c."attempts" AS "previousAttempts",
+       (c."expiresAt" <= now()) AS "expired",
+       (c."attempts" >= $3) AS "exhausted",
+       (c."codeHash" = $4) AS "hashMatched",
+       (o."consumedAt" IS NOT NULL) AS "consumed"`,
+    [userId, purpose, OTP_MAX_ATTEMPTS, candidateHash],
   );
 
-  if (!record) {
+  if (!updated) {
     return { valid: false, message: 'الكود غير موجود أو انتهت صلاحيته، اطلب كودًا جديدًا' };
   }
 
-  if (new Date() > new Date(record.expiresAt)) {
-    return { valid: false, message: 'انتهت صلاحية الكود، اطلب كودًا جديدًا' };
-  }
-
-  if (record.attempts >= OTP_MAX_ATTEMPTS) {
+  if (updated.exhausted) {
     return { valid: false, message: 'تم استنفاد محاولات التحقق، اطلب كودًا جديدًا' };
   }
 
-  // Increment attempts count
-  await query(
-    `UPDATE "otp_codes" SET "attempts" = "attempts" + 1 WHERE "id" = $1`,
-    [record.id],
-  );
-
-  const candidateHash = hashOtp(code);
-  if (!hashesEqual(candidateHash, record.codeHash)) {
-    return { valid: false, message: 'كود التحقق غير صحيح' };
+  if (updated.expired) {
+    return { valid: false, message: 'انتهت صلاحية الكود، اطلب كودًا جديدًا' };
   }
 
-  // Mark as consumed
-  await query(
-    `UPDATE "otp_codes" SET "consumedAt" = now() WHERE "id" = $1`,
-    [record.id],
-  );
+  if (updated.consumed) {
+    return { valid: true };
+  }
 
-  return { valid: true };
+  return { valid: false, message: 'كود التحقق غير صحيح' };
 }

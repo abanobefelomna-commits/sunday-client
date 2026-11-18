@@ -5,6 +5,7 @@ import {
   getAccessContext,
   canReadClass,
   canWriteClass,
+  hasBroadClassRead,
   jsonResponse,
   badRequest,
   forbidden,
@@ -32,10 +33,9 @@ async function GETHandler(req: Request) {
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
     const offset = (page - 1) * limit;
 
-    // The unfiltered directory stays scoped to the servant's own classes.
-    // Asking for a specific class opens that class in read-only mode, so a
-    // servant can review any class from the classes screen.
-    if (!access.privileged && access.classIds.length === 0 && !classId) {
+    // The unfiltered directory stays scoped to the servant's own classes unless
+    // the church has enabled broad reads.
+    if (!hasBroadClassRead(access) && access.classIds.length === 0 && !classId) {
       return jsonResponse({
         data: [],
         total: 0,
@@ -44,7 +44,7 @@ async function GETHandler(req: Request) {
     }
     if (classId && !canReadClass(access, classId)) return forbidden();
 
-    const scopeIds = access.privileged || classId ? null : access.classIds;
+    const scopeIds = hasBroadClassRead(access) || classId ? null : access.classIds;
 
     const rows = await query<{
       id: string;
@@ -159,7 +159,7 @@ async function GETHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('Get children error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب قائمة الأطفال');
+    return serverError('فشل جلب قائمة الأطفال');
   }
 }
 
@@ -235,7 +235,7 @@ async function POSTHandler(req: Request) {
     return jsonResponse(newChild, 201);
   } catch (error: unknown) {
     console.error('Create child error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل إضافة الطفل');
+    return serverError('فشل إضافة الطفل');
   }
 }
 

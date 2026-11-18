@@ -2,6 +2,7 @@ import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { DEFAULT_CLASSES, ensureDefaultClasses } from '@/src/server/classes';
 import { getAuthUser, canManageServants, jsonResponse, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
+import { normalizeServantRole, servantRoleLabel } from '@/src/server/servants';
 
 async function GETHandler(req: Request) {
   try {
@@ -110,9 +111,7 @@ async function GETHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('Get servants error:', error);
-    return serverError(
-      error instanceof Error ? error.message : 'فشل جلب قائمة الخدام',
-    );
+    return serverError('فشل جلب قائمة الخدام');
   }
 }
 
@@ -128,10 +127,16 @@ async function POSTHandler(req: Request) {
       return badRequest('الاسم ورقم الهاتف مطلوبان');
     }
 
+    const roleCode = normalizeServantRole(role);
+    if (!roleCode) {
+      return badRequest('صفة الخدمة غير صالحة');
+    }
+    const roleLabel = servantRoleLabel(roleCode);
+
     await ensureDefaultClasses();
     let assignedClassIds: string[] = [];
 
-    if (role === 'خادم فقرة عامة') {
+    if (roleCode === 'general_servant') {
       const generalClass = await queryOne<{ id: string }>(
         `SELECT "id" FROM "classes" WHERE "grade"::text = 'general' LIMIT 1`,
       );
@@ -139,7 +144,7 @@ async function POSTHandler(req: Request) {
         return serverError('فشل تجهيز فصل الفقرة العامة');
       }
       assignedClassIds = [generalClass.id];
-    } else if (role === 'خادم' || role === 'قائد فصل') {
+    } else if (roleCode === 'servant' || roleCode === 'class_leader') {
       const requestedClassIds = Array.isArray(classIds)
         ? [...new Set(classIds.filter(
             (id: unknown): id is string =>
@@ -176,14 +181,14 @@ async function POSTHandler(req: Request) {
       `INSERT INTO "servants" ("id", "name", "phone", "email", "role", "createdAt", "updatedAt")
        VALUES (uuid_generate_v4(), $1, $2, $3, $4, now(), now())
        RETURNING *`,
-      [name, phone, email || null, role],
+      [name, phone, email || null, roleLabel],
     );
 
     if (!newServant) {
       return serverError('فشل إنشاء الخادم');
     }
 
-    if (role === 'مسؤول' || role === 'أب كاهن') {
+    if (roleCode === 'admin' || roleCode === 'priest') {
       assignedClassIds = [];
     }
 
@@ -201,9 +206,7 @@ async function POSTHandler(req: Request) {
     return jsonResponse(newServant, 201);
   } catch (error: unknown) {
     console.error('Create servant error:', error);
-    return serverError(
-      error instanceof Error ? error.message : 'فشل إضافة الخادم',
-    );
+    return serverError('فشل إضافة الخادم');
   }
 }
 

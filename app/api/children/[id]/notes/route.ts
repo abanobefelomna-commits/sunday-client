@@ -32,7 +32,7 @@ async function GETHandler(
     return jsonResponse({ data: await listStudentNotes(id, access) });
   } catch (error: unknown) {
     console.error('List student notes error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب الملاحظات');
+    return serverError('فشل جلب الملاحظات');
   }
 }
 
@@ -72,7 +72,7 @@ async function POSTHandler(
     return jsonResponse(result.note, 201);
   } catch (error: unknown) {
     console.error('Create student note error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل إضافة الملاحظة');
+    return serverError('فشل إضافة الملاحظة');
   }
 }
 

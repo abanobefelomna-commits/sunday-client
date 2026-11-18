@@ -30,7 +30,7 @@ async function GETHandler(
     return jsonResponse(detail);
   } catch (error: unknown) {
     console.error('Get follow-up error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب المتابعة');
+    return serverError('فشل جلب المتابعة');
   }
 }
 
@@ -83,7 +83,7 @@ async function PATCHHandler(
     return jsonResponse(result);
   } catch (error: unknown) {
     console.error('Update follow-up error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تحديث المتابعة');
+    return serverError('فشل تحديث المتابعة');
   }
 }
 

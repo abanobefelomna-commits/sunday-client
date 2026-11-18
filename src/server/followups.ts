@@ -1,6 +1,6 @@
 import { query, queryOne } from './db';
 import type { AccessContext } from './middleware';
-import { canWriteClass } from './middleware';
+import { canWriteClass, hasBroadClassRead } from './middleware';
 import { recordAudit } from './audit';
 import { createNotification, notifyFollowUpStakeholders } from './notifications';
 import { evaluateStudentRules, type RuleConfig } from './care-rules';
@@ -59,7 +59,7 @@ export async function listFollowUps(
   page: number,
   limit: number,
 ) {
-  if (!access.privileged && access.classIds.length === 0) {
+  if (!hasBroadClassRead(access) && access.classIds.length === 0) {
     return {
       data: [],
       meta: {
@@ -72,7 +72,7 @@ export async function listFollowUps(
     };
   }
 
-  const scopeIds = access.privileged ? null : access.classIds;
+  const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
   const offset = (page - 1) * limit;
   const params = [
     filters.status ?? null,

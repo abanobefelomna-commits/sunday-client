@@ -1,6 +1,17 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, canManageServants, jsonResponse, notFound, forbidden, unauthorized, serverError } from '@/src/server/middleware';
+import {
+  getAuthUser,
+  canManageServants,
+  jsonResponse,
+  notFound,
+  forbidden,
+  badRequest,
+  unauthorized,
+  serverError,
+} from '@/src/server/middleware';
+import { normalizeServantRole, servantRoleLabel } from '@/src/server/servants';
+import { revokeAllUserRefreshTokens } from '@/src/server/auth';
 
 async function GETHandler(
   req: Request,
@@ -41,9 +52,9 @@ async function GETHandler(
       ...servant,
       classes,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get servant error:', error);
-    return serverError(error.message || 'فشل جلب تفاصيل الخادم');
+    return serverError('فشل جلب تفاصيل الخادم');
   }
 }
 
@@ -59,6 +70,15 @@ async function PATCHHandler(
     const body = await req.json();
     const { name, phone, email, role, classIds } = body;
 
+    let canonicalRole: string | null = null;
+    if (role !== undefined && role !== null) {
+      const code = normalizeServantRole(role);
+      if (!code) {
+        return badRequest('صفة الخدمة غير صالحة');
+      }
+      canonicalRole = servantRoleLabel(code);
+    }
+
     const updated = await queryOne(
       `UPDATE "servants"
        SET "name" = COALESCE($1, "name"),
@@ -68,7 +88,7 @@ async function PATCHHandler(
            "updatedAt" = now()
        WHERE "id" = $5
        RETURNING *`,
-      [name || null, phone || null, email !== undefined ? email : null, role || null, id],
+      [name || null, phone || null, email !== undefined ? email : null, canonicalRole, id],
     );
 
     if (!updated) {
@@ -88,9 +108,9 @@ async function PATCHHandler(
     }
 
     return jsonResponse(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update servant error:', error);
-    return serverError(error.message || 'فشل تعديل بيانات الخادم');
+    return serverError('فشل تعديل بيانات الخادم');
   }
 }
 
@@ -108,13 +128,27 @@ async function DELETEHandler(
 
     const { id } = await params;
 
+    const existing = await queryOne<{ id: string; userId: string | null }>(
+      `SELECT "id", "userId" FROM "servants" WHERE "id" = $1 LIMIT 1`,
+      [id],
+    );
+    if (!existing) return notFound('الخادم غير موجود');
+
     await query(`DELETE FROM "servants_classes" WHERE "servantsId" = $1`, [id]);
     await query(`DELETE FROM "servants" WHERE "id" = $1`, [id]);
 
+    // Deactivate linked account and revoke all sessions
+    if (existing.userId) {
+      await query(`UPDATE "users" SET "isActive" = false, "updatedAt" = now() WHERE "id" = $1`, [
+        existing.userId,
+      ]);
+      await revokeAllUserRefreshTokens(existing.userId);
+    }
+
     return jsonResponse({ message: 'تم حذف الخادم بنجاح' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete servant error:', error);
-    return serverError(error.message || 'فشل حذف الخادم');
+    return serverError('فشل حذف الخادم');
   }
 }
 

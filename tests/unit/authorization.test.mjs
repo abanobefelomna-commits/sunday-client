@@ -25,9 +25,9 @@ const privileged = {
   servantRole: 'مسؤول',
 };
 
-test('scoped users can read any class but write only their assigned classes', () => {
+test('scoped users can read and write only their assigned classes by default', () => {
   assert.equal(canReadClass(scoped, 'class-a'), true);
-  assert.equal(canReadClass(scoped, 'class-z'), true);
+  assert.equal(canReadClass(scoped, 'class-z'), false);
   assert.equal(canReadClass(scoped, null), false);
   assert.equal(canWriteClass(scoped, 'class-b'), true);
   assert.equal(canWriteClass(scoped, 'class-z'), false);
@@ -35,12 +35,26 @@ test('scoped users can read any class but write only their assigned classes', ()
   assert.equal(canWriteClass(scoped, undefined), false);
 });
 
-test('scoped users with no assignments can still browse but not write', () => {
+test('legacy churches with readAllClasses can browse any class but write only assigned', () => {
+  const legacy = { ...scoped, readAllClasses: true };
+  assert.equal(canReadClass(legacy, 'class-a'), true);
+  assert.equal(canReadClass(legacy, 'class-z'), true);
+  assert.equal(canReadClass(legacy, null), false);
+  assert.equal(canWriteClass(legacy, 'class-b'), true);
+  assert.equal(canWriteClass(legacy, 'class-z'), false);
+});
+
+test('scoped users with no assignments cannot read or write classes without broad read', () => {
   const empty = { ...scoped, classIds: [] };
-  assert.equal(canReadClass(empty, 'class-a'), true);
-  assert.equal(canReadClass(empty, 'class-z'), true);
+  assert.equal(canReadClass(empty, 'class-a'), false);
+  assert.equal(canReadClass(empty, 'class-z'), false);
   assert.equal(canWriteClass(empty, 'class-a'), false);
   assert.equal(canWriteClass(empty, 'class-z'), false);
+
+  const emptyLegacy = { ...scoped, classIds: [], readAllClasses: true };
+  assert.equal(canReadClass(emptyLegacy, 'class-a'), true);
+  assert.equal(canReadClass(emptyLegacy, 'class-z'), true);
+  assert.equal(canWriteClass(emptyLegacy, 'class-a'), false);
 });
 
 test('privileged users access any class including unassigned children', () => {

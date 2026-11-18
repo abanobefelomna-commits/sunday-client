@@ -195,6 +195,11 @@ async function seedTenantIdentity(input: {
      ON CONFLICT ("key") DO UPDATE SET "value" = EXCLUDED."value", "updatedAt" = now()`,
     [input.slug],
   );
+  await sql.query(
+    `INSERT INTO "church_settings" ("key", "value", "updatedAt")
+     VALUES ('access.readAllClasses', 'false'::jsonb, now())
+     ON CONFLICT ("key") DO NOTHING`,
+  );
 }
 
 async function seedChurchAdministrator(input: {

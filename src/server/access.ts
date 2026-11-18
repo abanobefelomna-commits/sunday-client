@@ -13,21 +13,44 @@ export type AccessContext = {
   servantId: string | null;
   servantRole: string | null;
   permissions?: string[];
+  /**
+   * Church-level setting that preserves the legacy broad-read behaviour.
+   * New churches default to false; see `access.readAllClasses`.
+   */
+  readAllClasses?: boolean;
 };
+
+/**
+ * Parse the stored `access.readAllClasses` setting. jsonb normally arrives as
+ * a boolean, but older hand-edited rows may contain a string.
+ */
+export function readAllClassesEnabled(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'string') return value.trim().toLowerCase() === 'true';
+  if (value && typeof value === 'object' && 'enabled' in value) {
+    return (value as { enabled?: unknown }).enabled === true;
+  }
+  return false;
+}
+
+/** True when reads are not limited to the user's assigned classes. */
+export function hasBroadClassRead(access: AccessContext): boolean {
+  return access.privileged || access.readAllClasses === true;
+}
 
 /**
  * True when the user is allowed to read data for this class.
  *
- * Every authenticated member of the service may browse any class, its
- * servants and its children. Reading is intentionally broader than writing:
- * the class roster, student directory and care history are visible to all
- * servants, while canWriteClass() still limits changes to their own classes.
+ * Reading child details and care history is limited to the servant's assigned
+ * classes unless the church explicitly opted into the legacy broad-read
+ * behaviour. Class names and aggregate counts remain browsable elsewhere.
+ * `null` stays privileged-only for unassigned children.
  */
 export function canReadClass(access: AccessContext, classId: string | null | undefined): boolean {
   if (access.privileged) return true;
-  // AccessContext is only built for an authenticated user, so any real class
-  // id is readable. `null` stays privileged-only for unassigned children.
-  return !!classId;
+  if (!classId) return false;
+  if (hasBroadClassRead(access)) return true;
+  return access.classIds.includes(classId);
 }
 
 /** True when the user may change care/attendance data for this class. */

@@ -51,7 +51,7 @@ async function GETHandler(
     return jsonResponse({ data: await listEducationalProgress(id) });
   } catch (error: unknown) {
     console.error('List educational progress error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب التقدم التعليمي');
+    return serverError('فشل جلب التقدم التعليمي');
   }
 }
 
@@ -100,7 +100,7 @@ async function POSTHandler(
     return jsonResponse(progress, 201);
   } catch (error: unknown) {
     console.error('Create educational progress error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل إضافة التقدم التعليمي');
+    return serverError('فشل إضافة التقدم التعليمي');
   }
 }
 

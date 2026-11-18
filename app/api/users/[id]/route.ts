@@ -136,12 +136,13 @@ async function PATCHHandler(
     if (!updatedUser) return serverError('تعذر تحديث البيانات');
 
     await syncServantFromUser({
+      userId: updatedUser.id,
       name: updatedUser.name,
       phone: updatedUser.phone,
       email: updatedUser.email,
       role: updatedUser.role,
       avatar: updatedUser.avatar,
-      grades: grades ?? undefined,
+      grades: grades !== null ? grades : undefined,
     });
 
     return jsonResponse(updatedUser);

@@ -1,6 +1,7 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, unauthorized } from '@/src/server/middleware';
+import { getAccessContext, getAuthUser, jsonResponse, unauthorized } from '@/src/server/middleware';
+import { findServantForUser } from '@/src/server/servants';
 
 async function GETHandler(req: Request) {
   const auth = await getAuthUser(req);
@@ -28,10 +29,13 @@ async function GETHandler(req: Request) {
     return unauthorized('المستخدم غير موجود');
   }
 
-  const servant = await queryOne<{ id: string; role: string }>(
-    `SELECT "id", "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`,
-    [user.phone, user.email],
-  );
+  const access = await getAccessContext(auth);
+
+  const servant = await findServantForUser({
+    userId: user.id,
+    phone: user.phone,
+    email: user.email,
+  });
 
   let classIds: string[] = [];
   if (servant) {
@@ -54,6 +58,7 @@ async function GETHandler(req: Request) {
     ...user,
     servantRole: servant?.role || null,
     classIds,
+    permissions: access.permissions,
   });
 }
 

@@ -89,7 +89,7 @@ async function GETHandler(
     });
   } catch (error: unknown) {
     console.error('Get child error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب تفاصيل الطفل');
+    return serverError('فشل جلب تفاصيل الطفل');
   }
 }
 
@@ -207,7 +207,7 @@ async function PATCHHandler(
     return jsonResponse(updated);
   } catch (error: unknown) {
     console.error('Update child error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تعديل بيانات الطفل');
+    return serverError('فشل تعديل بيانات الطفل');
   }
 }
 
@@ -247,7 +247,7 @@ async function DELETEHandler(
     return jsonResponse({ message: 'تم حذف الطفل بنجاح مع الاحتفاظ بسجله التاريخي' });
   } catch (error: unknown) {
     console.error('Delete child error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل حذف الطفل');
+    return serverError('فشل حذف الطفل');
   }
 }
 

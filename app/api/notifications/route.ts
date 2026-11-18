@@ -53,7 +53,7 @@ async function GETHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('List notifications error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب التنبيهات');
+    return serverError('فشل جلب التنبيهات');
   }
 }
 
@@ -92,7 +92,7 @@ async function PATCHHandler(req: Request) {
     return jsonResponse({ message: read ? 'تم تعليم التنبيهات كمقروءة' : 'تم تعليم التنبيهات كغير مقروءة' });
   } catch (error: unknown) {
     console.error('Update notifications error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تحديث التنبيهات');
+    return serverError('فشل تحديث التنبيهات');
   }
 }
 

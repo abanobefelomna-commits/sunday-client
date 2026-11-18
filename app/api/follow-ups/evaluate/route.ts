@@ -30,7 +30,7 @@ async function POSTHandler(req: Request) {
     return jsonResponse(result);
   } catch (error: unknown) {
     console.error('Evaluate follow-ups error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تقييم قواعد المتابعة');
+    return serverError('فشل تقييم قواعد المتابعة');
   }
 }
 

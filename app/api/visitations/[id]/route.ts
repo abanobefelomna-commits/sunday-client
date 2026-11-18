@@ -68,7 +68,7 @@ async function GETHandler(
     });
   } catch (error: unknown) {
     console.error('Get visitation error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب تفاصيل الافتقاد');
+    return serverError('فشل جلب تفاصيل الافتقاد');
   }
 }
 
@@ -137,7 +137,7 @@ async function PATCHHandler(
     return jsonResponse(updated);
   } catch (error: unknown) {
     console.error('Update visitation error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تعديل سجل الافتقاد');
+    return serverError('فشل تعديل سجل الافتقاد');
   }
 }
 
@@ -170,7 +170,7 @@ async function DELETEHandler(
     return jsonResponse({ message: 'تم حذف سجل الافتقاد بنجاح' });
   } catch (error: unknown) {
     console.error('Delete visitation error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل حذف سجل الافتقاد');
+    return serverError('فشل حذف سجل الافتقاد');
   }
 }
 

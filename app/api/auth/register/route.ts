@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
-import { query, queryOne } from '@/src/server/db';
+import { queryOne } from '@/src/server/db';
 import {
   hashPassword,
-  issueRefreshToken,
   normalizeEmail,
-  signAccessToken,
-  sessionCookie,
   validatePasswordStrength,
 } from '@/src/server/auth';
-import { syncServantFromUser } from '@/src/server/servants';
+import { createOtp } from '@/src/server/otp';
+import { sendVerificationEmail } from '@/src/server/email';
 import { badRequest, conflict, serverError } from '@/src/server/middleware';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
 import {
@@ -81,91 +79,50 @@ export async function POST(req: Request) {
       const servantRole = body.servantRole === 'class_leader' ? 'class_leader' : 'servant';
       const assignedGrades = grades;
 
-      const existing = await queryOne<{ email: string; phone: string }>(
-        `SELECT "email", "phone" FROM "users"
+      const existing = await queryOne<{ id: string }>(
+        `SELECT "id" FROM "users"
          WHERE lower("email") = $1 OR "phone" = $2 LIMIT 1`,
         [email, phone],
       );
 
       if (existing) {
-        return conflict(
-          existing.email?.toLowerCase() === email
-            ? 'الإيميل مستخدم بالفعل'
-            : 'رقم التليفون مستخدم بالفعل',
-        );
+        // Generic message that avoids revealing whether email or phone already exists
+        return conflict('إذا كان لديك حساب بالفعل، يرجى تسجيل الدخول أو استعادة كلمة المرور');
       }
 
       const hashedPassword = await hashPassword(password);
 
+      // Create inactive, unverified user with chosen servantRole preserved
       const user = await queryOne<{
         id: string;
         name: string;
         email: string;
-        phone: string;
-        role: string;
-        grades: string[];
-        avatar: string | null;
       }>(
         `INSERT INTO "users"
-           ("id", "name", "email", "emailVerified", "phone", "password", "role", "grades", "createdAt", "updatedAt")
-         VALUES (uuid_generate_v4(), $1, $2, true, $3, $4, 'servant', $5::users_grades_enum[], now(), now())
-         RETURNING "id", "name", "email", "phone", "role", "grades", "avatar"`,
-        [name, email, phone, hashedPassword, assignedGrades],
+           ("id", "name", "email", "emailVerified", "isActive", "phone", "password", "role", "servantRole", "grades", "createdAt", "updatedAt")
+         VALUES (uuid_generate_v4(), $1, $2, false, false, $3, $4, 'servant', $5, $6::users_grades_enum[], now(), now())
+         RETURNING "id", "name", "email"`,
+        [name, email, phone, hashedPassword, servantRole, assignedGrades],
       );
 
       if (!user) {
         return serverError('فشل إنشاء الحساب');
       }
 
-      await syncServantFromUser({
-        name: user.name,
-        phone: user.phone,
-        email: user.email,
-        role: user.role,
-        servantRole,
-        avatar: user.avatar,
-        grades: user.grades,
-      });
+      // Generate verification code and send email
+      const { code } = await createOtp(user.id, 'email_verification');
+      const sent = await sendVerificationEmail(user.email, code);
 
-      const accessToken = await signAccessToken({
-        sub: user.id,
-        role: user.role,
-        name: user.name,
-        email: user.email,
-        tid: tenant.churchId,
-      });
-
-      const refreshToken = await issueRefreshToken(user.id);
-
-      const userClasses =
-        user.grades && user.grades.length > 0
-          ? await query<{ id: string }>(
-              `SELECT "id" FROM "classes" WHERE "grade"::text = ANY($1::text[])`,
-              [user.grades],
-            )
-          : [];
+      if (!sent && process.env.NODE_ENV === 'production') {
+        return serverError('تعذر إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى المحاولة لاحقاً');
+      }
 
       const res = NextResponse.json({
-        accessToken,
-        user: {
-          ...user,
-          servantRole,
-          classIds: userClasses.map((c) => c.id),
-        },
-        refreshToken: refreshToken.token,
+        requiresEmailVerification: true,
+        email: user.email,
+        message: 'تم إنشاء الحساب بنجاح. يرجى إدخال رمز التحقق المرسل إلى بريدك الإلكتروني لتفعيل الحساب.',
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },
       });
-
-      res.cookies.set('refresh_token', refreshToken.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/api/auth',
-        expires: refreshToken.expiresAt,
-      });
-
-      const [sessionName, sessionValue, sessionOptions] = sessionCookie(refreshToken.expiresAt);
-      res.cookies.set(sessionName, sessionValue, sessionOptions);
 
       return applyTenantCookie(res, tenant.slug);
     } catch (error: unknown) {

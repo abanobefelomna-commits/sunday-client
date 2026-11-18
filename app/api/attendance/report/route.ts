@@ -1,6 +1,15 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query } from '@/src/server/db';
-import { getAuthUser, getAccessContext, canReadClass, jsonResponse, forbidden, unauthorized, serverError } from '@/src/server/middleware';
+import {
+  getAuthUser,
+  getAccessContext,
+  canReadClass,
+  hasBroadClassRead,
+  jsonResponse,
+  forbidden,
+  unauthorized,
+  serverError,
+} from '@/src/server/middleware';
 import { isUuid, parseDateRange, ValidationError } from '@/src/server/validation';
 
 async function GETHandler(req: Request) {
@@ -14,7 +23,7 @@ async function GETHandler(req: Request) {
     const range = parseDateRange(searchParams, { defaultDays: 90, maxDays: 366 });
 
     if (classId && !canReadClass(access, classId)) return forbidden();
-    if (!access.privileged && access.classIds.length === 0) {
+    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
       return jsonResponse({
         range,
         totals: { total: 0, present: 0, absent: 0, late: 0, excused: 0, rate: null, students: 0 },
@@ -24,7 +33,7 @@ async function GETHandler(req: Request) {
       });
     }
 
-    const scopeIds = access.privileged ? null : access.classIds;
+    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
     const baseParams = [range.from, range.to, classId, scopeIds];
 
     const totals = await query<{
@@ -167,7 +176,7 @@ async function GETHandler(req: Request) {
   } catch (error: unknown) {
     if (error instanceof ValidationError) return jsonResponse({ message: error.message }, 400);
     console.error('Attendance report error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب تقرير الحضور');
+    return serverError('فشل جلب تقرير الحضور');
   }
 }
 

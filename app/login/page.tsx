@@ -3,17 +3,20 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { loginUser } from "../lib/api";
+import { loginUser, ApiError } from "../lib/api";
+import { safeNextPath } from "../lib/safe-next";
 import { toast } from "sonner";
 import { useI18n } from "../lib/app-i18n";
 import { FloatingLabelInput } from "../components/ui/FloatingInput";
 import { Languages, Lock, User, ArrowLeft, ArrowRight } from "lucide-react";
 import { MotionInView } from "../components/motion";
 
-function safeNext(value: string | null): string | null {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
-  if (value === "/login" || value.startsWith("/login?")) return null;
-  return value;
+function nextDestination(value: string | null): string {
+  const safe = safeNextPath(value, null);
+  if (!safe || safe === "/login" || safe.startsWith("/login?") || safe.startsWith("/register")) {
+    return "/dashboard";
+  }
+  return safe;
 }
 
 function LoginForm() {
@@ -39,8 +42,17 @@ function LoginForm() {
       const res = await loginUser(identifier.trim(), password);
       const name = res.user.name || t("login.defaultUser");
       toast.success(t("login.welcome", { name }));
-      window.location.href = safeNext(searchParams.get("next")) ?? "/dashboard";
+      window.location.href = nextDestination(searchParams.get("next"));
     } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED") {
+        const email =
+          typeof err.data.email === "string"
+            ? err.data.email
+            : identifier.trim().toLowerCase();
+        toast.error(t("login.verifyRequired"));
+        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+        return;
+      }
       const msg = err instanceof Error ? err.message : t("login.failed");
       setError(msg);
       toast.error(msg);

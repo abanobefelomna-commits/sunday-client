@@ -42,7 +42,7 @@ async function POSTHandler(
     return jsonResponse(result, 201);
   } catch (error: unknown) {
     console.error('Add follow-up activity error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل إضافة النشاط');
+    return serverError('فشل إضافة النشاط');
   }
 }
 

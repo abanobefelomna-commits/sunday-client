@@ -22,7 +22,7 @@ async function GETHandler(req: Request) {
       return jsonResponse({ message: error.message }, 400);
     }
     console.error('Analytics overview error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب التحليلات');
+    return serverError('فشل جلب التحليلات');
   }
 }
 

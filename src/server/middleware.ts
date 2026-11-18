@@ -2,10 +2,21 @@ import { NextResponse } from 'next/server';
 import { verifyAccessToken, type JwtUserPayload } from './auth';
 import type { NextRequest } from 'next/server';
 import { query, queryOne } from './db';
-import { isPrivilegedRole, type AccessContext } from './access';
+import {
+  isPrivilegedRole,
+  readAllClassesEnabled,
+  type AccessContext,
+} from './access';
 import { requireTenantContext } from './tenant/context';
+import { findServantForUser } from './servants';
 
-export { canReadClass, canWriteClass, canViewPrivateNotes } from './access';
+export {
+  canReadClass,
+  canWriteClass,
+  canViewPrivateNotes,
+  hasBroadClassRead,
+  readAllClassesEnabled,
+} from './access';
 export type { AccessContext } from './access';
 
 /**
@@ -27,13 +38,14 @@ export async function getAccessContext(user: JwtUserPayload): Promise<TenantAcce
     [user.sub],
   );
 
+  // Prefer the explicit account link. Legacy phone/email matching is only
+  // used for unlinked rows and only when it is unambiguous.
   const servant = account
-    ? await queryOne<{ id: string; role: string }>(
-        `SELECT "id", "role" FROM "servants"
-         WHERE "userId" = $3 OR "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2)
-         LIMIT 1`,
-        [account.phone, account.email, user.sub],
-      )
+    ? await findServantForUser({
+        userId: user.sub,
+        phone: account.phone,
+        email: account.email,
+      })
     : null;
 
   let permissions: string[] = [];
@@ -70,6 +82,18 @@ export async function getAccessContext(user: JwtUserPayload): Promise<TenantAcce
     [servant?.id ?? null, account?.grades ?? []],
   );
 
+  // Missing setting means this is a legacy tenant that kept broad reads.
+  // Provisioning writes an explicit `false` for every new church.
+  let readAllClasses = true;
+  try {
+    const setting = await queryOne<{ value: unknown }>(
+      `SELECT "value" FROM "church_settings" WHERE "key" = 'access.readAllClasses' LIMIT 1`,
+    );
+    if (setting) readAllClasses = readAllClassesEnabled(setting.value);
+  } catch {
+    // Pre-settings tenants keep the previous behaviour.
+  }
+
   return {
     privileged,
     classIds: [...new Set(scoped.map((row) => row.id))],
@@ -78,6 +102,7 @@ export async function getAccessContext(user: JwtUserPayload): Promise<TenantAcce
     servantId: servant?.id ?? null,
     servantRole: servant?.role ?? null,
     permissions,
+    readAllClasses,
   };
 }
 

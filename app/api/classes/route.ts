@@ -108,9 +108,7 @@ async function GETHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('Get classes error:', error);
-    return serverError(
-      error instanceof Error ? error.message : 'فشل جلب الفصول',
-    );
+    return serverError('فشل جلب الفصول');
   }
 }
 

@@ -5,6 +5,7 @@ import {
   getAccessContext,
   canReadClass,
   canWriteClass,
+  hasBroadClassRead,
   jsonResponse,
   badRequest,
   forbidden,
@@ -26,10 +27,10 @@ async function GETHandler(req: Request) {
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '30', 10)));
 
     if (classId && !canReadClass(access, classId)) return forbidden();
-    if (!access.privileged && access.classIds.length === 0) {
+    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
       return jsonResponse({ data: [], meta: { total: 0 } });
     }
-    const scopeIds = access.privileged ? null : access.classIds;
+    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
 
     const rows = await query<{
       id: string;
@@ -74,7 +75,7 @@ async function GETHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('Get attendance sessions error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب جلسات الحضور');
+    return serverError('فشل جلب جلسات الحضور');
   }
 }
 
@@ -106,7 +107,7 @@ async function POSTHandler(req: Request) {
     return jsonResponse(session, 201);
   } catch (error: unknown) {
     console.error('Create attendance session error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل إنشاء جلسة الحضور');
+    return serverError('فشل إنشاء جلسة الحضور');
   }
 }
 

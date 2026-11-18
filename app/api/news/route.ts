@@ -1,10 +1,21 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, jsonResponse, badRequest, serverError, unauthorized } from '@/src/server/middleware';
-import { processUploadedImage } from '@/src/server/upload';
+import {
+  getAuthUser,
+  getAccessContext,
+  jsonResponse,
+  badRequest,
+  forbidden,
+  serverError,
+  unauthorized,
+} from '@/src/server/middleware';
+import { processUploadedImage, UploadValidationError } from '@/src/server/upload';
 
 async function GETHandler(req: Request) {
   try {
+    const auth = await getAuthUser(req);
+    if (!auth) return unauthorized('لازم تسجّل الدخول أولاً');
+
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') || null;
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
@@ -85,9 +96,9 @@ async function GETHandler(req: Request) {
       limit,
       totalPages: Math.ceil(total / limit),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get news error:', error);
-    return serverError(error.message || 'فشل جلب الأخبار');
+    return serverError('فشل جلب الأخبار');
   }
 }
 
@@ -95,6 +106,13 @@ async function POSTHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
+
+    const access = await getAccessContext(auth);
+    const canWriteNews =
+      access.privileged || access.permissions?.includes('news.write');
+    if (!canWriteNews) {
+      return forbidden('ليس لديك صلاحية لنشر الأخبار');
+    }
 
     let content = '';
     let title: string | null = null;
@@ -128,7 +146,7 @@ async function POSTHandler(req: Request) {
 
     let authorName: string | null = null;
     let authorRole: string | null = null;
-    let authorId: string | null = auth?.sub || null;
+    const authorId: string | null = auth?.sub || null;
 
     if (authorId) {
       const user = await queryOne<{ name: string; role: string }>(
@@ -151,9 +169,12 @@ async function POSTHandler(req: Request) {
     );
 
     return jsonResponse(created, 201);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof UploadValidationError) {
+      return badRequest(error.message);
+    }
     console.error('Create news error:', error);
-    return serverError(error.message || 'فشل نشر الخبر');
+    return serverError('فشل نشر الخبر');
   }
 }
 

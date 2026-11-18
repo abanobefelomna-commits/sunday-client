@@ -5,6 +5,7 @@ import { createHash, randomBytes } from 'crypto';
 import { query, queryOne } from './db';
 import { getJwtSecret } from './platform/config';
 import { requireTenantContext } from './tenant/context';
+import { passwordPolicyIssue, type PasswordPolicyIssue } from '../../app/lib/password-policy';
 import {
   SESSION_COOKIE,
   SESSION_COOKIE_PATH,
@@ -13,6 +14,16 @@ import {
 
 const ACCESS_TOKEN_EXPIRY = Number(process.env.JWT_EXPIRES_SECONDS || 900);
 const REFRESH_TTL_DAYS = Number(process.env.REFRESH_TTL_DAYS || 7);
+/**
+ * A rotated token that is presented again shortly after rotation is usually a
+ * concurrent request from another tab. Outside this window it is treated as
+ * token theft and every session for that user is revoked.
+ */
+const REFRESH_REUSE_GRACE_SECONDS = Number(process.env.REFRESH_REUSE_GRACE_SECONDS || 30);
+
+export const REFRESH_COOKIE = 'refresh_token';
+/** The refresh cookie must be sent to the API and the logout page alike. */
+export const REFRESH_COOKIE_PATH = '/';
 
 export const TENANT_TOKEN_AUDIENCE = 'sunday-school-tenant';
 const TOKEN_ISSUER = 'sunday-school-platform';
@@ -30,12 +41,16 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+const PASSWORD_POLICY_MESSAGES: Record<PasswordPolicyIssue, string> = {
+  too_short: 'كلمة المرور يجب أن تكون ١٠ أحرف على الأقل',
+  too_long: 'كلمة المرور أطول من الحد المسموح',
+  missing_letter: 'كلمة المرور لازم تحتوي على حرف واحد على الأقل',
+  missing_number: 'كلمة المرور لازم تحتوي على رقم واحد على الأقل',
+};
+
 export function validatePasswordStrength(password: unknown): string | null {
-  if (typeof password !== 'string' || password.length < 8) {
-    return 'كلمة المرور يجب أن تكون ٨ أحرف على الأقل';
-  }
-  if (password.length > 200) return 'كلمة المرور أطول من الحد المسموح';
-  return null;
+  const issue = passwordPolicyIssue(password);
+  return issue ? PASSWORD_POLICY_MESSAGES[issue] : null;
 }
 
 export async function hashPassword(plain: string): Promise<string> {
@@ -111,39 +126,62 @@ export async function verifyAndRotateRefreshToken(
 ): Promise<{ userId: string; churchId: string } | null> {
   const tenant = requireTenantContext();
   const tokenHash = hashToken(rawToken);
-  const row = await queryOne<{ id: string; userId: string; expiresAt: Date; churchId: string | null }>(
-    `SELECT "id", "userId", "expiresAt", "churchId" FROM "refresh_tokens"
+
+  // Claim the token with a single conditional update. Two concurrent refreshes
+  // cannot both succeed, because only one can flip revokedAt from NULL.
+  const claimed = await queryOne<{ userId: string; churchId: string }>(
+    `UPDATE "refresh_tokens"
+     SET "revokedAt" = now()
      WHERE "tokenHash" = $1 AND "revokedAt" IS NULL AND "expiresAt" > now()
        AND "audience" = 'tenant' AND "churchId" = $2
+     RETURNING "userId", "churchId"`,
+    [tokenHash, tenant.churchId],
+  );
+
+  if (claimed) {
+    return { userId: claimed.userId, churchId: claimed.churchId };
+  }
+
+  // The token is not active. If it belongs to this tenant, is still unexpired
+  // and was revoked a while ago, it was reused after rotation: revoke every
+  // session for that user. The short grace period avoids logging out users
+  // whose two tabs raced during a normal rotation.
+  const reused = await queryOne<{ userId: string; revokedAt: Date; expiresAt: Date }>(
+    `SELECT "userId", "revokedAt", "expiresAt" FROM "refresh_tokens"
+     WHERE "tokenHash" = $1 AND "audience" = 'tenant' AND "churchId" = $2
+       AND "revokedAt" IS NOT NULL
      LIMIT 1`,
     [tokenHash, tenant.churchId],
   );
 
-  if (!row || row.churchId !== tenant.churchId) {
-    return null;
+  if (reused && new Date(reused.expiresAt).getTime() > Date.now()) {
+    const revokedAgoMs = Date.now() - new Date(reused.revokedAt).getTime();
+    if (revokedAgoMs > REFRESH_REUSE_GRACE_SECONDS * 1000) {
+      await revokeAllUserRefreshTokens(reused.userId);
+      console.warn('[auth] Refresh token reuse detected; all user sessions revoked.');
+    }
   }
 
-  await query(
-    `UPDATE "refresh_tokens" SET "revokedAt" = now() WHERE "id" = $1`,
-    [row.id],
-  );
-
-  return { userId: row.userId, churchId: row.churchId };
+  return null;
 }
 
 export async function revokeRefreshToken(rawToken?: string | null): Promise<void> {
   if (!rawToken) return;
+  const tenant = requireTenantContext();
   const tokenHash = hashToken(rawToken);
   await query(
-    `UPDATE "refresh_tokens" SET "revokedAt" = now() WHERE "tokenHash" = $1`,
-    [tokenHash],
+    `UPDATE "refresh_tokens" SET "revokedAt" = now()
+     WHERE "tokenHash" = $1 AND "churchId" = $2`,
+    [tokenHash, tenant.churchId],
   );
 }
 
 export async function revokeAllUserRefreshTokens(userId: string): Promise<void> {
+  const tenant = requireTenantContext();
   await query(
-    `UPDATE "refresh_tokens" SET "revokedAt" = now() WHERE "userId" = $1 AND "revokedAt" IS NULL`,
-    [userId],
+    `UPDATE "refresh_tokens" SET "revokedAt" = now()
+     WHERE "userId" = $1 AND "churchId" = $2 AND "revokedAt" IS NULL`,
+    [userId, tenant.churchId],
   );
 }
 
@@ -152,8 +190,22 @@ export function refreshCookieOptions(expiresAt: Date) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict' as const,
-    path: '/api/auth',
+    path: REFRESH_COOKIE_PATH,
     expires: expiresAt,
+  };
+}
+
+export function refreshCookie(token: string, expiresAt: Date) {
+  return [REFRESH_COOKIE, token, refreshCookieOptions(expiresAt)] as const;
+}
+
+export function clearRefreshCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict' as const,
+    path: REFRESH_COOKIE_PATH,
+    expires: new Date(0),
   };
 }
 

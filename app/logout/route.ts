@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { revokeRefreshToken } from "@/src/server/auth";
+import { safeNextPath } from "../lib/safe-next";
 import { SESSION_COOKIE, SESSION_COOKIE_PATH } from "../lib/session";
-
-function safeNext(value: string | null): string | null {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
-  return value;
-}
 
 /**
  * Server-side logout. Clearing the httpOnly cookies here guarantees the proxy
@@ -14,7 +10,7 @@ function safeNext(value: string | null): string | null {
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const next = safeNext(url.searchParams.get("next"));
+  const next = safeNextPath(url.searchParams.get("next"), null);
 
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refresh_token")?.value;
@@ -33,6 +29,14 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(new URL(destination, base));
   const secure = process.env.NODE_ENV === "production";
 
+  response.cookies.set("refresh_token", "", {
+    httpOnly: true,
+    secure,
+    sameSite: "strict",
+    path: "/",
+    expires: new Date(0),
+  });
+  // Clear the legacy cookie scope used by older deployments.
   response.cookies.set("refresh_token", "", {
     httpOnly: true,
     secure,

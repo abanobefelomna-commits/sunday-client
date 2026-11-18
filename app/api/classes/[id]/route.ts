@@ -7,6 +7,7 @@ import {
   getAuthUser,
   getAccessContext,
   canReadClass,
+  hasBroadClassRead,
   jsonResponse,
   notFound,
   forbidden,
@@ -76,6 +77,25 @@ async function GETHandler(
     );
 
     const isGeneral = cls.grade === 'general';
+    let childrenQuery = `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
+       FROM "children" WHERE "deletedAt" IS NULL`;
+    const childrenParams: unknown[] = [];
+
+    if (isGeneral) {
+      // The general group lists every child, which would leak children from
+      // classes the current servant cannot read. Scoped users only see the
+      // children of their own readable classes; broad-read churches keep the
+      // legacy behaviour.
+      if (!access.privileged && !hasBroadClassRead(access)) {
+        childrenQuery += ` AND "classId" = ANY($1::uuid[])`;
+        childrenParams.push(access.classIds);
+      }
+    } else {
+      childrenQuery += ` AND "classId" = $1`;
+      childrenParams.push(id);
+    }
+    childrenQuery += ` ORDER BY "name" ASC`;
+
     const children = await query<{
       id: string;
       name: string;
@@ -84,14 +104,7 @@ async function GETHandler(
       parentPhone: string | null;
       phone: string | null;
       avatar: string | null;
-    }>(
-      isGeneral
-        ? `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
-           FROM "children" WHERE "deletedAt" IS NULL ORDER BY "name" ASC`
-        : `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
-           FROM "children" WHERE "classId" = $1 AND "deletedAt" IS NULL ORDER BY "name" ASC`,
-      isGeneral ? [] : [id],
-    );
+    }>(childrenQuery, childrenParams);
 
     return jsonResponse({
       ...cls,
@@ -102,7 +115,7 @@ async function GETHandler(
     });
   } catch (error: unknown) {
     console.error('Get class details error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب تفاصيل الفصل');
+    return serverError('فشل جلب تفاصيل الفصل');
   }
 }
 

@@ -68,7 +68,7 @@ async function GETHandler(req: Request) {
     return jsonResponse(summary);
   } catch (error: unknown) {
     console.error('Attendance summary error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب ملخص الحضور');
+    return serverError('فشل جلب ملخص الحضور');
   }
 }
 

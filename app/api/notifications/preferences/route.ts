@@ -19,7 +19,7 @@ async function GETHandler(req: Request) {
     return jsonResponse(await getNotificationPreferences(auth.sub));
   } catch (error: unknown) {
     console.error('Get notification preferences error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب تفضيلات التنبيهات');
+    return serverError('فشل جلب تفضيلات التنبيهات');
   }
 }
 
@@ -48,7 +48,7 @@ async function PATCHHandler(req: Request) {
     return jsonResponse(await updateNotificationPreferences(auth.sub, patch));
   } catch (error: unknown) {
     console.error('Update notification preferences error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تحديث تفضيلات التنبيهات');
+    return serverError('فشل تحديث تفضيلات التنبيهات');
   }
 }
 

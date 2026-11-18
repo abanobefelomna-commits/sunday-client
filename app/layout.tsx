@@ -5,7 +5,7 @@ export const instant = false;
 
 import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
+import SafeAnalytics from "./components/SafeAnalytics";
 import { cookies } from "next/headers";
 import "./globals.css";
 import "./components/public-site/public-site-global.css";
@@ -85,7 +85,7 @@ export default async function RootLayout({
       <body className="antialiased min-h-screen">
         <LocaleProvider initialLocale={locale}>
           {children}
-          <Analytics />
+          <SafeAnalytics />
           <Toaster position="top-center" richColors closeButton duration={3500} />
           <BibleWidget />
         </LocaleProvider>

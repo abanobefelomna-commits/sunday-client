@@ -57,7 +57,7 @@ async function GETHandler(req: Request) {
     return jsonResponse(result);
   } catch (error: unknown) {
     console.error('List follow-ups error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب المتابعات');
+    return serverError('فشل جلب المتابعات');
   }
 }
 
@@ -93,7 +93,7 @@ async function POSTHandler(req: Request) {
     return jsonResponse(result, 201);
   } catch (error: unknown) {
     console.error('Create follow-up error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل إنشاء المتابعة');
+    return serverError('فشل إنشاء المتابعة');
   }
 }
 

@@ -6,6 +6,7 @@ export interface NewsItem {
   isPinned: boolean;
   authorName: string | null;
   authorRole: string | null;
+  authorId?: string | null;
   author?: {
     id: string;
     name: string;
@@ -34,6 +35,7 @@ export interface AuthUser {
   servantRole?: string;
   classIds?: string[];
   avatar?: string | null;
+  permissions?: string[];
 }
 
 const PRIVILEGED_USER_ROLES = new Set(["admin", "priest"]);
@@ -46,6 +48,12 @@ export function isPrivilegedUser(user: AuthUser | null | undefined): boolean {
     PRIVILEGED_USER_ROLES.has(user.role) ||
     (!!user.servantRole && PRIVILEGED_SERVANT_ROLES.has(user.servantRole))
   );
+}
+
+/** True when the user is allowed to publish or manage news. */
+export function canWriteNews(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  return isPrivilegedUser(user) || Boolean(user.permissions?.includes('news.write'));
 }
 
 /**
@@ -139,6 +147,30 @@ export interface AttendanceRecord {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL !== undefined ? process.env.NEXT_PUBLIC_API_URL : '';
 
+/**
+ * Typed API failure. Route handlers answer with `{ message, code }` and a few
+ * endpoints (such as login) add an `error` marker and contextual fields, so the
+ * raw payload is kept for callers that need to branch on it.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  readonly data: Record<string, unknown>;
+
+  constructor(
+    message: string,
+    status: number,
+    code: string | null = null,
+    data: Record<string, unknown> = {},
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+    this.data = data;
+  }
+}
+
 export function getImageUrl(imagePath?: string | null): string {
   if (!imagePath) return '';
   if (
@@ -184,6 +216,7 @@ const PUBLIC_PAGE_PATHS = new Set([
   '/register',
   '/forgot-password',
   '/reset-password',
+  '/verify-email',
   '/verify-otp',
   '/churches',
   '/join',
@@ -283,12 +316,19 @@ async function request<T>(
   }
 
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
+    const errorData = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const rawMessage = Array.isArray(errorData.message)
+      ? errorData.message.join(', ')
+      : errorData.message;
     const message =
-      (Array.isArray(errorData.message)
-        ? errorData.message.join(', ')
-        : errorData.message) || `فشل الطلب (${res.status})`;
-    throw new Error(message);
+      (typeof rawMessage === 'string' && rawMessage) || `فشل الطلب (${res.status})`;
+    const code =
+      typeof errorData.error === 'string'
+        ? errorData.error
+        : typeof errorData.code === 'string'
+          ? errorData.code
+          : null;
+    throw new ApiError(message, res.status, code, errorData);
   }
 
   if (res.status === 204) {
@@ -321,6 +361,13 @@ export async function loginUser(
   return data;
 }
 
+export interface RegistrationResult {
+  requiresEmailVerification: boolean;
+  email: string;
+  message: string;
+  church?: { id: string; slug: string; name: string };
+}
+
 export async function registerUser(payload: {
   name: string;
   email: string;
@@ -329,20 +376,38 @@ export async function registerUser(payload: {
   servantRole?: string;
   classIds?: string[];
   grades?: string[];
-}): Promise<{ accessToken: string; user: AuthUser }> {
+}): Promise<RegistrationResult> {
+  // Registration returns no tokens: the account stays inactive until the
+  // emailed verification code is confirmed through `/api/auth/verify-email`.
+  return request<RegistrationResult>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function verifyEmail(
+  email: string,
+  code: string,
+): Promise<{ accessToken: string; user: AuthUser }> {
   const data = await request<{ accessToken: string; user: AuthUser }>(
-    '/api/auth/register',
+    '/api/auth/verify-email',
     {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ email, code }),
     },
   );
 
-  if (data.accessToken && data.user) {
-    setStoredAuth(data.accessToken, data.user);
-  }
-
+  setStoredAuth(data.accessToken, data.user);
   return data;
+}
+
+export async function resendVerificationEmail(
+  email: string,
+): Promise<{ success: boolean; message: string }> {
+  return request<{ success: boolean; message: string }>('/api/auth/verify-email', {
+    method: 'POST',
+    body: JSON.stringify({ email, action: 'resend' }),
+  });
 }
 
 export async function getCurrentUser(): Promise<AuthUser> {

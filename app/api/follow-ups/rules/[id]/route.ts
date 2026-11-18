@@ -45,7 +45,7 @@ async function PATCHHandler(
     return jsonResponse(result);
   } catch (error: unknown) {
     console.error('Update follow-up rule error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تحديث القاعدة');
+    return serverError('فشل تحديث القاعدة');
   }
 }
 

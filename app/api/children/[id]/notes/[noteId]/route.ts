@@ -57,7 +57,7 @@ async function PATCHHandler(
     return jsonResponse(result.note);
   } catch (error: unknown) {
     console.error('Update student note error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تعديل الملاحظة');
+    return serverError('فشل تعديل الملاحظة');
   }
 }
 
@@ -94,7 +94,7 @@ async function DELETEHandler(
     return jsonResponse({ message: 'تم حذف الملاحظة' });
   } catch (error: unknown) {
     console.error('Delete student note error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل حذف الملاحظة');
+    return serverError('فشل حذف الملاحظة');
   }
 }
 

@@ -17,19 +17,12 @@ import {
 import { toast } from "sonner";
 import { Camera, Trash2, Save, KeyRound, User, GraduationCap, ShieldCheck } from "lucide-react";
 import { initials } from "../lib/format";
-import { useI18n } from "../lib/app-i18n";
-
-const GRADES = [
-  "first",
-  "second",
-  "third",
-  "fourth",
-  "fifth",
-  "sixth",
-  "general",
-] as const;
-
-type Grade = (typeof GRADES)[number];
+import {
+  PASSWORD_MIN_LENGTH,
+  passwordPolicyIssue,
+  passwordPolicyMessageKey,
+} from "../lib/password-policy";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 
 export default function ProfilePage() {
   const { t } = useI18n();
@@ -37,11 +30,9 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [grade, setGrade] = useState<Grade>("first");
   const [avatar, setAvatar] = useState<string | null>(null);
 
   // States
-  const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -62,7 +53,6 @@ export default function ProfilePage() {
           setName(stored.name || "");
           setPhone(stored.phone || "");
           setEmail(stored.email || "");
-          setGrade((stored.grades?.[0] as Grade) || "first");
           setAvatar(stored.avatar || null);
         }
 
@@ -72,13 +62,10 @@ export default function ProfilePage() {
           setName(fresh.name || "");
           setPhone(fresh.phone || "");
           setEmail(fresh.email || "");
-          setGrade((fresh.grades?.[0] as Grade) || "first");
           setAvatar(fresh.avatar || null);
         }
       } catch {
         // fallback to stored user
-      } finally {
-        setLoading(false);
       }
     }
 
@@ -145,7 +132,6 @@ export default function ProfilePage() {
       const updated = await updateUserProfile(user.id, {
         name: name.trim(),
         phone: phone.trim(),
-        grades: [grade],
       });
 
       setUser(updated);
@@ -165,8 +151,9 @@ export default function ProfilePage() {
       toast.error(t("profile.fillPasswords"));
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error(t("profile.passwordLength"));
+    const policyIssue = passwordPolicyIssue(newPassword);
+    if (policyIssue) {
+      toast.error(t(passwordPolicyMessageKey(policyIssue) as AppMessageKey));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -196,6 +183,7 @@ export default function ProfilePage() {
   };
 
   const initial = initials(user?.name || "") === "?" ? "✝" : initials(user?.name || "");
+  const grade = user?.grades?.[0] || "first";
   const gradeLabel = t(`grade.${grade}` as Parameters<typeof t>[0]);
 
   return (
@@ -338,21 +326,13 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label htmlFor="p-grade" className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   {t("profile.grade")}
                 </label>
-                <select
-                  id="p-grade"
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value as Grade)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {GRADES.map((value) => (
-                    <option key={value} value={value}>
-                      {t(`grade.${value}` as Parameters<typeof t>[0])}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-sm flex items-center justify-between">
+                  <span className="font-medium">{gradeLabel}</span>
+                  <span className="text-xs text-slate-400">({t("profile.managedByAdmin")})</span>
+                </div>
               </div>
             </div>
 
@@ -418,6 +398,7 @@ export default function ProfilePage() {
                   id="new-pass"
                   type="password"
                   required
+                  minLength={PASSWORD_MIN_LENGTH}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
@@ -433,6 +414,7 @@ export default function ProfilePage() {
                   id="conf-pass"
                   type="password"
                   required
+                  minLength={PASSWORD_MIN_LENGTH}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"

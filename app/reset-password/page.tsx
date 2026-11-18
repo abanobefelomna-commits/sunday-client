@@ -4,7 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { requestPasswordReset, resetPassword } from "../lib/api";
-import { useI18n } from "../lib/app-i18n";
+import {
+  PASSWORD_MIN_LENGTH,
+  passwordPolicyIssue,
+  passwordPolicyMessageKey,
+} from "../lib/password-policy";
+import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -33,8 +38,9 @@ function ResetPasswordForm() {
       setError(t("reset.codeLength"));
       return;
     }
-    if (password.length < 8) {
-      setError(t("reset.passwordLength"));
+    const policyIssue = passwordPolicyIssue(password);
+    if (policyIssue) {
+      setError(t(passwordPolicyMessageKey(policyIssue) as AppMessageKey));
       return;
     }
     if (password !== confirmPassword) {
@@ -126,7 +132,7 @@ function ResetPasswordForm() {
             id="password"
             type="password"
             required
-            minLength={8}
+            minLength={PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -138,7 +144,7 @@ function ResetPasswordForm() {
             id="confirmPassword"
             type="password"
             required
-            minLength={8}
+            minLength={PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}

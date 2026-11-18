@@ -1,7 +1,7 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { getAuthUser, canManageServants, jsonResponse, notFound, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
-import { processUploadedImage } from '@/src/server/upload';
+import { processUploadedImage, UploadValidationError } from '@/src/server/upload';
 
 async function PATCHHandler(
   req: Request,
@@ -34,9 +34,12 @@ async function PATCHHandler(
       message: 'تم رفع الصورة بنجاح',
       avatar: url,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof UploadValidationError) {
+      return badRequest(error.message);
+    }
     console.error('Upload servant avatar error:', error);
-    return badRequest(error.message || 'فشل رفع صورة الخادم');
+    return serverError('فشل رفع صورة الخادم');
   }
 }
 
@@ -60,9 +63,9 @@ async function DELETEHandler(
     );
 
     return jsonResponse({ message: 'تم حذف الصورة بنجاح' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete servant avatar error:', error);
-    return serverError(error.message || 'فشل حذف صورة الخادم');
+    return serverError('فشل حذف صورة الخادم');
   }
 }
 

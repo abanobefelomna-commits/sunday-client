@@ -10,6 +10,7 @@ import {
   getImageUrl,
   getStoredToken,
   getStoredUser,
+  canWriteNews,
   type NewsItem,
   type AuthUser,
 } from "../lib/api";
@@ -33,6 +34,8 @@ export default function NewsPage() {
   const [isPinned, setIsPinned] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+
+  const isNewsAuthor = canWriteNews(user);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -192,71 +195,75 @@ export default function NewsPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            className="btn sm flex items-center gap-1.5 shadow-md"
-            onClick={() => openCreateModal()}
-          >
-            <span>{t("news.newPost")}</span>
-          </button>
+          {isNewsAuthor && (
+            <button
+              type="button"
+              className="btn sm flex items-center gap-1.5 shadow-md"
+              onClick={() => openCreateModal()}
+            >
+              <span>{t("news.newPost")}</span>
+            </button>
+          )}
         </div>
 
         {/* Facebook-style Composer Box */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 mb-4 shadow-sm">
-          <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 overflow-hidden flex items-center justify-center text-white font-bold shrink-0 shadow-sm">
-              {user?.avatar ? (
-                <img
-                  src={getImageUrl(user.avatar)}
-                  alt={user.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span>{initials(user?.name) === "?" ? "✝" : initials(user?.name)}</span>
-              )}
+        {isNewsAuthor && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 mb-4 shadow-sm">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 overflow-hidden flex items-center justify-center text-white font-bold shrink-0 shadow-sm">
+                {user?.avatar ? (
+                  <img
+                    src={getImageUrl(user.avatar)}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{initials(user?.name) === "?" ? "✝" : initials(user?.name)}</span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openCreateModal()}
+                className="flex-1 text-start bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-500 dark:text-slate-400 text-sm px-4 py-2.5 rounded-full transition cursor-pointer"
+              >
+                {t("news.composerPlaceholder", { name: user?.name?.split(" ")[0] || t("news.commentAuthorFallback") })}
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => openCreateModal()}
-              className="flex-1 text-start bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-500 dark:text-slate-400 text-sm px-4 py-2.5 rounded-full transition cursor-pointer"
-            >
-              {t("news.composerPlaceholder", { name: user?.name?.split(" ")[0] || t("news.commentAuthorFallback") })}
-            </button>
+            <div className="flex items-center justify-around pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  openCreateModal();
+                  setTimeout(() => fileInputRef.current?.click(), 100);
+                }}
+                className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 px-3 py-1.5 rounded-xl transition"
+              >
+                <Camera className="w-4 h-4 text-emerald-500" />
+                <span>{t("news.photoAd")}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openCreateModal(true)}
+                className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 px-3 py-1.5 rounded-xl transition"
+              >
+                <Pin className="w-4 h-4 text-amber-500" />
+                <span>{t("news.pinnedAd")}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openCreateModal()}
+                className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-3 py-1.5 rounded-xl transition"
+              >
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <span>{t("news.activity")}</span>
+              </button>
+            </div>
           </div>
-
-          <div className="flex items-center justify-around pt-3">
-            <button
-              type="button"
-              onClick={() => {
-                openCreateModal();
-                setTimeout(() => fileInputRef.current?.click(), 100);
-              }}
-              className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 px-3 py-1.5 rounded-xl transition"
-            >
-              <Camera className="w-4 h-4 text-emerald-500" />
-              <span>{t("news.photoAd")}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openCreateModal(true)}
-              className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 px-3 py-1.5 rounded-xl transition"
-            >
-              <Pin className="w-4 h-4 text-amber-500" />
-              <span>{t("news.pinnedAd")}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openCreateModal()}
-              className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 px-3 py-1.5 rounded-xl transition"
-            >
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <span>{t("news.activity")}</span>
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Search Input */}
         <div className="relative mb-4">
@@ -335,7 +342,8 @@ export default function NewsPage() {
                     </div>
 
                     {/* Actions Menu (Delete) */}
-                    {token && (
+                    {(canWriteNews(user) ||
+                      (!!token && !!user?.id && item.authorId === user.id)) && (
                       <button
                         type="button"
                         onClick={() => handleDelete(item.id)}
@@ -480,13 +488,15 @@ export default function NewsPage() {
               <p className="text-slate-500 text-sm mb-5">
                 {t("news.emptyHint")}
               </p>
-              <button
-                type="button"
-                className="btn big"
-                onClick={() => openCreateModal()}
-              >
-                {t("news.createFirst")}
-              </button>
+              {isNewsAuthor && (
+                <button
+                  type="button"
+                  className="btn big"
+                  onClick={() => openCreateModal()}
+                >
+                  {t("news.createFirst")}
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -171,7 +171,7 @@ async function POSTHandler(req: Request) {
     });
   } catch (error: unknown) {
     console.error('Bulk attendance error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تسجيل الحضور');
+    return serverError('فشل تسجيل الحضور');
   }
 }
 

@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
-import { query, queryOne } from '@/src/server/db';
+import { queryOne } from '@/src/server/db';
 import {
   verifyPassword,
   issueRefreshToken,
   signAccessToken,
   normalizeEmail,
+  refreshCookie,
   sessionCookie,
 } from '@/src/server/auth';
-import { badRequest, unauthorized, serverError } from '@/src/server/middleware';
+import { badRequest, unauthorized, serverError, getAccessContext } from '@/src/server/middleware';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
 import {
   getRequestIp,
@@ -59,16 +60,17 @@ export async function POST(req: Request) {
         avatar: string | null;
         password: string;
         isActive: boolean;
+        emailVerified: boolean;
       }>(
         isEmail
-          ? `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive"
+          ? `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive", "emailVerified"
              FROM "users" WHERE lower("email") = $1 LIMIT 1`
-          : `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive"
+          : `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive", "emailVerified"
              FROM "users" WHERE "phone" = $1 LIMIT 1`,
         [identifier],
       );
 
-      if (!user || !user.isActive) {
+      if (!user) {
         return unauthorized('بيانات الدخول غير صحيحة');
       }
 
@@ -77,38 +79,35 @@ export async function POST(req: Request) {
         return unauthorized('بيانات الدخول غير صحيحة');
       }
 
-      const { password: _pw, isActive: _active, ...safeUser } = user;
-
-      const servant = await queryOne<{ id: string; role: string }>(
-        `SELECT "id", "role" FROM "servants"
-         WHERE "phone" = $1 OR ("email" IS NOT NULL AND lower("email") = lower($2))
-         LIMIT 1`,
-        [user.phone, user.email],
-      );
-
-      const classIds: string[] = [];
-      if (servant) {
-        const sc = await query<{ classesId: string }>(
-          `SELECT "classesId" FROM "servants_classes" WHERE "servantsId" = $1`,
-          [servant.id],
+      // Only an unverified email gets the verification prompt. Deactivated
+      // accounts keep the generic credential error to avoid account probing.
+      if (!user.emailVerified) {
+        return NextResponse.json(
+          {
+            error: 'EMAIL_NOT_VERIFIED',
+            email: user.email,
+            requiresEmailVerification: true,
+            message: 'يرجى تأكيد البريد الإلكتروني أولاً لتفعيل الحساب.',
+          },
+          { status: 403 },
         );
-        classIds.push(...sc.map((r) => r.classesId));
-      }
-      if (user.grades && user.grades.length > 0) {
-        const gc = await query<{ id: string }>(
-          `SELECT "id" FROM "classes" WHERE "grade"::text = ANY($1::text[])`,
-          [user.grades],
-        );
-        classIds.push(...gc.map((r) => r.id));
       }
 
-      const accessToken = await signAccessToken({
+      if (!user.isActive) {
+        return unauthorized('بيانات الدخول غير صحيحة');
+      }
+
+      const { password: _pw, isActive: _active, emailVerified: _ev, ...safeUser } = user;
+
+      const payload = {
         sub: user.id,
         role: user.role,
         name: user.name,
         email: user.email,
         tid: tenant.churchId,
-      });
+      };
+      const access = await getAccessContext(payload);
+      const accessToken = await signAccessToken(payload);
 
       const refreshToken = await issueRefreshToken(user.id);
 
@@ -116,20 +115,18 @@ export async function POST(req: Request) {
         accessToken,
         user: {
           ...safeUser,
-          servantRole: servant?.role || null,
-          classIds: [...new Set(classIds)],
+          servantRole: access.servantRole,
+          classIds: access.classIds,
+          permissions: access.permissions,
         },
-        refreshToken: refreshToken.token,
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },
       });
 
-      res.cookies.set('refresh_token', refreshToken.token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        path: '/api/auth',
-        expires: refreshToken.expiresAt,
-      });
+      const [refreshName, refreshVal, refreshOpts] = refreshCookie(
+        refreshToken.token,
+        refreshToken.expiresAt,
+      );
+      res.cookies.set(refreshName, refreshVal, refreshOpts);
 
       const [sessionName, sessionValue, sessionOptions] = sessionCookie(refreshToken.expiresAt);
       res.cookies.set(sessionName, sessionValue, sessionOptions);

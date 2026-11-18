@@ -1,7 +1,7 @@
 import { withTenant } from '@/src/server/tenant/route';
 import { query, queryOne } from '@/src/server/db';
 import { authorizeClass, getAuthUser, jsonResponse, notFound, badRequest, forbidden, serverError, unauthorized } from '@/src/server/middleware';
-import { processUploadedImage } from '@/src/server/upload';
+import { processUploadedImage, UploadValidationError } from '@/src/server/upload';
 import { requireTenantContext } from '@/src/server/tenant/context';
 import { recordAudit, requestIp } from '@/src/server/audit';
 
@@ -51,8 +51,11 @@ async function PATCHHandler(
       image: url,
     });
   } catch (error: unknown) {
+    if (error instanceof UploadValidationError) {
+      return badRequest(error.message);
+    }
     console.error('Upload class image error:', error);
-    return badRequest(error instanceof Error ? error.message : 'فشل رفع صورة الفصل');
+    return serverError('فشل رفع صورة الفصل');
   }
 }
 
@@ -92,7 +95,7 @@ async function DELETEHandler(
     return jsonResponse({ message: 'تم حذف الصورة بنجاح' });
   } catch (error: unknown) {
     console.error('Delete class image error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل حذف صورة الفصل');
+    return serverError('فشل حذف صورة الفصل');
   }
 }
 

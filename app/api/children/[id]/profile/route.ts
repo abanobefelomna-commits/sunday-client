@@ -45,7 +45,7 @@ async function GETHandler(
     return jsonResponse(profile);
   } catch (error: unknown) {
     console.error('Get student profile error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل جلب ملف الطالب');
+    return serverError('فشل جلب ملف الطالب');
   }
 }
 

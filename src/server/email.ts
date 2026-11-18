@@ -1,6 +1,12 @@
 import nodemailer from 'nodemailer';
 
-export async function sendOtpEmail(toEmail: string, code: string): Promise<boolean> {
+export type EmailPurpose = 'password_reset' | 'email_verification';
+
+export async function sendOtpEmail(
+  toEmail: string,
+  code: string,
+  purpose: EmailPurpose = 'password_reset',
+): Promise<boolean> {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 465);
   const user = process.env.SMTP_USER;
@@ -10,15 +16,20 @@ export async function sendOtpEmail(toEmail: string, code: string): Promise<boole
 
   if (!host || !user || !pass || !from) {
     // Never print a live OTP in production. Local development keeps a
-    // convenience log so password reset can be exercised without SMTP.
+    // convenience log so verification/reset can be exercised without SMTP.
     console.warn('[EmailService] SMTP is not fully configured; no email was sent.');
     if (process.env.NODE_ENV !== 'production') {
-      console.warn(`[EmailService] Development OTP for ${toEmail}: ${code}`);
+      console.warn(`[EmailService] Development OTP for ${toEmail} (${purpose}): ${code}`);
+      return true;
     }
     return false;
   }
 
-  const heading = 'استعادة كلمة المرور';
+  const isVerification = purpose === 'email_verification';
+  const heading = isVerification ? 'تأكيد البريد الإلكتروني' : 'استعادة كلمة المرور';
+  const description = isVerification
+    ? 'استخدم الكود التالي لتأكيد بريدك الإلكتروني وتفعيل حسابك:'
+    : 'استخدم الكود التالي لإكمال عملية استعادة كلمة المرور:';
 
   const transporter = nodemailer.createTransport({
     host,
@@ -38,7 +49,7 @@ export async function sendOtpEmail(toEmail: string, code: string): Promise<boole
   const html = `
     <div dir="rtl" style="font-family:Arial,sans-serif;max-width:520px;margin:auto;line-height:1.8;padding:20px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff">
       <h2 style="color:#1e3a8a;text-align:center">${heading} - مدارس الأحد</h2>
-      <p style="color:#374151">استخدم الكود التالي لإكمال عملية استعادة كلمة المرور:</p>
+      <p style="color:#374151">${description}</p>
       <div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px;background:#f3f4f6;text-align:center;border-radius:8px;color:#111827;margin:20px 0">
         ${code}
       </div>
@@ -60,4 +71,8 @@ export async function sendOtpEmail(toEmail: string, code: string): Promise<boole
     console.error('[EmailService] Failed to send email:', error);
     return false;
   }
+}
+
+export async function sendVerificationEmail(toEmail: string, code: string): Promise<boolean> {
+  return sendOtpEmail(toEmail, code, 'email_verification');
 }

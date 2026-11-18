@@ -78,7 +78,7 @@ async function PATCHHandler(
     return jsonResponse(result.progress);
   } catch (error: unknown) {
     console.error('Update educational progress error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل تعديل التقدم التعليمي');
+    return serverError('فشل تعديل التقدم التعليمي');
   }
 }
 
@@ -113,7 +113,7 @@ async function DELETEHandler(
     return jsonResponse({ message: 'تم حذف سجل التقدم' });
   } catch (error: unknown) {
     console.error('Delete educational progress error:', error);
-    return serverError(error instanceof Error ? error.message : 'فشل حذف التقدم التعليمي');
+    return serverError('فشل حذف التقدم التعليمي');
   }
 }
 
