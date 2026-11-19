@@ -56,10 +56,19 @@ class AiService {
       throw new Error(`النموذج (${model.name}) غير متاح للتشغيل: ${note}`);
     }
 
-    // Resolve adapter by model's providerId
-    const adapter = this.adapters.get(model.providerId);
+    // Models are served either directly by their provider (Gemini) or through
+    // the SovereignEG gateway. The registry keeps the upstream provider in
+    // `providerId`, so route by inference platform first instead of assuming
+    // the upstream provider is the adapter key.
+    const adapterId =
+      model.inferencePlatform === 'SovereignEG'
+        ? 'sovereigneg'
+        : model.inferencePlatform === 'Google Gemini API'
+          ? 'gemini'
+          : model.providerId;
+    const adapter = this.adapters.get(adapterId);
     if (!adapter) {
-      throw new Error(`مزود خدمة الذكاء الاصطناعي (${model.providerId}) غير متوفر.`);
+      throw new Error(`مزود خدمة الذكاء الاصطناعي (${adapterId}) غير متوفر.`);
     }
 
     if (!adapter.isConfigured()) {

@@ -85,3 +85,15 @@ test('AI Adapter: SovereignEG adapter initializes and detects environment key', 
   // In this test environment, SOVEREIGNEG_API_KEY is configured in process.env
   assert.equal(adapter.isConfigured(), true);
 });
+
+test('AI Service: routes catalog models through the adapter that serves them', async () => {
+  process.env.SOVEREIGNEG_API_KEY = process.env.SOVEREIGNEG_API_KEY || 'test-sovereigneg-key';
+  process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'test-gemini-key';
+  const { aiService } = await import('../../src/server/ai/service.ts');
+
+  const sovereign = aiService.resolveModelAndAdapter('gpt-6-luna');
+  assert.equal(sovereign.adapter.providerId, 'sovereigneg', 'SovereignEG models must use the gateway adapter');
+
+  const gemini = aiService.resolveModelAndAdapter('gemini-3.8-flash');
+  assert.equal(gemini.adapter.providerId, 'gemini', 'Direct Gemini models must use the Gemini adapter');
+});
