@@ -1,5 +1,6 @@
 import type { AiProviderAdapter } from './adapters/provider-adapter.ts';
 import { SovereignEGAdapter } from './adapters/sovereigneg-adapter.ts';
+import { GeminiAdapter } from './adapters/gemini-adapter.ts';
 import {
   AI_MODELS,
   DEFAULT_MODEL_ID,
@@ -19,6 +20,8 @@ class AiService {
   constructor() {
     const sovereignEg = new SovereignEGAdapter();
     this.adapters.set(sovereignEg.providerId, sovereignEg);
+    const gemini = new GeminiAdapter();
+    this.adapters.set(gemini.providerId, gemini);
   }
 
   registerAdapter(adapter: AiProviderAdapter) {
@@ -53,15 +56,15 @@ class AiService {
       throw new Error(`النموذج (${model.name}) غير متاح للتشغيل: ${note}`);
     }
 
-    // Inference platform determines adapter
-    const adapter = this.adapters.get('sovereigneg');
+    // Resolve adapter by model's providerId
+    const adapter = this.adapters.get(model.providerId);
     if (!adapter) {
-      throw new Error('مزود خدمة الذكاء الاصطناعي غير متوفر.');
+      throw new Error(`مزود خدمة الذكاء الاصطناعي (${model.providerId}) غير متوفر.`);
     }
 
     if (!adapter.isConfigured()) {
       throw new Error(
-        'مفتاح الاتصال بمزود الذكاء الاصطناعي (SOVEREIGNEG_API_KEY) غير مهيأ في الخادم.',
+        `مفتاح الاتصال بمزود الذكاء الاصطناعي (${model.providerId}) غير مهيأ في الخادم.`,
       );
     }
 

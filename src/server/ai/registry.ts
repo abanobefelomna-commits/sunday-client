@@ -90,7 +90,31 @@ export const AI_MODELS: AiModel[] = [
     },
   },
 
-  // 4. Google Gemini 4 Argon (Advanced / Multilingual)
+  // 4. Google Gemini 3.8 Flash (Fast / Direct API)
+  {
+    id: 'gemini-3.8-flash',
+    apiModelId: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash',
+    providerId: 'gemini',
+    providerName: 'Google Gemini',
+    inferencePlatform: 'Google Gemini API',
+    description: 'Google Gemini 3.8 Flash model, optimized for fast responses and Arabic nuance.',
+    descriptionAr: 'نموذج جيميني 3.8 فلاش من جوجل، سريع وذا جودة عربية عالية.',
+    category: 'Fast',
+    pricing: { inputPer1mEgp: 5.0, outputPer1mEgp: 15.0, currency: 'EGP' },
+    status: 'live',
+    capabilities: {
+      supportsTemperature: true,
+      supportsTools: true,
+      supportsStreaming: true,
+      supportsJsonSchema: true,
+      supportsReasoning: true,
+      contextWindow: 1000000,
+      maxOutputTokens: 16384,
+    },
+  },
+
+  // 5. Google Gemini 4 Argon (Advanced / Multilingual)
   {
     id: 'gemini-4-argon',
     apiModelId: 'gemini-4-argon',

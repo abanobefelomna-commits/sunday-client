@@ -17,6 +17,7 @@
     "db:verify:platform": "node scripts/verify-platform-db.mjs"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@neon/config": "^1.9.5",
     "@neon/env": "^1.6.6",
     "@neondatabase/serverless": "^1.2.0",
