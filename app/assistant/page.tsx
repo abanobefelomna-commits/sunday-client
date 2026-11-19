@@ -66,13 +66,12 @@ export default function AssistantPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom of messages
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Auto-scroll to the newest message. Skip while the conversation is empty so
+  // the page does not jump on first load and hide the header/model selector
+  // underneath the sticky app bar.
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length === 0) return;
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, isGenerating]);
 
   // Load user, models, preferences, and saved conversation
@@ -197,6 +196,19 @@ export default function AssistantPage() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const startTime = Date.now();
+    // Abort the request when the provider stops sending data so a stalled
+    // stream (for example a provider 503 that never closes) cannot leave the
+    // composer and model selector disabled indefinitely.
+    let watchdog: number | undefined;
+    let timedOut = false;
+    const STREAM_IDLE_TIMEOUT_MS = 60_000;
+    const armWatchdog = () => {
+      if (watchdog !== undefined) window.clearTimeout(watchdog);
+      watchdog = window.setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, STREAM_IDLE_TIMEOUT_MS);
+    };
 
     try {
       // Build API messages payload
@@ -237,11 +249,13 @@ export default function AssistantPage() {
       const decoder = new TextDecoder();
       let streamedContent = "";
       let streamedReasoning = "";
+      armWatchdog();
       let totalUsageTokens: number | undefined;
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        armWatchdog();
 
         const chunk = decoder.decode(value, { stream: true });
         const lines = chunk.split("\n");
@@ -297,7 +311,20 @@ export default function AssistantPage() {
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") {
-        // User stopped generation manually
+        if (timedOut) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantPlaceholderId
+                ? {
+                    ...msg,
+                    content: `⚠️ **${t("ai.errorOccurred")}**: The AI provider stopped responding. Please try again.`,
+                    durationMs: Date.now() - startTime,
+                  }
+                : msg,
+            ),
+          );
+        }
+        // Otherwise the user stopped generation manually.
       } else {
         const errorMessage = err instanceof Error ? err.message : String(err);
         const errorContent = `⚠️ **${t("ai.errorOccurred")}**: ${errorMessage}`;
@@ -314,6 +341,7 @@ export default function AssistantPage() {
         );
       }
     } finally {
+      if (watchdog !== undefined) window.clearTimeout(watchdog);
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
