@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { platformQuery, platformQueryOne, platformTransaction } from './db';
 import { hashPassword, normalizeEmail, validatePasswordStrength } from '../auth';
 import { getPreviewStatus, getPlatformConfig } from './preview';
@@ -82,6 +82,22 @@ export function slugifyChurchName(name: string): string {
   return `${safe}-${randomToken(3).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4)}`;
 }
 
+/**
+ * Human-friendly church invitation code.
+ * Uses an alphabet without easily confused characters (0/O, 1/I/l).
+ * The code is stored centrally and can only be used to register an ordinary
+ * servant account — it never grants administrative privileges.
+ */
+export function generateChurchCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = randomBytes(10);
+  let code = '';
+  for (let i = 0; i < 10; i += 1) {
+    code += alphabet[bytes[i] % alphabet.length];
+  }
+  return `${code.slice(0, 5)}-${code.slice(5)}`;
+}
+
 function validEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) && email.length <= 320;
 }
@@ -155,6 +171,7 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
   const jobId = randomUUID();
   const churchId = randomUUID();
   const idempotencyKey = randomUUID();
+  const churchCode = generateChurchCode();
 
   try {
     await platformTransaction([
@@ -198,6 +215,12 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
             adminPasswordHash: passwordHash,
           }),
         ],
+      },
+      {
+        text: `INSERT INTO "church_codes"
+          ("id", "churchId", "code", "revoked", "createdAt", "updatedAt")
+         VALUES (uuid_generate_v4(), $1, $2, false, now(), now())`,
+        params: [churchId, churchCode],
       },
     ]);
   } catch (error) {

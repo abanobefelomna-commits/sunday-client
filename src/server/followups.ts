@@ -243,7 +243,7 @@ export async function createFollowUp(
   if (!child) return { error: 'child_not_found' as const };
   if (!canWriteClass(access, child.classId)) return { error: 'forbidden' as const };
 
-  let servantId = input.servantId ?? child.assignedServantId ?? null;
+  const servantId = input.servantId ?? child.assignedServantId ?? null;
   if (servantId) {
     const servant = await queryOne<{ id: string }>(
       `SELECT s."id" FROM "servants" s

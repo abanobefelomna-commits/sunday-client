@@ -112,10 +112,11 @@ export async function withResolvedTenant(
   req: Request,
   explicitSlug: string | null | undefined,
   handler: (req: Request, tenant: TenantContext) => Promise<Response>,
+  options: { ignoreCookie?: boolean } = {},
 ): Promise<Response> {
   let resolution: TenantResolution;
   try {
-    resolution = await resolveTenantRequest(req, explicitSlug);
+    resolution = await resolveTenantRequest(req, explicitSlug, options);
   } catch (error) {
     unstable_rethrow(error);
     return platformResolutionErrorResponse(error);

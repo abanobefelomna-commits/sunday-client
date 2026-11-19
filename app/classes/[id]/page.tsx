@@ -84,12 +84,18 @@ export default function ClassDetailsPage({
         </div>
 
         {canManage ? (
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <Link
               href={`/attendance?classId=${classData.id}`}
               className="btn big flex-1 text-center"
             >
               ✅ {t("classDetail.recordAttendance")}
+            </Link>
+            <Link
+              href={`/servants/attendance?classId=${classData.id}`}
+              className="btn ghost flex-1 text-center"
+            >
+              🗓️ حضور الخدام
             </Link>
           </div>
         ) : (
@@ -161,7 +167,7 @@ export default function ClassDetailsPage({
 
           {servants.length > 0 ? (
             servants.map((s) => {
-              const isLeader = s.role === "قائد فصل";
+              const isLeader = s.id === classData.leadServantId || s.role === "قائد فصل";
               return (
                 <div
                   key={s.id}

@@ -28,6 +28,8 @@ export default function ClassesPage() {
   const fileInput = useRef<HTMLInputElement>(null);
   const pendingClassId = useRef<string | null>(null);
   const isPrivileged = isPrivilegedUser(currentUser);
+  const canPromote =
+    isPrivileged || currentUser?.permissions?.includes("classes.write") === true;
 
   const gradeLabel = (grade: string) =>
     grade === "general" ? t("classes.gradeGeneral") : t("classes.gradeService");
@@ -137,6 +139,7 @@ export default function ClassesPage() {
         <div><h2>{t("classes.sectionTitle")}</h2><p>{t("classes.sectionSubtitle")}</p></div>
         <div className="classes-heading-actions">
           {currentUser && <span className="classes-tip"><Camera size={16} /> {isPrivileged ? t("classes.tipManage") : t("classes.tipBrowse")}</span>}
+          {canPromote && <Link href="/promotion" className="btn ghost sm">{t("classes.promotions")}</Link>}
           {isPrivileged && <>
             <button type="button" className="btn ghost sm" onClick={restoreDefaults} disabled={restoring}>{restoring ? t("classes.restoring") : t("classes.restore")}</button>
             <button type="button" className="btn sm" onClick={openCreate}><Plus size={16} /> {t("classes.add")}</button>

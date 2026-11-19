@@ -17,6 +17,7 @@ const STATIC_LINKS = [
   { titleKey: "commandPalette.links.classes", href: "/classes", icon: "📚" },
   { titleKey: "commandPalette.links.servants", href: "/servants", icon: "🤝" },
   { titleKey: "commandPalette.links.attendance", href: "/attendance", icon: "✅" },
+  { titleKey: "commandPalette.links.assistant", href: "/assistant", icon: "✨" },
   { titleKey: "commandPalette.links.news", href: "/news", icon: "📰" },
 ] as const;
 

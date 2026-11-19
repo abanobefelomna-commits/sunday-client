@@ -31,9 +31,47 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [churchCode, setChurchCode] = useState("");
+  const [churchName, setChurchName] = useState<string | null>(null);
+  const [churchCodeError, setChurchCodeError] = useState<string | null>(null);
+  const [churchCodeLoading, setChurchCodeLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t, locale, setLocale, direction } = useI18n();
+
+  const validateChurchCode = async () => {
+    const trimmed = churchCode.trim();
+    if (!trimmed) {
+      setChurchCodeError(t("register.churchCodeInvalid"));
+      return;
+    }
+    setChurchCodeLoading(true);
+    setChurchCodeError(null);
+    setChurchName(null);
+    try {
+      const response = await fetch("/api/auth/church-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmed }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        church?: { name?: string };
+        message?: string;
+      };
+      if (!response.ok || !body.church?.name) {
+        throw new Error(body.message || t("register.churchCodeInvalid"));
+      }
+      setChurchName(body.church.name);
+      setChurchCode(trimmed.toUpperCase());
+      toast.success(t("register.churchCodeSuccess", { name: body.church.name }));
+    } catch (caught) {
+      setChurchCodeError(
+        caught instanceof Error ? caught.message : t("register.churchCodeInvalid"),
+      );
+    } finally {
+      setChurchCodeLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +110,7 @@ export default function RegisterPage() {
         password,
         servantRole: servantRole === "class_leader" ? "class_leader" : "servant",
         grades: [grade],
+        churchCode: churchCode.trim() || undefined,
       });
 
       const destination = result.email || email.trim().toLowerCase();
@@ -135,6 +174,55 @@ export default function RegisterPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="text-start space-y-4">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-4 space-y-2">
+              <label
+                htmlFor="churchCode"
+                className="text-xs font-semibold text-slate-600 dark:text-slate-300"
+              >
+                {t("register.churchCode")}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="churchCode"
+                  type="text"
+                  value={churchCode}
+                  onChange={(event) => {
+                    setChurchCode(event.target.value.toUpperCase());
+                    setChurchName(null);
+                    setChurchCodeError(null);
+                  }}
+                  placeholder={t("register.churchCodePlaceholder")}
+                  disabled={loading || churchCodeLoading}
+                  autoComplete="off"
+                  dir="ltr"
+                  className="h-12 min-w-0 flex-1 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 px-3 text-sm font-semibold tracking-wider"
+                />
+                <button
+                  type="button"
+                  onClick={validateChurchCode}
+                  disabled={churchCodeLoading || loading || !churchCode.trim()}
+                  className="btn ghost sm shrink-0"
+                >
+                  {churchCodeLoading
+                    ? t("register.churchCodeChecking")
+                    : t("register.churchCodeValidate")}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {t("register.churchCodeHint")}
+              </p>
+              {churchName && (
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400" role="status">
+                  {t("register.churchCodeSuccess", { name: churchName })}
+                </p>
+              )}
+              {churchCodeError && (
+                <p className="text-xs font-bold text-red-600 dark:text-red-400" role="alert">
+                  {churchCodeError}
+                </p>
+              )}
+            </div>
+
             <FloatingLabelInput
               id="name"
               label={t("register.name")}

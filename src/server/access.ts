@@ -76,3 +76,13 @@ export function canManageClassStructure(
 ): boolean {
   return access.privileged || access.permissions?.includes('classes.write') === true;
 }
+
+/**
+ * Annual promotion is restricted to privileged roles (administrators and
+ * priests) and responsible users explicitly granted class-structure control.
+ */
+export function canManagePromotions(
+  access: Pick<AccessContext, 'privileged' | 'permissions'>,
+): boolean {
+  return access.privileged || access.permissions?.includes('classes.write') === true;
+}

@@ -152,6 +152,10 @@ export default function DashboardPage() {
                 <HeartHandshake className="h-4 w-4" aria-hidden="true" />
                 {t("dashboard.followUpsAction")}
               </Link>
+              <Link href="/assistant" className="btn ghost sm">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                {t("nav.assistant")}
+              </Link>
             </>
           }
         />

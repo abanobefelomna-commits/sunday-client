@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { queryOne } from '@/src/server/db';
+import { platformQueryOne } from '@/src/server/platform/db';
 import {
   hashPassword,
   normalizeEmail,
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
     grades?: unknown;
     church?: string;
     churchSlug?: string;
+    churchCode?: string;
   };
   try {
     body = await req.json();
@@ -50,9 +52,34 @@ export async function POST(req: Request) {
   const limit = rateLimit(`register:${ip}`, 5, 60 * 60);
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
-  const explicitSlug = (body.church || body.churchSlug || '').trim().toLowerCase() || null;
+  let explicitSlug = (body.church || body.churchSlug || '').trim().toLowerCase() || null;
 
-  return withResolvedTenant(req, explicitSlug, async (_req, tenant) => {
+  // Church invitation code. The code only identifies a church; it can never
+  // grant a role. It is validated centrally before the tenant database is
+  // touched, and the resolved slug must still match the request host.
+  const rawChurchCode = typeof body.churchCode === 'string' ? body.churchCode.trim().toUpperCase() : '';
+  if (rawChurchCode) {
+    const codeRow = await platformQueryOne<{ slug: string }>(
+      `SELECT c."slug"
+       FROM "church_codes" cc
+       JOIN "churches" c ON c."id" = cc."churchId"
+       WHERE upper(cc."code") = upper($1)
+         AND cc."revoked" = false
+         AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
+         AND c."status" = 'active'
+       LIMIT 1`,
+      [rawChurchCode],
+    );
+    if (!codeRow) {
+      return badRequest('رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية');
+    }
+    explicitSlug = codeRow.slug;
+  }
+
+  return withResolvedTenant(
+    req,
+    explicitSlug,
+    async (_req, tenant) => {
     try {
       const name = String(body.name || '').trim();
       const email = normalizeEmail(String(body.email || ''));
@@ -129,5 +156,10 @@ export async function POST(req: Request) {
       console.error('Registration error:', error);
       return serverError('حدث خطأ أثناء إنشاء الحساب');
     }
-  });
+    },
+    // A valid invitation code must win over a stale church cookie so a
+    // visitor can register with a different church's code from the central
+    // domain. Host-based resolution still rejects cross-church attempts.
+    { ignoreCookie: Boolean(rawChurchCode) },
+  );
 }

@@ -45,11 +45,12 @@ async function GETHandler(
       image: string | null;
       isActive: boolean;
       sortOrder: number;
+      leadServantId?: string | null;
       createdAt: Date;
       updatedAt: Date;
     }>(
       `SELECT "id", "name", "grade", "description", "academicYear", "image",
-              "isActive", "sortOrder", "createdAt", "updatedAt"
+              "isActive", "sortOrder", "leadServantId", "createdAt", "updatedAt"
        FROM "classes"
        WHERE "id" = $1 AND "churchId" = $2 AND "deletedAt" IS NULL
        LIMIT 1`,
@@ -72,9 +73,19 @@ async function GETHandler(
        FROM "servants" s
        JOIN "servants_classes" sc ON sc."servantsId" = s."id"
        WHERE sc."classesId" = $1
-       ORDER BY s."name" ASC`,
-      [id],
+       ORDER BY (s."id" = $2::uuid) DESC NULLS LAST,
+                (s."role" = 'قائد فصل') DESC,
+                s."name" ASC`,
+      [id, cls.leadServantId ?? null],
     );
+
+    let leadServant: { id: string; name: string } | null = null;
+    if (cls.leadServantId) {
+      leadServant = await queryOne<{ id: string; name: string }>(
+        `SELECT "id", "name" FROM "servants" WHERE "id" = $1 LIMIT 1`,
+        [cls.leadServantId],
+      );
+    }
 
     const isGeneral = cls.grade === 'general';
     let childrenQuery = `SELECT "id", "name", "birthDate", "gender", "parentPhone", "phone", "avatar"
@@ -108,6 +119,7 @@ async function GETHandler(
 
     return jsonResponse({
       ...cls,
+      leadServant,
       servants,
       children,
       childrenCount: children.length,
@@ -142,7 +154,8 @@ async function PATCHHandler(
     const hasDescription = Object.hasOwn(body, 'description');
     const hasIsActive = Object.hasOwn(body, 'isActive');
     const hasSortOrder = Object.hasOwn(body, 'sortOrder');
-    if (!hasName && !hasDescription && !hasIsActive && !hasSortOrder) {
+    const hasLeadServantId = Object.hasOwn(body, 'leadServantId');
+    if (!hasName && !hasDescription && !hasIsActive && !hasSortOrder && !hasLeadServantId) {
       return badRequest('لا توجد تغييرات لحفظها');
     }
 
@@ -167,9 +180,28 @@ async function PATCHHandler(
       return badRequest('ترتيب الفصل غير صالح');
     }
 
+    let leadServantId: string | null = null;
+    if (hasLeadServantId) {
+      if (body.leadServantId !== null && !isUuid(body.leadServantId)) {
+        return badRequest('معرّف قائد الفصل غير صالح');
+      }
+      leadServantId = typeof body.leadServantId === 'string' ? body.leadServantId : null;
+      if (leadServantId) {
+        const member = await queryOne<{ id: string }>(
+          `SELECT s."id"
+           FROM "servants" s
+           JOIN "servants_classes" sc ON sc."servantsId" = s."id"
+           WHERE s."id" = $1 AND sc."classesId" = $2
+           LIMIT 1`,
+          [leadServantId, id],
+        );
+        if (!member) return badRequest('قائد الفصل يجب أن يكون خادمًا معيّنًا لهذا الفصل');
+      }
+    }
+
     const tenantId = requireTenantContext().churchId;
-    const before = await queryOne<{ id: string; name: string; description: string | null; isActive: boolean; sortOrder: number }>(
-      `SELECT "id", "name", "description", "isActive", "sortOrder"
+    const before = await queryOne<{ id: string; name: string; description: string | null; isActive: boolean; sortOrder: number; leadServantId?: string | null }>(
+      `SELECT "id", "name", "description", "isActive", "sortOrder", "leadServantId"
        FROM "classes" WHERE "id" = $1 AND "churchId" = $2 AND "deletedAt" IS NULL
        LIMIT 1`,
       [id, tenantId],
@@ -194,10 +226,11 @@ async function PATCHHandler(
            "description" = CASE WHEN $4::boolean THEN $5 ELSE "description" END,
            "isActive" = COALESCE($6, "isActive"),
            "sortOrder" = COALESCE($7, "sortOrder"),
+           "leadServantId" = CASE WHEN $9::boolean THEN $10::uuid ELSE "leadServantId" END,
            "updatedAt" = now()
        WHERE "id" = $1 AND "churchId" = $8 AND "deletedAt" IS NULL
        RETURNING "id", "name", "grade", "description", "academicYear", "image",
-                 "isActive", "sortOrder", "createdAt", "updatedAt"`,
+                 "isActive", "sortOrder", "leadServantId", "createdAt", "updatedAt"`,
       [
         id,
         name,
@@ -207,6 +240,8 @@ async function PATCHHandler(
         hasIsActive ? body.isActive : null,
         hasSortOrder ? body.sortOrder : null,
         tenantId,
+        hasLeadServantId,
+        leadServantId,
       ],
     );
     await recordAudit({

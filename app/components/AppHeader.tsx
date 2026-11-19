@@ -20,6 +20,7 @@ import {
   User,
   Users,
   Baby,
+  Sparkles,
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import {
@@ -40,6 +41,7 @@ const MENU_LINKS: Array<{ href: string; key: AppMessageKey; icon: typeof LayoutD
   { href: "/classes", key: "nav.classes", icon: BookOpen },
   { href: "/servants", key: "nav.servants", icon: Users },
   { href: "/friday-prep", key: "nav.fridayPrep", icon: ClipboardCheck },
+  { href: "/assistant", key: "nav.assistant", icon: Sparkles },
   { href: "/news", key: "nav.news", icon: Newspaper },
 ];
 

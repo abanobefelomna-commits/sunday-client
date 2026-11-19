@@ -376,6 +376,7 @@ export async function registerUser(payload: {
   servantRole?: string;
   classIds?: string[];
   grades?: string[];
+  churchCode?: string;
 }): Promise<RegistrationResult> {
   // Registration returns no tokens: the account stays inactive until the
   // emailed verification code is confirmed through `/api/auth/verify-email`.

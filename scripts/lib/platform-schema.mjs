@@ -5,6 +5,7 @@
 export const REQUIRED_PLATFORM_TABLES = [
   'add_ons',
   'church_add_ons',
+  'church_codes',
   'church_entitlements',
   'churches',
   'features',
@@ -54,6 +55,7 @@ export const REQUIRED_PLATFORM_COLUMNS = {  churches: [
     'databaseName',
     'databaseHost',
   ],
+  church_codes: ['id', 'churchId', 'code', 'revoked', 'createdAt', 'updatedAt'],
   platform_settings: ['key', 'value'],
   platform_migrations: ['name', 'appliedAt'],
 };
@@ -64,9 +66,11 @@ export const REQUIRED_PLATFORM_COLUMNS = {  churches: [
  */
 export const REQUIRED_TENANT_COLUMNS = {
   tenant_identity: ['churchId', 'slug'],
-  classes: ['id', 'churchId', 'name', 'nameKey', 'grade', 'isActive', 'sortOrder', 'deletedAt'],
-  users: ['id', 'role'],
+  classes: ['id', 'churchId', 'name', 'nameKey', 'grade', 'isActive', 'sortOrder', 'leadServantId', 'deletedAt'],
+  users: ['id', 'role', 'servantRole'],
   children: ['id', 'classId'],
   attendance: ['id', 'childId', 'classId'],
+  servant_attendance: ['id', 'servantId', 'classId', 'date', 'status'],
+  class_promotions: ['id', 'childId', 'fromClassId', 'toClassId', 'academicYear'],
   notifications: ['id', 'userId'],
 };

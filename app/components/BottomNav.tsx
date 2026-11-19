@@ -17,6 +17,7 @@ import {
   Home,
   LayoutGrid,
   Newspaper,
+  Sparkles,
   Users,
   X,
 } from "lucide-react";
@@ -33,6 +34,7 @@ const SECONDARY: Array<{ href: string; icon: typeof Home; key: AppMessageKey }> 
   { href: "/classes", icon: BookOpen, key: "nav.classes" },
   { href: "/servants", icon: Users, key: "nav.servants" },
   { href: "/friday-prep", icon: ClipboardCheck, key: "nav.fridayPrep" },
+  { href: "/assistant", icon: Sparkles, key: "nav.assistant" },
   { href: "/news", icon: Newspaper, key: "nav.news" },
   { href: "/notifications", icon: Bell, key: "nav.notificationsShort" },
 ];

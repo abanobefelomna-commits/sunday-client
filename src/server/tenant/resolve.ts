@@ -160,6 +160,7 @@ function hostToTenantSlug(host: string): string | null {
 export async function resolveTenantRequest(
   request: Request,
   explicitSlug?: string | null,
+  options: { ignoreCookie?: boolean } = {},
 ): Promise<TenantResolution> {
   const host =
     normalizeHost(request.headers.get('x-forwarded-host')) ||
@@ -181,19 +182,21 @@ export async function resolveTenantRequest(
 
   if (resolvedFromHost) return { ok: true, tenant: resolvedFromHost };
 
-  const cookieSlug = readCookie(request, 'tenant_slug');
-  if (cookieSlug && /^[a-z0-9-]{2,63}$/.test(cookieSlug)) {
-    const tenant = await loadBySlug(cookieSlug);
-    if (tenant) {
-      if (explicitSlug && explicitSlug !== tenant.slug) {
-        return {
-          ok: false,
-          status: 403,
-          code: 'TENANT_MISMATCH',
-          message: 'The selected church does not match the current session.',
-        };
+  if (!options.ignoreCookie) {
+    const cookieSlug = readCookie(request, 'tenant_slug');
+    if (cookieSlug && /^[a-z0-9-]{2,63}$/.test(cookieSlug)) {
+      const tenant = await loadBySlug(cookieSlug);
+      if (tenant) {
+        if (explicitSlug && explicitSlug !== tenant.slug) {
+          return {
+            ok: false,
+            status: 403,
+            code: 'TENANT_MISMATCH',
+            message: 'The selected church does not match the current session.',
+          };
+        }
+        return { ok: true, tenant };
       }
-      return { ok: true, tenant };
     }
   }
 

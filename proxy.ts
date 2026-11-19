@@ -22,6 +22,7 @@ const PROTECTED_PREFIXES = [
   "/news",
   "/notifications",
   "/profile",
+  "/promotion",
   "/servants",
   "/app",
 ];

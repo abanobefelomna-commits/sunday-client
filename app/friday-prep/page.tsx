@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { Sparkles } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
 import { getStoredUser, getStoredToken, type AuthUser } from "../lib/api";
@@ -180,12 +182,38 @@ export default function FridayPrepPage() {
             </div>
           </>
         ) : (
-          <form
-            onSubmit={submit}
-            className={`grid max-w-xl gap-5 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900 ${
-              !friday ? "opacity-60" : ""
-            }`}
-          >
+          <div className="grid max-w-xl gap-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900/50 dark:bg-blue-950/30">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600 text-white shadow-sm">
+                  <Sparkles size={20} />
+                </span>
+                <div>
+                  <strong className="block text-sm font-bold text-slate-900 dark:text-white">
+                    {locale === "ar" ? "تحتاج مساعدة في إعداد الدرس؟" : "Need help preparing the lesson?"}
+                  </strong>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    {locale === "ar"
+                      ? "استعن بالمساعد الذكي لتحضير عناصر الدرس، الآيات، والأنشطة التفاعلية بنماذج متطورة."
+                      : "Use the AI Assistant to generate lesson points, verses, and activities with modern models."}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/assistant"
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-blue-700"
+              >
+                <Sparkles size={14} />
+                <span>{locale === "ar" ? "فتح المساعد الذكي" : "Open AI Assistant"}</span>
+              </Link>
+            </div>
+
+            <form
+              onSubmit={submit}
+              className={`grid gap-5 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900 ${
+                !friday ? "opacity-60" : ""
+              }`}
+            >
             <p className="rounded-lg bg-amber-50 p-3 text-amber-900">
               {t("fridayPrep.available")}{" "}
               {friday ? t("fridayPrep.formOpen") : t("fridayPrep.opensFriday")}
@@ -242,6 +270,7 @@ export default function FridayPrepPage() {
               {saving ? t("fridayPrep.saving") : t("fridayPrep.submit")}
             </button>
           </form>
+        </div>
         )}
       </main>
       <BottomNav />

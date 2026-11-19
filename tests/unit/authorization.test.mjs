@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   canReadClass,
   canManageClassStructure,
+  canManagePromotions,
   canViewPrivateNotes,
   canWriteClass,
   isPrivilegedRole,
@@ -77,6 +78,14 @@ test('class structure administration is church-admin or explicit classes.write o
   assert.equal(canManageClassStructure({ ...scoped, permissions: ['classes.write'] }), true);
   assert.equal(canManageClassStructure({ ...scoped, permissions: ['settings.write'] }), false);
   assert.equal(canManageClassStructure({ ...scoped, permissions: [] }), false);
+});
+
+test('annual promotion is limited to privileged users or explicit class-structure control', () => {
+  assert.equal(canManagePromotions(privileged), true);
+  assert.equal(canManagePromotions({ ...scoped, permissions: ['classes.write'] }), true);
+  assert.equal(canManagePromotions({ ...scoped, permissions: ['promotions.write'] }), false);
+  assert.equal(canManagePromotions({ ...scoped, permissions: ['children.write'] }), false);
+  assert.equal(canManagePromotions({ ...scoped, permissions: [] }), false);
 });
 
 test('isPrivilegedRole recognizes English and Arabic leadership roles', () => {
