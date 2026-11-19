@@ -211,6 +211,10 @@ export default function AssistantPage() {
     };
 
     try {
+      // Arm before the request: a stalled provider can prevent the response
+      // headers from ever arriving, so arming after `fetch` is too late.
+      armWatchdog();
+
       // Build API messages payload
       const apiMessages = nextMessages
         .slice(0, -1) // omit the placeholder
@@ -326,7 +330,11 @@ export default function AssistantPage() {
         }
         // Otherwise the user stopped generation manually.
       } else {
-        const errorMessage = err instanceof Error ? err.message : String(err);
+        const rawMessage = err instanceof Error ? err.message : String(err);
+        const errorMessage =
+          rawMessage === "Failed to fetch"
+            ? "The connection to the AI service was interrupted. Please try again."
+            : rawMessage;
         const errorContent = `⚠️ **${t("ai.errorOccurred")}**: ${errorMessage}`;
         setMessages((prev) =>
           prev.map((msg) =>
