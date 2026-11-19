@@ -90,16 +90,16 @@ export const AI_MODELS: AiModel[] = [
     },
   },
 
-  // 4. Google Gemini 3.8 Flash (Fast / Direct API)
+  // 4. Google Gemini 3.8 Flash (Fast / served exclusively through SovereignEG)
   {
     id: 'gemini-3.8-flash',
     apiModelId: 'gemini-3.8-flash',
     name: 'Gemini 3.8 Flash',
-    providerId: 'gemini',
-    providerName: 'Google Gemini',
-    inferencePlatform: 'Google Gemini API',
-    description: 'Google Gemini 3.8 Flash model, optimized for fast responses and Arabic nuance.',
-    descriptionAr: 'نموذج جيميني 3.8 فلاش من جوجل، سريع وذا جودة عربية عالية.',
+    providerId: 'google',
+    providerName: 'Google',
+    inferencePlatform: 'SovereignEG',
+    description: 'Google Gemini 3.8 Flash, served through the SovereignEG gateway for fast responses and Arabic nuance.',
+    descriptionAr: 'نموذج جيميني 3.8 فلاش من جوجل، يُقدَّم عبر بوابة SovereignEG بسرعة عالية وجودة عربية ممتازة.',
     category: 'Fast',
     pricing: { inputPer1mEgp: 5.0, outputPer1mEgp: 15.0, currency: 'EGP' },
     status: 'live',

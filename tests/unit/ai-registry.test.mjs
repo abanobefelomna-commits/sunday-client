@@ -37,6 +37,14 @@ test('AI Registry: contains all requested and verified models', () => {
   assert.equal(oss120.category, 'Advanced');
   assert.equal(oss120.status, 'live');
 
+  const geminiFlash = getModelById('gemini-3.8-flash');
+  assert.ok(geminiFlash, 'gemini-3.8-flash must be present');
+  assert.equal(geminiFlash.apiModelId, 'gemini-3.8-flash');
+  assert.equal(geminiFlash.name, 'Gemini 3.8 Flash');
+  assert.equal(geminiFlash.inferencePlatform, 'SovereignEG');
+  assert.equal(geminiFlash.providerId, 'google');
+  assert.equal(geminiFlash.status, 'live');
+
   const argon = getModelById('gemini-4-argon');
   assert.ok(argon, 'gemini-4-argon must be present');
   assert.equal(argon.apiModelId, 'gemini-4-argon');
@@ -86,6 +94,20 @@ test('AI Adapter: SovereignEG adapter initializes and detects environment key', 
   assert.equal(adapter.isConfigured(), true);
 });
 
+test('AI Registry: every model is served through SovereignEG only', () => {
+  for (const model of AI_MODELS) {
+    assert.equal(
+      model.inferencePlatform,
+      'SovereignEG',
+      `${model.id} must be routed exclusively through SovereignEG`,
+    );
+  }
+  assert.ok(
+    AI_MODELS.every((model) => model.providerId !== 'gemini'),
+    'No catalog entry may use the direct Gemini adapter as its provider',
+  );
+});
+
 test('AI Service: routes catalog models through the adapter that serves them', async () => {
   process.env.SOVEREIGNEG_API_KEY = process.env.SOVEREIGNEG_API_KEY || 'test-sovereigneg-key';
   process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'test-gemini-key';
@@ -95,5 +117,96 @@ test('AI Service: routes catalog models through the adapter that serves them', a
   assert.equal(sovereign.adapter.providerId, 'sovereigneg', 'SovereignEG models must use the gateway adapter');
 
   const gemini = aiService.resolveModelAndAdapter('gemini-3.8-flash');
-  assert.equal(gemini.adapter.providerId, 'gemini', 'Direct Gemini models must use the Gemini adapter');
+  assert.equal(
+    gemini.adapter.providerId,
+    'sovereigneg',
+    'Gemini 3.8 Flash must use the SovereignEG gateway adapter',
+  );
+  assert.equal(gemini.model.inferencePlatform, 'SovereignEG');
+});
+
+test('AI Adapter: Gemini 3.8 Flash calls SovereignEG with the exact model id', async () => {
+  const adapter = new SovereignEGAdapter();
+  const model = getModelById('gemini-3.8-flash');
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.SOVEREIGNEG_API_KEY;
+  process.env.SOVEREIGNEG_API_KEY = 'test-sovereigneg-key';
+  let captured = null;
+
+  try {
+    globalThis.fetch = async (url, init) => {
+      captured = { url: String(url), body: JSON.parse(init.body) };
+      return new Response(
+        JSON.stringify({
+          model: 'gemini-3.8-flash',
+          choices: [{ message: { content: 'ok' }, finish_reason: 'stop' }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    };
+
+    const result = await adapter.chatCompletion(model, {
+      modelId: model.id,
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+
+    assert.match(captured.url, /sovereigneg\.com\/v1\/chat\/completions$/);
+    assert.equal(captured.body.model, 'gemini-3.8-flash');
+    assert.equal(captured.body.stream, false);
+    assert.equal(result.content, 'ok');
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env.SOVEREIGNEG_API_KEY = originalKey;
+  }
+});
+
+test('AI Adapter: SovereignEG surfaces provider errors for Gemini 3.8 Flash', async () => {
+  const adapter = new SovereignEGAdapter();
+  const model = getModelById('gemini-3.8-flash');
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.SOVEREIGNEG_API_KEY;
+  process.env.SOVEREIGNEG_API_KEY = 'test-sovereigneg-key';
+
+  try {
+    globalThis.fetch = async () =>
+      new Response(
+        JSON.stringify({ error: { message: 'Monthly spend cap on this API key has been reached.' } }),
+        { status: 402, headers: { 'content-type': 'application/json' } },
+      );
+
+    await assert.rejects(
+      () => adapter.chatCompletion(model, { modelId: model.id, messages: [{ role: 'user', content: 'hi' }] }),
+      /Monthly spend cap/,
+    );
+    await assert.rejects(
+      () => adapter.streamChatCompletion(
+        model,
+        { modelId: model.id, messages: [{ role: 'user', content: 'hi' }] },
+        () => {},
+      ),
+      /Monthly spend cap/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env.SOVEREIGNEG_API_KEY = originalKey;
+  }
+});
+
+test('AI Adapter: Gemini 3.8 Flash is rejected when the SovereignEG key is missing', async () => {
+  const adapter = new SovereignEGAdapter();
+  const model = getModelById('gemini-3.8-flash');
+  const originalKey = process.env.SOVEREIGNEG_API_KEY;
+  delete process.env.SOVEREIGNEG_API_KEY;
+
+  try {
+    assert.equal(adapter.isConfigured(), false);
+    await assert.rejects(
+      () => adapter.chatCompletion(model, { modelId: model.id, messages: [{ role: 'user', content: 'hi' }] }),
+      /SovereignEG API key is not configured/,
+    );
+  } finally {
+    if (originalKey === undefined) delete process.env.SOVEREIGNEG_API_KEY;
+    else process.env.SOVEREIGNEG_API_KEY = originalKey;
+  }
 });
