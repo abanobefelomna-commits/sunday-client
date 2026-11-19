@@ -25,6 +25,7 @@ const PROTECTED_PREFIXES = [
   "/promotion",
   "/servants",
   "/app",
+  "/assistant",
 ];
 
 function isProtectedPath(pathname: string): boolean {

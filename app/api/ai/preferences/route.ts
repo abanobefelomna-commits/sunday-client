@@ -1,8 +1,10 @@
 import { withTenant } from '@/src/server/tenant/route';
 import {
   getAuthUser,
+  getAccessContext,
   jsonResponse,
   unauthorized,
+  forbidden,
   badRequest,
   serverError,
 } from '@/src/server/middleware';
@@ -38,6 +40,12 @@ async function postHandler(req: Request) {
   try {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
+
+    // The default model is a church-wide setting.
+    const access = await getAccessContext(auth);
+    if (!access.privileged) {
+      return forbidden('تعديل النموذج الافتراضي متاح للمسؤول والكاهن فقط');
+    }
 
     const body = await req.json();
     const { modelId } = body;
