@@ -3,6 +3,8 @@ import { requireTenantContext } from '@/src/server/tenant/context';
 import { getAuthUser, getAccessContext, jsonResponse, forbidden, unauthorized, serverError, notFound } from '@/src/server/middleware';
 import { platformQueryOne, platformTransaction } from '@/src/server/platform/db';
 import { generateChurchCode } from '@/src/server/platform/churches';
+import { getDb } from '@/src/server/db';
+import { notifyChurchCodeRecipients } from '@/src/server/church-code-notifications';
 
 async function GETHandler(req: Request) {
   try {
@@ -81,6 +83,18 @@ async function POSTHandler(req: Request) {
         params: [churchId, newCode],
       },
     ]);
+
+    // Notify privileged users so the renewed code reaches everyone who may
+    // invite servants. A notification failure must not undo the rotation.
+    try {
+      await notifyChurchCodeRecipients(getDb(), {
+        code: newCode,
+        churchName: name,
+        churchId,
+      });
+    } catch (notifyError) {
+      console.error('Church code notification failed after rotation:', notifyError);
+    }
 
     return jsonResponse({
       churchId,

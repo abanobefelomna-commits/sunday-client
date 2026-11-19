@@ -10,6 +10,7 @@ import {
   Check,
   CheckCircle2,
   HeartHandshake,
+  KeyRound,
   RefreshCw,
   Settings2,
   UserRound,
@@ -59,6 +60,11 @@ const TYPE_META: Record<
     tone: "warn",
     icon: <CalendarCheck className="h-4 w-4" />,
   },
+  church_code: {
+    labelKey: "notifications.typeChurchCode",
+    tone: "violet",
+    icon: <KeyRound className="h-4 w-4" />,
+  },
 };
 
 const PREFERENCES: Array<{
@@ -70,6 +76,7 @@ const PREFERENCES: Array<{
   { key: "followUpOverdue", labelKey: "notifications.typeOverdue", hintKey: "notifications.prefOverdueHint" },
   { key: "followUpCompleted", labelKey: "notifications.typeCompleted", hintKey: "notifications.prefCompletedHint" },
   { key: "attendanceAlert", labelKey: "notifications.typeAttendance", hintKey: "notifications.prefAttendanceHint" },
+  { key: "churchCode", labelKey: "notifications.typeChurchCode", hintKey: "notifications.prefChurchCodeHint" },
 ];
 
 export default function NotificationsPage() {

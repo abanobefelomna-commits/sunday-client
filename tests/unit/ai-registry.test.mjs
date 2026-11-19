@@ -11,7 +11,18 @@ import { SovereignEGAdapter } from '../../src/server/ai/adapters/sovereigneg-ada
 
 test('AI Registry: contains all requested and verified models', () => {
   const models = getAllModels();
-  assert.ok(models.length >= 8, 'Should have at least 8 models');
+  const live = getAvailableModels();
+  assert.ok(models.length >= 30, 'Should expose a broad curated catalog');
+
+  const providers = new Set(live.map((model) => model.providerId));
+  for (const provider of ['openai', 'anthropic', 'google']) {
+    assert.ok(providers.has(provider), `${provider} models must be available`);
+  }
+
+  const liveByProvider = (provider) => live.filter((model) => model.providerId === provider);
+  assert.ok(liveByProvider('openai').length >= 10, 'OpenAI family must be well represented');
+  assert.ok(liveByProvider('anthropic').length >= 8, 'Anthropic Claude family must be well represented');
+  assert.ok(liveByProvider('google').length >= 9, 'Google Gemini family must be well represented');
 
   // Verify exact models requested in prompt
   const luna = getModelById('gpt-6-luna');
@@ -77,6 +88,17 @@ test('AI Registry: DEFAULT_MODEL_ID is valid and points to a live model', () => 
   assert.equal(defaultModel.status, 'live', 'Default model must be live');
 });
 
+test('AI Registry: ids are unique and match the provider model ids', () => {
+  const ids = AI_MODELS.map((model) => model.id);
+  assert.equal(new Set(ids).size, ids.length, 'registry model ids must be unique');
+
+  for (const model of getAvailableModels()) {
+    assert.equal(model.apiModelId, model.id, `${model.id} must pass the verified API id through`);
+    assert.equal(model.inferencePlatform, 'SovereignEG');
+    assert.equal(model.status, 'live');
+  }
+});
+
 test('AI Registry: verified pricing is accurate and non-zero for live models', () => {
   const available = getAvailableModels();
   for (const m of available) {
@@ -106,6 +128,33 @@ test('AI Registry: every model is served through SovereignEG only', () => {
     AI_MODELS.every((model) => model.providerId !== 'gemini'),
     'No catalog entry may use the direct Gemini adapter as its provider',
   );
+});
+
+test('AI Registry: every live model declares multimodal capabilities from provider metadata', () => {
+  for (const model of getAvailableModels()) {
+    assert.ok(
+      model.capabilities.contextWindow && model.capabilities.contextWindow > 0,
+      `${model.id} must declare a context window`,
+    );
+    assert.ok(
+      model.capabilities.maxOutputTokens && model.capabilities.maxOutputTokens > 0,
+      `${model.id} must declare an output limit`,
+    );
+    assert.equal(model.capabilities.supportsStreaming, true);
+  }
+
+  for (const id of ['gpt-6-luna', 'claude-opus-5.5', 'gemini-3.8-flash']) {
+    const model = getModelById(id);
+    assert.equal(model.status, 'live');
+    assert.equal(model.capabilities.supportsVision, true, `${id} must accept images`);
+    assert.equal(model.capabilities.supportsFiles, true, `${id} must accept PDF files`);
+  }
+
+  for (const id of ['gpt-oss-20b', 'gpt-oss-120b']) {
+    const model = getModelById(id);
+    assert.equal(model.capabilities.supportsVision, false, `${id} is text-only`);
+    assert.equal(model.capabilities.supportsFiles, false, `${id} is text-only`);
+  }
 });
 
 test('AI Service: routes catalog models through the adapter that serves them', async () => {

@@ -20,6 +20,7 @@ import { splitStatements } from '../sql';
 import { DEFAULT_CLASSES } from '../class-defaults';
 import { grantPreviewEntitlements, invalidateEntitlementCache } from './entitlements';
 import { recordPlatformAudit, sanitizeErrorMessage } from './audit';
+import { notifyChurchCodeRecipients } from '../church-code-notifications';
 
 export interface ProvisioningJobRow {
   id: string;
@@ -371,6 +372,27 @@ export async function provisionChurch(jobId: string, actor?: {
       churchId: job.churchId,
       seed: job.seedPayload,
     });
+
+    // Surface the invitation code to the new church's privileged users. The
+    // code itself lives in the platform database, created by registerChurch.
+    await setJobStep(job.id, 'notify_church_code');
+    try {
+      const activeCode = await platformQueryOne<{ code: string }>(
+        `SELECT "code" FROM "church_codes"
+         WHERE "churchId" = $1 AND "revoked" = false
+         ORDER BY "createdAt" DESC LIMIT 1`,
+        [job.churchId],
+      );
+      if (activeCode?.code) {
+        await notifyChurchCodeRecipients(neon(database.connectionString), {
+          code: activeCode.code,
+          churchName: job.churchName,
+          churchId: job.churchId,
+        });
+      }
+    } catch (notifyError) {
+      console.error('Church code notification failed during provisioning:', notifyError);
+    }
 
     await setJobStep(job.id, 'record_connection');
     await upsertConnection({ churchId: job.churchId, database });

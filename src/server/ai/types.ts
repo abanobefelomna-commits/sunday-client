@@ -16,6 +16,10 @@ export interface ModelCapabilities {
   supportsStreaming: boolean;
   supportsJsonSchema: boolean;
   supportsReasoning?: boolean;
+  /** Accepts image content parts (vision / image analysis). */
+  supportsVision?: boolean;
+  /** Accepts native file content parts such as PDF documents. */
+  supportsFiles?: boolean;
   contextWindow?: number | null;
   maxOutputTokens?: number | null;
 }
@@ -38,9 +42,24 @@ export interface AiModel {
   isRecommended?: boolean;
 }
 
+export type AiAttachmentKind = 'image' | 'pdf' | 'text';
+
+/** A validated attachment travelling from the browser to the chat endpoint. */
+export interface AiAttachmentInput {
+  name: string;
+  mimeType: string;
+  /** Base64 payload without the `data:` URL prefix. */
+  data: string;
+}
+
+export type AiContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; mimeType: string; data: string }
+  | { type: 'file'; mimeType: string; filename: string; data: string };
+
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | AiContentPart[];
   reasoningContent?: string;
 }
 

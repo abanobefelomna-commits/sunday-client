@@ -1353,7 +1353,12 @@ export async function createAttendanceSession(data: {
 
 export interface AppNotification {
   id: string;
-  type: 'follow_up_assigned' | 'follow_up_overdue' | 'follow_up_completed' | 'attendance_alert';
+  type:
+    | 'follow_up_assigned'
+    | 'follow_up_overdue'
+    | 'follow_up_completed'
+    | 'attendance_alert'
+    | 'church_code';
   title: string;
   body: string | null;
   entityType: string | null;
@@ -1388,6 +1393,7 @@ export interface NotificationPreferences {
   followUpOverdue: boolean;
   followUpCompleted: boolean;
   attendanceAlert: boolean;
+  churchCode: boolean;
 }
 
 export async function getNotificationPreferences(): Promise<NotificationPreferences> {

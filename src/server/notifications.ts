@@ -4,13 +4,15 @@ export type NotificationType =
   | 'follow_up_assigned'
   | 'follow_up_overdue'
   | 'follow_up_completed'
-  | 'attendance_alert';
+  | 'attendance_alert'
+  | 'church_code';
 
 export interface NotificationPreferences {
   followUpAssigned: boolean;
   followUpOverdue: boolean;
   followUpCompleted: boolean;
   attendanceAlert: boolean;
+  churchCode: boolean;
 }
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -18,6 +20,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   followUpOverdue: true,
   followUpCompleted: true,
   attendanceAlert: true,
+  churchCode: true,
 };
 
 const TYPE_TO_PREFERENCE: Record<NotificationType, keyof NotificationPreferences> = {
@@ -25,11 +28,12 @@ const TYPE_TO_PREFERENCE: Record<NotificationType, keyof NotificationPreferences
   follow_up_overdue: 'followUpOverdue',
   follow_up_completed: 'followUpCompleted',
   attendance_alert: 'attendanceAlert',
+  church_code: 'churchCode',
 };
 
 export async function getNotificationPreferences(userId: string): Promise<NotificationPreferences> {
   const row = await queryOne<NotificationPreferences>(
-    `SELECT "followUpAssigned", "followUpOverdue", "followUpCompleted", "attendanceAlert"
+    `SELECT "followUpAssigned", "followUpOverdue", "followUpCompleted", "attendanceAlert", "churchCode"
      FROM "notification_preferences" WHERE "userId" = $1 LIMIT 1`,
     [userId],
   );
@@ -44,15 +48,23 @@ export async function updateNotificationPreferences(
   const next = { ...current, ...patch };
   await query(
     `INSERT INTO "notification_preferences"
-       ("userId", "followUpAssigned", "followUpOverdue", "followUpCompleted", "attendanceAlert", "updatedAt")
-     VALUES ($1, $2, $3, $4, $5, now())
+       ("userId", "followUpAssigned", "followUpOverdue", "followUpCompleted", "attendanceAlert", "churchCode", "updatedAt")
+     VALUES ($1, $2, $3, $4, $5, $6, now())
      ON CONFLICT ("userId") DO UPDATE SET
        "followUpAssigned" = EXCLUDED."followUpAssigned",
        "followUpOverdue" = EXCLUDED."followUpOverdue",
        "followUpCompleted" = EXCLUDED."followUpCompleted",
        "attendanceAlert" = EXCLUDED."attendanceAlert",
+       "churchCode" = EXCLUDED."churchCode",
        "updatedAt" = now()`,
-    [userId, next.followUpAssigned, next.followUpOverdue, next.followUpCompleted, next.attendanceAlert],
+    [
+      userId,
+      next.followUpAssigned,
+      next.followUpOverdue,
+      next.followUpCompleted,
+      next.attendanceAlert,
+      next.churchCode,
+    ],
   );
   return next;
 }

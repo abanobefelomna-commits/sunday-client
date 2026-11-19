@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { requireTenantContext } from './tenant/context';
+import { requireTenantContext } from './tenant/context.ts';
 
 const clients = new Map<string, ReturnType<typeof neon>>();
 const MAX_CLIENTS = 100;

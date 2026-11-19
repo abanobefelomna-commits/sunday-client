@@ -1,6 +1,7 @@
-import { GoogleGenerativeAI, type Content, type GenerationConfig } from '@google/generative-ai';
+import { GoogleGenerativeAI, type Content, type GenerationConfig, type Part } from '@google/generative-ai';
 import type { AiProviderAdapter } from './provider-adapter.ts';
 import type {
+  AiContentPart,
   AiModel,
   ChatCompletionOptions,
   ChatCompletionResult,
@@ -14,6 +15,23 @@ function toGeminiRole(role: ChatMessage['role']): 'user' | 'model' {
   return 'user';
 }
 
+function textFromContent(content: string | AiContentPart[]): string {
+  if (typeof content === 'string') return content;
+  return content
+    .filter((part): part is Extract<AiContentPart, { type: 'text' }> => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n');
+}
+
+function toGeminiParts(content: string | AiContentPart[]): Part[] {
+  if (typeof content === 'string') return [{ text: content }];
+  return content.map((part) =>
+    part.type === 'text'
+      ? { text: part.text }
+      : { inlineData: { mimeType: part.mimeType, data: part.data } },
+  );
+}
+
 function buildContents(messages: ChatMessage[]): {
   systemInstruction: string | undefined;
   contents: Content[];
@@ -23,13 +41,13 @@ function buildContents(messages: ChatMessage[]): {
 
   // Extract leading system message if present
   if (chatMessages.length > 0 && chatMessages[0].role === 'system') {
-    systemInstruction = chatMessages[0].content;
+    systemInstruction = textFromContent(chatMessages[0].content);
     chatMessages.splice(0, 1);
   }
 
   const contents: Content[] = chatMessages.map((m) => ({
     role: toGeminiRole(m.role),
-    parts: [{ text: m.content }],
+    parts: toGeminiParts(m.content),
   }));
 
   return { systemInstruction, contents };

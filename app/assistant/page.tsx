@@ -9,19 +9,25 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  FileText,
   HelpCircle,
+  Image as ImageIcon,
+  Paperclip,
   RefreshCw,
   Send,
+  ShieldCheck,
   Sparkles,
   Square,
   Trash2,
   TrendingUp,
   User,
+  X,
   Zap,
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
 import ModelSelector from "../components/ai/ModelSelector";
+import MarkdownMessage from "../components/ai/MarkdownMessage";
 import {
   getStoredToken,
   getStoredUser,
@@ -31,6 +37,16 @@ import {
 import { useI18n } from "../lib/app-i18n";
 import { AiModel } from "@/src/server/ai/types";
 import { AI_MODELS, DEFAULT_MODEL_ID } from "@/src/server/ai/registry";
+import {
+  MAX_ATTACHMENTS,
+  MAX_ATTACHMENT_BYTES,
+} from "@/src/server/ai/attachment-constants";
+
+interface MessageAttachment {
+  name: string;
+  mimeType: string;
+  size: number;
+}
 
 interface MessageItem {
   id: string;
@@ -42,6 +58,97 @@ interface MessageItem {
   modelName?: string;
   durationMs?: number;
   tokens?: number;
+  attachments?: MessageAttachment[];
+}
+
+interface PendingAttachment extends MessageAttachment {
+  id: string;
+  kind: "image" | "pdf" | "text";
+  data: string;
+  previewUrl?: string;
+}
+
+function attachmentKind(mimeType: string): PendingAttachment["kind"] | null {
+  if (["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"].includes(mimeType)) {
+    return "image";
+  }
+  if (mimeType === "application/pdf") return "pdf";
+  if (
+    ["text/plain", "text/markdown", "text/x-markdown", "text/csv", "application/json"].includes(
+      mimeType,
+    )
+  ) {
+    return "text";
+  }
+  return null;
+}
+
+function readAsBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      resolve(result.replace(/^data:[^;,]*;base64,/, ""));
+    };
+    reader.onerror = () => reject(reader.error || new Error("تعذر قراءة الملف"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function prepareImage(file: File): Promise<{ data: string; mimeType: string; size: number; name: string }> {
+  // Compress large phone photos so the request stays below the platform limit.
+  if (file.size <= 1.4 * 1024 * 1024 || typeof createImageBitmap !== "function") {
+    return { data: await readAsBase64(file), mimeType: file.type, size: file.size, name: file.name };
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDimension = 1600;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas unavailable");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) throw new Error("Compression failed");
+    return {
+      data: await readAsBase64(blob),
+      mimeType: "image/jpeg",
+      size: blob.size,
+      name: file.name.replace(/\.[^.]+$/, "") + ".jpg",
+    };
+  } catch {
+    return { data: await readAsBase64(file), mimeType: file.type, size: file.size, name: file.name };
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} بايت`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} كيلوبايت`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} ميجابايت`;
+}
+
+function normalizeFileType(file: File): string {
+  if (file.type) return file.type.toLowerCase();
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  const fallback: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    pdf: "application/pdf",
+    txt: "text/plain",
+    md: "text/markdown",
+    csv: "text/csv",
+    json: "application/json",
+  };
+  return fallback[extension] || "";
 }
 
 const STORAGE_CHAT_KEY = "ss_ai_assistant_chat";
@@ -61,10 +168,23 @@ export default function AssistantPage() {
   const [switchBanner, setSwitchBanner] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedReasoning, setExpandedReasoning] = useState<Record<string, boolean>>({});
+  const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+
+  // Release object URLs created for image previews.
+  useEffect(
+    () => () => {
+      previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      previewUrlsRef.current.clear();
+    },
+    [],
+  );
 
   // Auto-scroll to the newest message. Skip while the conversation is empty so
   // the page does not jump on first load and hide the header/model selector
@@ -159,22 +279,146 @@ export default function AssistantPage() {
     }
   };
 
+  // Pick, validate, and encode attachments
+  const handleFilesSelected = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setAttachmentError(null);
+
+    const incoming = Array.from(files);
+    if (pendingAttachments.length + incoming.length > MAX_ATTACHMENTS) {
+      setAttachmentError(`الحد الأقصى ${MAX_ATTACHMENTS} مرفقات في الرسالة الواحدة.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    let totalBytes = pendingAttachments.reduce((sum, item) => sum + item.size, 0);
+    const accepted: PendingAttachment[] = [];
+
+    for (const file of incoming) {
+      const mimeType = normalizeFileType(file);
+      const kind = attachmentKind(mimeType);
+      if (!kind) {
+        setAttachmentError(
+          "نوع الملف غير مدعوم. المسموح: صور PNG/JPG/WEBP/GIF، ملفات PDF، وملفات نصية.",
+        );
+        continue;
+      }
+      if (file.size > MAX_ATTACHMENT_BYTES) {
+        setAttachmentError(`حجم الملف "${file.name}" أكبر من 2.5 ميجابايت.`);
+        continue;
+      }
+
+      try {
+        const prepared =
+          kind === "image"
+            ? await prepareImage(file)
+            : {
+                data: await readAsBase64(file),
+                mimeType,
+                size: file.size,
+                name: file.name,
+              };
+
+        if (prepared.size > MAX_ATTACHMENT_BYTES) {
+          setAttachmentError(`حجم الملف "${file.name}" أكبر من 2.5 ميجابايت بعد الضغط.`);
+          continue;
+        }
+        if (totalBytes + prepared.size > 3 * 1024 * 1024) {
+          setAttachmentError("إجمالي حجم المرفقات أكبر من 3 ميجابايت.");
+          break;
+        }
+
+        totalBytes += prepared.size;
+        const previewUrl = kind === "image" ? URL.createObjectURL(file) : undefined;
+        if (previewUrl) previewUrlsRef.current.add(previewUrl);
+
+        accepted.push({
+          id:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `att-${Date.now()}-${accepted.length}`,
+          name: prepared.name,
+          mimeType: prepared.mimeType,
+          size: prepared.size,
+          kind,
+          data: prepared.data,
+          previewUrl,
+        });
+      } catch {
+        setAttachmentError(`تعذر قراءة الملف "${file.name}".`);
+      }
+    }
+
+    if (accepted.length > 0) {
+      setPendingAttachments((prev) => [...prev, ...accepted]);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removePendingAttachment = (id: string) => {
+    setPendingAttachments((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+        previewUrlsRef.current.delete(target.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
   // Send Message
   const handleSend = async (customPrompt?: string) => {
     const promptToSend = (customPrompt || input).trim();
-    if (!promptToSend || isGenerating) return;
+    if ((!promptToSend && pendingAttachments.length === 0) || isGenerating) return;
+
+    if (
+      pendingAttachments.some((item) => item.kind === "image") &&
+      !selectedModel.capabilities.supportsVision
+    ) {
+      setAttachmentError(
+        "النموذج الحالي لا يدعم تحليل الصور. اختر نموذجًا يدعم الرؤية مثل Gemini أو GPT-6 أو Claude Opus.",
+      );
+      return;
+    }
+    if (
+      pendingAttachments.some((item) => item.kind === "pdf") &&
+      !selectedModel.capabilities.supportsFiles
+    ) {
+      setAttachmentError("النموذج الحالي لا يدعم قراءة PDF مباشرة. اختر نموذجًا آخر.");
+      return;
+    }
+
+    setAttachmentError(null);
+    const effectivePrompt =
+      promptToSend || "حلّل الملفات المرفقة وأعطني ملخصًا مفيدًا وخطوات عملية للاستفادة منها في الخدمة.";
+    const attachmentsToSend = pendingAttachments;
 
     if (!customPrompt) setInput("");
 
     const userMessage: MessageItem = {
       id: "msg-" + Date.now() + "-user",
       role: "user",
-      content: promptToSend,
+      content: effectivePrompt,
       timestamp: new Date().toLocaleTimeString(locale === "ar" ? "ar-EG" : "en-US", {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      attachments: attachmentsToSend.map(({ name, mimeType, size }) => ({
+        name,
+        mimeType,
+        size,
+      })),
     };
+
+    // Attachments belong to the sent message only; never keep base64 in
+    // localStorage or resend it with later turns.
+    setPendingAttachments([]);
+    attachmentsToSend.forEach((item) => {
+      if (item.previewUrl) {
+        URL.revokeObjectURL(item.previewUrl);
+        previewUrlsRef.current.delete(item.previewUrl);
+      }
+    });
 
     const assistantPlaceholderId = "msg-" + (Date.now() + 1) + "-assistant";
     const initialAssistantMessage: MessageItem = {
@@ -215,9 +459,11 @@ export default function AssistantPage() {
       // headers from ever arriving, so arming after `fetch` is too late.
       armWatchdog();
 
-      // Build API messages payload
+      // Build API messages payload. Keep only the most recent turns so the
+      // request stays well below the server-side history limit.
       const apiMessages = nextMessages
         .slice(0, -1) // omit the placeholder
+        .slice(-30)
         .map((m) => ({ role: m.role, content: m.content }));
 
       const res = await fetch("/api/ai/chat", {
@@ -230,6 +476,11 @@ export default function AssistantPage() {
           modelId: selectedModel.id,
           messages: apiMessages,
           stream: true,
+          attachments: attachmentsToSend.map((item) => ({
+            name: item.name,
+            mimeType: item.mimeType,
+            data: item.data,
+          })),
         }),
         signal: controller.signal,
       });
@@ -450,9 +701,39 @@ export default function AssistantPage() {
                   PRO
                 </span>
               </h1>
-              <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--mute)" }}>
-                {t("ai.subtitle")}
-              </p>
+              <div
+                style={{
+                  margin: 0,
+                  fontSize: "0.8rem",
+                  color: "var(--mute)",
+                  display: "flex",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                }}
+              >
+                <span>{t("ai.subtitle")}</span>
+                {user && (
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      background: isPrivileged
+                        ? "color-mix(in srgb, var(--ok) 12%, transparent)"
+                        : "color-mix(in srgb, var(--pri) 10%, transparent)",
+                      color: isPrivileged ? "var(--ok)" : "var(--pri)",
+                    }}
+                  >
+                    <ShieldCheck size={12} />
+                    {isPrivileged ? "وصول كامل لكل الفصول" : "بيانات فصلك فقط"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -818,7 +1099,7 @@ export default function AssistantPage() {
                       {/* Message Content */}
                       <div
                         style={{
-                          padding: "12px 16px",
+                          padding: isUser ? "12px 16px" : "14px 17px",
                           borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                           background: isUser ? "var(--pri)" : "color-mix(in srgb, var(--card) 95%, var(--bg))",
                           color: isUser ? "#ffffff" : "var(--ink)",
@@ -826,12 +1107,15 @@ export default function AssistantPage() {
                           fontSize: "0.92rem",
                           lineHeight: 1.7,
                           wordBreak: "break-word",
-                          whiteSpace: "pre-wrap",
                           boxShadow: "var(--shadow-sm)",
                         }}
                       >
                         {m.content ? (
-                          m.content
+                          isUser ? (
+                            <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+                          ) : (
+                            <MarkdownMessage content={m.content} />
+                          )
                         ) : isGenerating && !isUser ? (
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--mute)" }}>
                             <span className="animate-spin inline-block">
@@ -840,6 +1124,48 @@ export default function AssistantPage() {
                             <span style={{ fontSize: "0.82rem" }}>جارٍ التفكير وتوليد الإجابة...</span>
                           </div>
                         ) : null}
+
+                        {isUser && m.attachments && m.attachments.length > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: "6px",
+                              marginTop: m.content ? "10px" : 0,
+                            }}
+                          >
+                            {m.attachments.map((attachment, index) => (
+                              <span
+                                key={`${attachment.name}-${index}`}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  padding: "4px 8px",
+                                  borderRadius: "8px",
+                                  background: "rgba(255, 255, 255, 0.17)",
+                                  fontSize: "0.72rem",
+                                }}
+                              >
+                                {attachment.mimeType.startsWith("image/") ? (
+                                  <ImageIcon size={13} />
+                                ) : (
+                                  <FileText size={13} />
+                                )}
+                                <span
+                                  style={{
+                                    maxWidth: "180px",
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {attachment.name}
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Message Footer / Copy */}
@@ -920,6 +1246,137 @@ export default function AssistantPage() {
               gap: "8px",
             }}
           >
+            {/* Pending attachments preview */}
+            {pendingAttachments.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  padding: "2px 2px 0",
+                }}
+              >
+                {pendingAttachments.map((attachment) => (
+                  <div key={attachment.id} className="ai-attachment-chip">
+                    {attachment.kind === "image" && attachment.previewUrl ? (
+                      <img
+                        src={attachment.previewUrl}
+                        alt={attachment.name}
+                        className="ai-attachment-thumb"
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "42px",
+                          height: "42px",
+                          borderRadius: "8px",
+                          background: "color-mix(in srgb, var(--pri) 10%, transparent)",
+                          color: "var(--pri)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {attachment.kind === "pdf" ? <FileText size={18} /> : <BookOpen size={18} />}
+                      </span>
+                    )}
+                    <span
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "1px",
+                        minWidth: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          maxWidth: "170px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {attachment.name}
+                      </span>
+                      <span style={{ fontSize: "0.7rem", color: "var(--mute)" }}>
+                        {formatFileSize(attachment.size)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePendingAttachment(attachment.id)}
+                      title="إزالة المرفق"
+                      aria-label={`إزالة المرفق ${attachment.name}`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "22px",
+                        height: "22px",
+                        borderRadius: "50%",
+                        border: "none",
+                        background: "color-mix(in srgb, var(--danger) 12%, transparent)",
+                        color: "var(--danger)",
+                        cursor: "pointer",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {attachmentError && (
+              <div
+                role="alert"
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                  padding: "8px 12px",
+                  borderRadius: "10px",
+                  background: "color-mix(in srgb, var(--danger) 9%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--danger) 25%, transparent)",
+                  color: "var(--danger)",
+                  fontSize: "0.78rem",
+                  lineHeight: 1.5,
+                }}
+              >
+                <span>{attachmentError}</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachmentError(null)}
+                  aria-label="إغلاق التنبيه"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "inherit",
+                    cursor: "pointer",
+                    padding: 0,
+                    display: "inline-flex",
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,text/plain,text/markdown,text/csv,application/json"
+              onChange={(e) => {
+                void handleFilesSelected(e.target.files);
+              }}
+              style={{ display: "none" }}
+            />
+
             {/* Input pill with active model indicator */}
             <form
               onSubmit={(e) => {
@@ -937,6 +1394,33 @@ export default function AssistantPage() {
                 boxShadow: "var(--shadow-sm)",
               }}
             >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isGenerating}
+                title="إرفاق صورة أو ملف PDF أو ملف نصي"
+                aria-label="إرفاق ملف"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "34px",
+                  height: "34px",
+                  flexShrink: 0,
+                  borderRadius: "50%",
+                  border: "none",
+                  background:
+                    pendingAttachments.length > 0
+                      ? "color-mix(in srgb, var(--pri) 12%, transparent)"
+                      : "transparent",
+                  color: pendingAttachments.length > 0 ? "var(--pri)" : "var(--mute)",
+                  cursor: isGenerating ? "default" : "pointer",
+                  opacity: isGenerating ? 0.55 : 1,
+                }}
+              >
+                <Paperclip size={17} />
+              </button>
+
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -1009,7 +1493,7 @@ export default function AssistantPage() {
                 ) : (
                   <button
                     type="submit"
-                    disabled={!input.trim()}
+                    disabled={!input.trim() && pendingAttachments.length === 0}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -1017,10 +1501,17 @@ export default function AssistantPage() {
                       width: "36px",
                       height: "36px",
                       borderRadius: "50%",
-                      background: input.trim() ? "var(--pri)" : "color-mix(in srgb, var(--ink) 10%, transparent)",
-                      color: input.trim() ? "#ffffff" : "var(--mute)",
+                      background:
+                        input.trim() || pendingAttachments.length > 0
+                          ? "var(--pri)"
+                          : "color-mix(in srgb, var(--ink) 10%, transparent)",
+                      color:
+                        input.trim() || pendingAttachments.length > 0
+                          ? "#ffffff"
+                          : "var(--mute)",
                       border: "none",
-                      cursor: input.trim() ? "pointer" : "default",
+                      cursor:
+                        input.trim() || pendingAttachments.length > 0 ? "pointer" : "default",
                       transition: "all 0.15s ease",
                     }}
                     title={t("ai.send")}

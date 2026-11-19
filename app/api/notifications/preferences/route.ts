@@ -28,6 +28,7 @@ const KEYS: Array<keyof NotificationPreferences> = [
   'followUpOverdue',
   'followUpCompleted',
   'attendanceAlert',
+  'churchCode',
 ];
 
 async function PATCHHandler(req: Request) {

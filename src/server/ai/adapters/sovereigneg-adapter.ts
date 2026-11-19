@@ -1,10 +1,37 @@
 import type { AiProviderAdapter } from './provider-adapter.ts';
 import type {
+  AiContentPart,
   AiModel,
   ChatCompletionOptions,
   ChatCompletionResult,
   ChatStreamChunk,
 } from '../types.ts';
+
+/**
+ * Translate the internal content-part format to the OpenAI-compatible shape
+ * accepted by SovereignEG (text, image_url data URLs, and file data parts).
+ */
+function toProviderContent(content: string | AiContentPart[]): unknown {
+  if (typeof content === 'string') return content;
+  return content.map((part) => {
+    if (part.type === 'text') {
+      return { type: 'text', text: part.text };
+    }
+    if (part.type === 'image') {
+      return {
+        type: 'image_url',
+        image_url: { url: `data:${part.mimeType};base64,${part.data}` },
+      };
+    }
+    return {
+      type: 'file',
+      file: {
+        filename: part.filename,
+        file_data: `data:${part.mimeType};base64,${part.data}`,
+      },
+    };
+  });
+}
 
 export class SovereignEGAdapter implements AiProviderAdapter {
   readonly providerId = 'sovereigneg';
@@ -27,14 +54,14 @@ export class SovereignEGAdapter implements AiProviderAdapter {
 
   private buildPayload(model: AiModel, options: ChatCompletionOptions, stream = false) {
     const caps = model.capabilities;
-    const defaultMaxTokens = model.id.includes('oss') ? 2048 : 1500;
+    const defaultMaxTokens = model.id.includes('oss') ? 2048 : 4096;
     const maxTokens = options.maxTokens ?? defaultMaxTokens;
 
     const payload: Record<string, unknown> = {
       model: model.apiModelId,
       messages: options.messages.map((m) => ({
         role: m.role,
-        content: m.content,
+        content: toProviderContent(m.content),
       })),
       stream,
     };
