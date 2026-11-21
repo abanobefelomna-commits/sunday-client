@@ -5,7 +5,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
-import { getJwtSecret, getTenantEncryptionKey } from './config';
+import { getJwtSecret, getTenantEncryptionKey } from './config.ts';
 
 const VERSION = 'v1';
 

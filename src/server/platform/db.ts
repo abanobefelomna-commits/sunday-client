@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { getPlatformDatabaseUrl } from './config';
+import { getPlatformDatabaseUrl } from './config.ts';
 
 let client: ReturnType<typeof neon> | null = null;
 let clientUrl: string | null = null;

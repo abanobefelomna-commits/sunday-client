@@ -26,8 +26,10 @@ export default function RegisterChurchFlow() {
     const adminName = String(form.get("adminName") || "").trim();
     const adminEmail = String(form.get("adminEmail") || "").trim();
     const adminPhone = String(form.get("adminPhone") || "").trim();
+    const creationCode = String(form.get("creationCode") || "").trim();
     const payload = {
       churchName: String(form.get("churchName") || "").trim(),
+      creationCode,
       city: String(form.get("city") || "").trim() || undefined,
       publishInDirectory: form.get("publishInDirectory") === "on",
       contactName: adminName,
@@ -70,6 +72,10 @@ export default function RegisterChurchFlow() {
       <p>{flow.registerLead}</p>
     </div>
     <form className={`${"pf-flowCard"} ${"pf-flowForm"}`} onSubmit={submit}>
+      <label className={"pf-field"}>رمز إنشاء الكنيسة *
+        <input name="creationCode" placeholder="CC-XXXX-XXXX-XXXX" dir="ltr" autoComplete="off" required />
+        <small>أدخل رمز إنشاء الكنيسة المعتمد والممنوح من المدير العام</small>
+      </label>
       <label className={"pf-field"}>{flow.churchName}
         <input name="churchName" autoComplete="organization" minLength={2} maxLength={200} required />
         <small>{flow.churchNameHint}</small>

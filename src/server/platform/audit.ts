@@ -1,5 +1,5 @@
-import { platformQuery } from './db';
-import { hashIp } from './crypto';
+import { platformQuery } from './db.ts';
+import { hashIp } from './crypto.ts';
 
 const FORBIDDEN_KEYS = new Set([
   'password',

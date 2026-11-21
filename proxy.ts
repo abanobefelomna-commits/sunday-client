@@ -38,6 +38,17 @@ export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
+  // Dedicated Super Admin route protection (independent of tenant sessions)
+  if (pathname === "/super-admin/dashboard" || pathname.startsWith("/super-admin/dashboard/")) {
+    const hasSuperAdmin = Boolean(
+      request.cookies.get("super_admin_session")?.value ||
+      request.cookies.get("super_admin_access_token")?.value,
+    );
+    if (!hasSuperAdmin) {
+      return NextResponse.redirect(new URL("/super-admin/access", request.url));
+    }
+  }
+
   if (hasSession && AUTH_ENTRY_PATHS.has(pathname)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

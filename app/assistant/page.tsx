@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   BookOpen,
   Bot,
@@ -41,6 +41,11 @@ import {
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_BYTES,
 } from "@/src/server/ai/attachment-constants";
+
+/** Grow the composer up to this height, then scroll inside it. */
+const COMPOSER_MAX_HEIGHT = 160;
+const COMPOSER_MIN_HEIGHT = 26;
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 interface MessageAttachment {
   name: string;
@@ -176,6 +181,30 @@ export default function AssistantPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrlsRef = useRef<Set<string>>(new Set());
+
+  // ChatGPT-style auto-growing composer: reset height, measure the wrapped
+  // content, then clamp it so long messages scroll inside the field.
+  const resizeComposer = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.overflowY = "hidden";
+    const nextHeight = Math.min(
+      Math.max(textarea.scrollHeight, COMPOSER_MIN_HEIGHT),
+      COMPOSER_MAX_HEIGHT,
+    );
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > COMPOSER_MAX_HEIGHT ? "auto" : "hidden";
+  }, []);
+
+  useIsomorphicLayoutEffect(() => {
+    resizeComposer();
+  }, [input, resizeComposer]);
+
+  useEffect(() => {
+    window.addEventListener("resize", resizeComposer);
+    return () => window.removeEventListener("resize", resizeComposer);
+  }, [resizeComposer]);
 
   // Release object URLs created for image previews.
   useEffect(
@@ -1443,7 +1472,9 @@ export default function AssistantPage() {
                   fontSize: "0.92rem",
                   lineHeight: 1.5,
                   resize: "none",
-                  maxHeight: "140px",
+                  minHeight: `${COMPOSER_MIN_HEIGHT}px`,
+                  maxHeight: `${COMPOSER_MAX_HEIGHT}px`,
+                  overflowY: "hidden",
                   fontFamily: "inherit",
                 }}
               />

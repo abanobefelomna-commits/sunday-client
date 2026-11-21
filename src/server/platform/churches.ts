@@ -1,11 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { platformQuery, platformQueryOne, platformTransaction } from './db';
-import { hashPassword, normalizeEmail, validatePasswordStrength } from '../auth';
-import { getPreviewStatus, getPlatformConfig } from './preview';
-import { grantPreviewEntitlements, grantLifetimeFree, invalidateEntitlementCache } from './entitlements';
-import { attachTenantDatabase } from './provisioning';
-import { recordPlatformAudit } from './audit';
-import { hashIp, randomToken, sha256Hex } from './crypto';
+import { platformQuery, platformQueryOne } from './db.ts';
+import { hashPassword, normalizeEmail, validatePasswordStrength } from '../auth.ts';
+import { getPreviewStatus, getPlatformConfig } from './preview.ts';
+import { grantPreviewEntitlements, grantLifetimeFree, invalidateEntitlementCache } from './entitlements.ts';
+import { attachTenantDatabase } from './provisioning.ts';
+import { recordPlatformAudit } from './audit.ts';
+import { hashIp, randomToken, sha256Hex } from './crypto.ts';
 
 export interface ChurchRegistrationInput {
   churchName: string;
@@ -20,6 +20,7 @@ export interface ChurchRegistrationInput {
   adminEmail: string;
   adminPhone: string;
   adminPassword: string;
+  creationCode?: string;
   timezone?: string;
   acceptTerms: boolean;
   acceptPrivacy: boolean;
@@ -165,6 +166,35 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
   if (duplicate?.email) throw new RegistrationError('يوجد طلب تسجيل بالفعل لهذا البريد.', 409, 'EMAIL_TAKEN');
   if (duplicate?.name) throw new RegistrationError('يوجد طلب تسجيل بالفعل لهذه الكنيسة.', 409, 'CHURCH_TAKEN');
 
+  const rawCreationCode = typeof input.creationCode === 'string' ? input.creationCode.trim() : '';
+  if (!rawCreationCode) {
+    throw new RegistrationError(
+      'رمز إنشاء الكنيسة مطلوب لإتمام التسجيل.',
+      403,
+      'CREATION_CODE_REQUIRED',
+    );
+  }
+
+  const codeHash = sha256Hex(rawCreationCode.toUpperCase().replace(/\s+/g, ''));
+  const validCode = await platformQueryOne<{ id: string }>(
+    `SELECT "id" FROM "church_creation_codes"
+     WHERE "codeHash" = $1
+       AND "status" = 'active'
+       AND "revokedAt" IS NULL
+       AND ("expiresAt" IS NULL OR "expiresAt" > now())
+       AND "usedCount" < "maxUses"
+     LIMIT 1`,
+    [codeHash],
+  );
+
+  if (!validCode) {
+    throw new RegistrationError(
+      'رمز إنشاء الكنيسة غير صالح أو منتهي الصلاحية أو مستنفد.',
+      403,
+      'INVALID_CREATION_CODE',
+    );
+  }
+
   const passwordHash = await hashPassword(input.adminPassword);
   const provisioningToken = randomToken(32);
   const tokenHash = sha256Hex(provisioningToken);
@@ -174,56 +204,89 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
   const churchCode = generateChurchCode();
 
   try {
-    await platformTransaction([
-      {
-        text: `INSERT INTO "churches"
-          ("id", "slug", "name", "normalizedName", "legalName", "country", "city",
-           "contactName", "contactEmail", "contactPhone", "status", "verificationStatus",
-           "settings", "registrationIpHash", "termsAcceptedAt", "privacyAcceptedAt", "createdAt", "updatedAt")
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', 'unverified',
-                 $11::jsonb, $12, now(), now(), now(), now())`,
-        params: [
-          churchId,
-          slug,
-          churchName,
-          normalizedName,
-          input.legalName?.trim().slice(0, 240) || null,
-          input.country?.trim().slice(0, 2).toUpperCase() || null,
-          city,
-          contactName,
-          contactEmail,
-          input.contactPhone?.trim() || null,
-          JSON.stringify({ timezone: input.timezone || 'Africa/Cairo' }),
-          hashIp(input.ip ?? null),
-        ],
-      },
-      {
-        text: `INSERT INTO "provisioning_jobs"
-          ("id", "churchId", "idempotencyKey", "provisioningTokenHash", "status", "currentStep",
-           "seedPayload", "createdAt", "updatedAt")
-         VALUES ($1, $2, $3, $4, 'queued', 'queued', $5::jsonb, now(), now())`,
-        params: [
-          jobId,
-          churchId,
-          idempotencyKey,
-          tokenHash,
-          JSON.stringify({
-            createAdmin: true,
-            adminName,
-            adminEmail,
-            adminPhone,
-            adminPasswordHash: passwordHash,
-          }),
-        ],
-      },
-      {
-        text: `INSERT INTO "church_codes"
-          ("id", "churchId", "code", "revoked", "createdAt", "updatedAt")
-         VALUES (uuid_generate_v4(), $1, $2, false, now(), now())`,
-        params: [churchId, churchCode],
-      },
-    ]);
+    // Single atomic statement: the code is consumed only if the church row is
+    // actually created, and concurrent attempts on the final use cannot both
+    // succeed.
+    const created = await platformQuery<{ id: string }>(
+      `WITH consumed AS (
+         UPDATE "church_creation_codes"
+         SET "usedCount" = "usedCount" + 1,
+             "lastUsedAt" = now(),
+             "status" = CASE WHEN "usedCount" + 1 >= "maxUses" THEN 'depleted' ELSE 'active' END,
+             "updatedAt" = now()
+         WHERE "id" = $20
+           AND "status" = 'active'
+           AND "revokedAt" IS NULL
+           AND ("expiresAt" IS NULL OR "expiresAt" > now())
+           AND "usedCount" < "maxUses"
+         RETURNING "id"
+       ),
+       new_church AS (
+         INSERT INTO "churches"
+           ("id", "slug", "name", "normalizedName", "legalName", "country", "city",
+            "contactName", "contactEmail", "contactPhone", "status", "verificationStatus",
+            "settings", "registrationIpHash", "termsAcceptedAt", "privacyAcceptedAt",
+            "creationCodeId", "creatorName", "creatorEmail", "createdAt", "updatedAt")
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', 'unverified',
+                $11::jsonb, $12, now(), now(), consumed."id", $13, $14, now(), now()
+         FROM consumed
+         RETURNING "id"
+       ),
+       new_job AS (
+         INSERT INTO "provisioning_jobs"
+           ("id", "churchId", "idempotencyKey", "provisioningTokenHash", "status", "currentStep",
+            "seedPayload", "createdAt", "updatedAt")
+         SELECT $15, "id", $16, $17, 'queued', 'queued', $18::jsonb, now(), now()
+         FROM new_church
+         RETURNING "id"
+       ),
+       new_code AS (
+         INSERT INTO "church_codes"
+           ("id", "churchId", "code", "revoked", "createdAt", "updatedAt")
+         SELECT uuid_generate_v4(), "id", $19, false, now(), now()
+         FROM new_church
+         RETURNING "id"
+       )
+       SELECT "id" FROM new_church`,
+      [
+        churchId,
+        slug,
+        churchName,
+        normalizedName,
+        input.legalName?.trim().slice(0, 240) || null,
+        input.country?.trim().slice(0, 2).toUpperCase() || null,
+        city,
+        contactName,
+        contactEmail,
+        input.contactPhone?.trim() || null,
+        JSON.stringify({ timezone: input.timezone || 'Africa/Cairo' }),
+        hashIp(input.ip ?? null),
+        adminName,
+        adminEmail,
+        jobId,
+        idempotencyKey,
+        tokenHash,
+        JSON.stringify({
+          createAdmin: true,
+          adminName,
+          adminEmail,
+          adminPhone,
+          adminPasswordHash: passwordHash,
+        }),
+        churchCode,
+        validCode.id,
+      ],
+    );
+
+    if (created.length === 0) {
+      throw new RegistrationError(
+        'رمز إنشاء الكنيسة غير صالح أو منتهي الصلاحية أو مستنفد.',
+        403,
+        'INVALID_CREATION_CODE',
+      );
+    }
   } catch (error) {
+    if (error instanceof RegistrationError) throw error;
     const code = (error as { code?: string }).code;
     if (code === '23505') {
       throw new RegistrationError('يوجد طلب تسجيل مطابق بالفعل.', 409, 'DUPLICATE_REGISTRATION');
@@ -262,6 +325,7 @@ export async function listChurches(filters: ChurchListFilters): Promise<{
             c."contactName", c."contactEmail", c."contactPhone", c."status",
             c."verificationStatus", c."isLifetimeFree", c."primaryDomain", c."customDomain",
             c."databaseProvider", c."databaseName", c."databaseHost",
+            c."creationCodeId", c."creatorName", c."creatorEmail", ccc."codePrefix" AS "creationCodePrefix",
             c."provisionedAt", c."activatedAt", c."suspendedAt", c."createdAt", c."updatedAt",
             (SELECT j."status" FROM "provisioning_jobs" j WHERE j."churchId" = c."id"
              ORDER BY j."createdAt" DESC LIMIT 1) AS "provisioningStatus",
@@ -270,6 +334,7 @@ export async function listChurches(filters: ChurchListFilters): Promise<{
             (SELECT j."lastErrorCode" FROM "provisioning_jobs" j WHERE j."churchId" = c."id"
              ORDER BY j."createdAt" DESC LIMIT 1) AS "provisioningErrorCode"
      FROM "churches" c
+     LEFT JOIN "church_creation_codes" ccc ON ccc."id" = c."creationCodeId"
      WHERE ($1::text IS NULL OR c."name" ILIKE '%' || $1 || '%' OR c."slug" ILIKE '%' || $1 || '%'
             OR c."contactEmail" ILIKE '%' || $1 || '%')
        AND ($2::text IS NULL OR c."status" = $2)

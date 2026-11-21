@@ -6,6 +6,7 @@ export const REQUIRED_PLATFORM_TABLES = [
   'add_ons',
   'church_add_ons',
   'church_codes',
+  'church_creation_codes',
   'church_entitlements',
   'churches',
   'features',
@@ -22,6 +23,9 @@ export const REQUIRED_PLATFORM_TABLES = [
   'subscription_events',
   'subscription_plans',
   'subscriptions',
+  'super_admin_auth_attempts',
+  'super_admin_credentials',
+  'super_admin_sessions',
   'tenant_connections',
 ];
 
@@ -44,6 +48,9 @@ export const REQUIRED_PLATFORM_COLUMNS = {  churches: [
     'provisionedAt',
     'activatedAt',
     'suspendedAt',
+    'creationCodeId',
+    'creatorName',
+    'creatorEmail',
     'createdAt',
     'updatedAt',
   ],
@@ -56,6 +63,10 @@ export const REQUIRED_PLATFORM_COLUMNS = {  churches: [
     'databaseHost',
   ],
   church_codes: ['id', 'churchId', 'code', 'revoked', 'createdAt', 'updatedAt'],
+  church_creation_codes: ['id', 'codeHash', 'codePrefix', 'status', 'createdAt'],
+  super_admin_auth_attempts: ['id', 'ipHash', 'action', 'success', 'createdAt'],
+  super_admin_credentials: ['id', 'isSingleton', 'passwordHash', 'setupCompletedAt'],
+  super_admin_sessions: ['id', 'sessionTokenHash', 'refreshTokenHash', 'expiresAt'],
   platform_settings: ['key', 'value'],
   platform_migrations: ['name', 'appliedAt'],
 };
