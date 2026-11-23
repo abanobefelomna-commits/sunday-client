@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/super-admin/provision",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 6 * * *"
     }
   ]
 }
