@@ -45,12 +45,24 @@ interface ChurchItem {
   createdAt: string;
 }
 
+interface ChurchJoinCode {
+  churchId: string;
+  churchName: string;
+  churchSlug: string;
+  churchStatus: string;
+  code: string | null;
+  expiresAt: string | null;
+  createdAt: string | null;
+  isExpired: boolean;
+}
+
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [codes, setCodes] = useState<CreationCode[]>([]);
   const [churches, setChurches] = useState<ChurchItem[]>([]);
-  const [activeTab, setActiveTab] = useState<"codes" | "churches">("codes");
+  const [churchJoinCodes, setChurchJoinCodes] = useState<ChurchJoinCode[]>([]);
+  const [activeTab, setActiveTab] = useState<"codes" | "churches" | "join-codes">("codes");
 
   // Create Code Modal / State
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -65,6 +77,10 @@ export default function SuperAdminDashboardPage() {
     prefix: string;
     note: string | null;
   } | null>(null);
+  const [revealedJoinCode, setRevealedJoinCode] = useState<{
+    churchName: string;
+    code: string;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Search & Filter
@@ -73,10 +89,11 @@ export default function SuperAdminDashboardPage() {
 
   async function loadData() {
     try {
-      const [authRes, codesRes, churchesRes] = await Promise.all([
+      const [authRes, codesRes, churchesRes, joinCodesRes] = await Promise.all([
         fetch("/api/super-admin/me"),
         fetch("/api/super-admin/codes"),
         fetch("/api/super-admin/churches"),
+        fetch("/api/super-admin/church-join-codes"),
       ]);
 
       if (!authRes.ok) {
@@ -92,6 +109,13 @@ export default function SuperAdminDashboardPage() {
       if (churchesRes.ok) {
         const churchesData = await churchesRes.json();
         setChurches(churchesData.data || []);
+      }
+
+      if (joinCodesRes.ok) {
+        const joinCodesData = await joinCodesRes.json();
+        setChurchJoinCodes(joinCodesData.data || []);
+      } else {
+        throw new Error("تعذر تحميل رموز انضمام الكنائس");
       }
     } catch (err) {
       console.error("Dashboard data load error:", err);
@@ -211,11 +235,58 @@ export default function SuperAdminDashboardPage() {
     }
   }
 
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success("تم نسخ الرمز إلى الحافظة!");
-    setTimeout(() => setCopied(false), 2000);
+  async function handleRotateJoinCode(church: ChurchJoinCode) {
+    if (!window.confirm(`سيتم إلغاء الرمز الحالي لكنيسة "${church.churchName}" فوراً وإصدار رمز جديد. أي شخص يستخدم الرمز القديم لن يستطيع بدء تسجيل جديد. هل تريد المتابعة؟`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/super-admin/church-join-codes/${church.churchId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rotate" }),
+      });
+      const data = await res.json() as { code?: unknown; message?: string };
+      if (!res.ok || typeof data.code !== "string") {
+        throw new Error(data.message || "تعذر تدوير رمز الانضمام");
+      }
+
+      setRevealedJoinCode({ churchName: church.churchName, code: data.code });
+      toast.success(`تم تدوير رمز الانضمام لكنيسة ${church.churchName}`);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "تعذر تدوير رمز الانضمام");
+    }
+  }
+
+  async function handleRevokeJoinCode(church: ChurchJoinCode) {
+    if (!window.confirm(`إلغاء الرمز سيمنع بدء تسجيلات جديدة لكنيسة "${church.churchName}" باستخدامه. لن يؤثر ذلك على الحسابات التي أُنشئت سابقاً. هل تريد المتابعة؟`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/super-admin/church-join-codes/${church.churchId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "تعذر إلغاء رمز الانضمام");
+
+      toast.success(`تم إلغاء رمز الانضمام لكنيسة ${church.churchName}`);
+      await loadData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "تعذر إلغاء رمز الانضمام");
+    }
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("تم نسخ الرمز إلى الحافظة!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("تعذر نسخ الرمز إلى الحافظة");
+    }
   }
 
   if (loading) {
@@ -400,6 +471,17 @@ export default function SuperAdminDashboardPage() {
           >
             <Church className="w-4 h-4" />
             <span>إدارة إنشاء الكنائس ({churches.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("join-codes")}
+            className={`pb-3 px-2 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors ${
+              activeTab === "join-codes"
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+            }`}
+          >
+            <KeyRound className="w-4 h-4" />
+            <span>رموز انضمام الكنائس ({churchJoinCodes.length})</span>
           </button>
         </div>
 
@@ -635,6 +717,92 @@ export default function SuperAdminDashboardPage() {
             </div>
           </div>
         )}
+
+        {activeTab === "join-codes" && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+              هذه رموز انضمام للخدام إلى كنيسة موجودة، وليست رموز إنشاء كنيسة جديدة. إلغاء الرمز يمنع التسجيلات الجديدة به ولا يغيّر حسابات المستخدمين الحاليين. رمز الانضمام لا يمنح صلاحية إدارية.
+            </div>
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-start text-xs">
+                  <thead className="bg-slate-50/75 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+                    <tr>
+                      <th className="py-3.5 px-4 text-start font-bold">الكنيسة</th>
+                      <th className="py-3.5 px-4 text-start font-bold">رمز الانضمام</th>
+                      <th className="py-3.5 px-4 text-start font-bold">حالة الكنيسة</th>
+                      <th className="py-3.5 px-4 text-start font-bold">الصلاحية</th>
+                      <th className="py-3.5 px-4 text-end font-bold">الإجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                    {churchJoinCodes.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-10 text-center text-slate-400">
+                          لا توجد كنائس مسجلة
+                        </td>
+                      </tr>
+                    ) : churchJoinCodes.map((church) => (
+                      <tr key={church.churchId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <td className="py-3.5 px-4">
+                          <div className="font-bold text-slate-900 dark:text-slate-100">{church.churchName}</div>
+                          <div className="font-mono text-[11px] text-slate-500" dir="ltr">{church.churchSlug}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {church.code ? (
+                            <div className="flex items-center gap-2">
+                              <code className="font-mono font-bold tracking-wider" dir="ltr">{church.code}</code>
+                              {church.isExpired && <span className="text-amber-600 dark:text-amber-400">منتهي</span>}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (church.code) void copyToClipboard(church.code);
+                                }}
+                                title="نسخ رمز الانضمام"
+                                aria-label={`نسخ رمز انضمام ${church.churchName}`}
+                                className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : <span className="text-slate-400">لا يوجد رمز فعّال</span>}
+                        </td>
+                        <td className="py-3.5 px-4">{church.churchStatus}</td>
+                        <td className="py-3.5 px-4 text-slate-500">
+                          {church.expiresAt ? new Date(church.expiresAt).toLocaleDateString("ar-EG") : "لا ينتهي"}
+                        </td>
+                        <td className="py-3.5 px-4 text-end">
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void handleRotateJoinCode(church)}
+                              title="إلغاء الرمز الحالي وإصدار بديل"
+                              aria-label={`تدوير رمز انضمام ${church.churchName}`}
+                              className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                            {church.code && (
+                              <button
+                                type="button"
+                                onClick={() => void handleRevokeJoinCode(church)}
+                                title="إلغاء رمز الانضمام"
+                                aria-label={`إلغاء رمز انضمام ${church.churchName}`}
+                                className="p-1.5 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-950/40"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Generate Code Modal */}
@@ -724,6 +892,27 @@ export default function SuperAdminDashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {revealedJoinCode && (
+        <div className="fixed bottom-5 left-5 right-5 sm:left-auto sm:right-8 z-40 max-w-xl rounded-2xl border border-emerald-500/30 bg-white p-4 shadow-2xl dark:bg-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-bold text-emerald-700 dark:text-emerald-400">رمز انضمام جديد — {revealedJoinCode.churchName}</p>
+              <p className="text-[11px] text-slate-500">أصبح الرمز السابق غير صالح؛ شارك الرمز الجديد مع الخدام.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="font-mono font-black tracking-wider" dir="ltr">{revealedJoinCode.code}</code>
+              <button
+                type="button"
+                onClick={() => void copyToClipboard(revealedJoinCode.code)}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"
+              >
+                نسخ
+              </button>
+              <button type="button" onClick={() => setRevealedJoinCode(null)} aria-label="إخفاء الرمز">✕</button>
+            </div>
           </div>
         </div>
       )}

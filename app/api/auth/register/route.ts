@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { queryOne } from '@/src/server/db';
+import { query, queryOne } from '@/src/server/db';
 import { platformQueryOne } from '@/src/server/platform/db';
 import {
   hashPassword,
@@ -52,13 +52,21 @@ export async function POST(req: Request) {
   const limit = rateLimit(`register:${ip}`, 5, 60 * 60);
   if (!limit.allowed) return rateLimitedResponse(limit.retryAfterSeconds);
 
-  let explicitSlug = (body.church || body.churchSlug || '').trim().toLowerCase() || null;
+  const requestedSlug = typeof body.church === 'string'
+    ? body.church
+    : typeof body.churchSlug === 'string'
+      ? body.churchSlug
+      : '';
+  let explicitSlug = requestedSlug.trim().toLowerCase() || null;
 
   // Church invitation code. The code only identifies a church; it can never
   // grant a role. It is validated centrally before the tenant database is
   // touched, and the resolved slug must still match the request host.
   const rawChurchCode = typeof body.churchCode === 'string' ? body.churchCode.trim().toUpperCase() : '';
   if (rawChurchCode) {
+    if (rawChurchCode.length > 64) {
+      return badRequest('رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية');
+    }
     const codeRow = await platformQueryOne<{ slug: string }>(
       `SELECT c."slug"
        FROM "church_codes" cc
@@ -72,6 +80,9 @@ export async function POST(req: Request) {
     );
     if (!codeRow) {
       return badRequest('رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية');
+    }
+    if (explicitSlug && explicitSlug !== codeRow.slug) {
+      return badRequest('رمز الدعوة لا يخص الكنيسة المحددة');
     }
     explicitSlug = codeRow.slug;
   }
@@ -136,11 +147,19 @@ export async function POST(req: Request) {
         return serverError('فشل إنشاء الحساب');
       }
 
-      // Generate verification code and send email
+      // Generate verification code and attempt to send email.
+      // If delivery fails in production we roll back the user record so the
+      // visitor can try again (email/phone not yet claimed in the DB).
       const { code } = await createOtp(user.id, 'email_verification');
       const sent = await sendVerificationEmail(user.email, code);
 
       if (!sent && process.env.NODE_ENV === 'production') {
+        // Rollback: delete the just-created inactive user so their email/phone
+        // remains available for a future registration attempt.
+        await query(
+          `DELETE FROM "users" WHERE "id" = $1 AND "isActive" = false AND "emailVerified" = false`,
+          [user.id],
+        );
         return serverError('تعذر إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى المحاولة لاحقاً');
       }
 

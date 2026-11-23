@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { registerUser, ApiError } from "../lib/api";
 import {
   passwordPolicyIssue,
@@ -24,6 +25,7 @@ const GRADE_OPTIONS: Array<{ value: string; key: AppMessageKey }> = [
 ];
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("first");
   const [servantRole, setServantRole] = useState("servant");
@@ -33,11 +35,59 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [churchCode, setChurchCode] = useState("");
   const [churchName, setChurchName] = useState<string | null>(null);
+  const [churchSlug, setChurchSlug] = useState<string | null>(null);
+  const [requestedChurchSlug, setRequestedChurchSlug] = useState<string | null>(null);
   const [churchCodeError, setChurchCodeError] = useState<string | null>(null);
   const [churchCodeLoading, setChurchCodeLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t, locale, setLocale, direction } = useI18n();
+
+  // Query parameters bootstrap the central join flow after hydration.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialSlug = params.get("church")?.trim().toLowerCase() || "";
+    if (/^[a-z0-9-]{2,63}$/.test(initialSlug)) setRequestedChurchSlug(initialSlug);
+    let initialCode = "";
+    try {
+      initialCode = window.sessionStorage.getItem("churchJoinCode")?.trim() || "";
+      window.sessionStorage.removeItem("churchJoinCode");
+    } catch {
+      return;
+    }
+    if (!initialCode) return;
+
+    setChurchCode(initialCode);
+    setChurchCodeLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch("/api/auth/church-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: initialCode }),
+        });
+        const body = await response.json().catch(() => ({})) as {
+          church?: { name?: string; slug?: string };
+          message?: string;
+        };
+        if (!response.ok || !body.church?.name || !body.church.slug) {
+          throw new Error(body.message || t("register.churchCodeInvalid"));
+        }
+        if (initialSlug && body.church.slug !== initialSlug) {
+          throw new Error("رمز الدعوة لا يخص الكنيسة المحددة");
+        }
+        setChurchName(body.church.name);
+        setChurchSlug(body.church.slug);
+        setChurchCode(initialCode.toUpperCase());
+      } catch (caught) {
+        setChurchCodeError(caught instanceof Error ? caught.message : t("register.churchCodeInvalid"));
+      } finally {
+        setChurchCodeLoading(false);
+      }
+    })();
+  }, [t]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const validateChurchCode = async () => {
     const trimmed = churchCode.trim();
@@ -48,6 +98,7 @@ export default function RegisterPage() {
     setChurchCodeLoading(true);
     setChurchCodeError(null);
     setChurchName(null);
+    setChurchSlug(null);
     try {
       const response = await fetch("/api/auth/church-code", {
         method: "POST",
@@ -55,13 +106,17 @@ export default function RegisterPage() {
         body: JSON.stringify({ code: trimmed }),
       });
       const body = (await response.json().catch(() => ({}))) as {
-        church?: { name?: string };
+        church?: { name?: string; slug?: string };
         message?: string;
       };
-      if (!response.ok || !body.church?.name) {
+      if (!response.ok || !body.church?.name || !body.church.slug) {
         throw new Error(body.message || t("register.churchCodeInvalid"));
       }
+      if (requestedChurchSlug && body.church.slug !== requestedChurchSlug) {
+        throw new Error("رمز الدعوة لا يخص الكنيسة المحددة");
+      }
       setChurchName(body.church.name);
+      setChurchSlug(body.church.slug);
       setChurchCode(trimmed.toUpperCase());
       toast.success(t("register.churchCodeSuccess", { name: body.church.name }));
     } catch (caught) {
@@ -111,6 +166,7 @@ export default function RegisterPage() {
         servantRole: servantRole === "class_leader" ? "class_leader" : "servant",
         grades: [grade],
         churchCode: churchCode.trim() || undefined,
+        churchSlug: churchSlug || requestedChurchSlug || undefined,
       });
 
       const destination = result.email || email.trim().toLowerCase();
@@ -118,7 +174,7 @@ export default function RegisterPage() {
         description: t("register.welcomeHint", { email: destination }),
       });
 
-      window.location.href = `/verify-email?email=${encodeURIComponent(destination)}`;
+      router.push(`/verify-email?email=${encodeURIComponent(destination)}`);
     } catch (err: unknown) {
       const msg =
         err instanceof ApiError
@@ -189,6 +245,7 @@ export default function RegisterPage() {
                   onChange={(event) => {
                     setChurchCode(event.target.value.toUpperCase());
                     setChurchName(null);
+                    setChurchSlug(null);
                     setChurchCodeError(null);
                   }}
                   placeholder={t("register.churchCodePlaceholder")}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, BadgeCheck, Church, MapPin } from "lucide-react";
 import { sharedPublicCopy } from "@/app/components/public-site/shared-copy";
 import { usePublicLocale } from "@/app/components/public-site/use-public-locale";
@@ -17,6 +18,7 @@ interface MatchedChurch {
 }
 
 export default function JoinChurchFlow() {
+  const router = useRouter();
   const { flow, locale } = usePublicLocale();
   const sharedCopy = sharedPublicCopy[locale];
   const [code, setCode] = useState("");
@@ -40,7 +42,7 @@ export default function JoinChurchFlow() {
     setError("");
     setChurch(null);
     try {
-      const response = await fetch("/api/public/church-code/lookup", {
+      const response = await fetch(input.code ? "/api/auth/church-code" : "/api/public/church-code/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
@@ -113,7 +115,23 @@ export default function JoinChurchFlow() {
         {!getStoredToken() ? <>
           <p className={"pf-noticeMessage"}>{flow.signInFirst}</p>
           <Link className={"pf-flowAction"} href="/login">{flow.signIn}<ArrowUpRight size={15} /></Link>
-          <Link className={"pf-joinLink"} href="/register">{sharedCopy.createServantAccount}</Link>
+          <Link
+            className={"pf-joinLink"}
+            href={`/register?church=${encodeURIComponent(church.slug)}`}
+            onClick={(event) => {
+              const churchCode = code.trim();
+              if (!churchCode) return;
+              event.preventDefault();
+              try {
+                window.sessionStorage.setItem("churchJoinCode", churchCode);
+                router.push(`/register?church=${encodeURIComponent(church.slug)}`);
+              } catch {
+                setError("تعذر بدء التسجيل. يرجى إدخال رمز الكنيسة مرة أخرى في صفحة التسجيل.");
+              }
+            }}
+          >
+            {sharedCopy.createServantAccount}
+          </Link>
         </> : <button className={"pf-formButton"} type="button" onClick={requestMembership} disabled={busy}>{busy ? flow.submitting : flow.requestJoin}<ArrowUpRight size={16} /></button>}
       </div>}
     </section>

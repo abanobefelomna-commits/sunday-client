@@ -1,0 +1,74 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const read = (path) => readFileSync(resolve(process.cwd(), path), 'utf8');
+
+test('provisioning cron endpoint is secret-guarded, rate-limited, and logs safely', () => {
+  const route = read('app/api/super-admin/provision/route.ts');
+
+  // Must require a secret
+  assert.match(route, /PROVISIONING_CRON_SECRET/);
+  // Timing-safe comparison
+  assert.match(route, /safeEqual/);
+  // Rate limiting
+  assert.match(route, /rateLimit/);
+  // Bearer token extraction
+  assert.match(route, /Bearer/);
+  // Must call processPendingProvisioningJobs
+  assert.match(route, /processPendingProvisioningJobs/);
+  // No raw error messages leaked
+  assert.match(route, /error\.name/);
+  assert.doesNotMatch(route, /error\.message.*response/i);
+  // No-store caching
+  assert.match(route, /no-store/);
+  // Returns 503 when not configured (not 200)
+  assert.match(route, /503/);
+  // Vercel cron-compatible GET handler
+  assert.match(route, /export async function GET/);
+});
+
+test('vercel.json registers a cron for the provisioning endpoint', () => {
+  const vercelConfig = JSON.parse(read('vercel.json'));
+
+  assert.ok(Array.isArray(vercelConfig.crons), 'crons array must exist');
+  const cronEntry = vercelConfig.crons.find((c) => c.path === '/api/super-admin/provision');
+  assert.ok(cronEntry, '/api/super-admin/provision must be in crons');
+  assert.ok(typeof cronEntry.schedule === 'string', 'schedule must be a string');
+});
+
+test('register route rolls back the user record on SMTP failure in production', () => {
+  const route = read('app/api/auth/register/route.ts');
+
+  // The fix: DELETE the user when email sending fails so email/phone remains available
+  assert.match(route, /DELETE FROM "users" WHERE "id" = \$1 AND "isActive" = false AND "emailVerified" = false/);
+  // Must import query for the delete
+  assert.match(route, /import \{ query, queryOne \}/);
+  // Still returns a server error after rollback
+  assert.match(route, /تعذر إرسال رمز التحقق/);
+});
+
+test('register route validates church code length before DB query', () => {
+  const route = read('app/api/auth/register/route.ts');
+
+  // Length guard prevents oversized inputs from reaching the DB
+  assert.match(route, /rawChurchCode\.length > 64/);
+  // Mismatch check: code must resolve to the same church as the explicit slug
+  assert.match(route, /explicitSlug !== codeRow\.slug/);
+});
+
+test('provisioning never activates church without tenant identity verification', () => {
+  const provisioning = read('src/server/platform/provisioning.ts');
+
+  // Tenant identity is verified before activate step
+  assert.match(provisioning, /TENANT_IDENTITY_MISMATCH/);
+  assert.match(provisioning, /tenant_identity.*LIMIT 1/s);
+  // Church is only set active after the identity check passes
+  const activateIdx = provisioning.indexOf("SET \"status\" = 'active'");
+  const identityIdx = provisioning.indexOf('TENANT_IDENTITY_MISMATCH');
+  assert.ok(identityIdx < activateIdx, 'identity check must come before church activation');
+  // Concurrency: claimJob uses an atomic UPDATE with a WHERE predicate
+  assert.match(provisioning, /status.*IN.*'queued'.*'failed'/s);
+  assert.match(provisioning, /lockedAt.*now\(\) - interval '15 minutes'/s);
+});

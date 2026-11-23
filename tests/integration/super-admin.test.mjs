@@ -77,6 +77,11 @@ test('Super Admin & Church Creation Authorization System', { skip: skipPlatform 
   } = await import('../../src/server/super-admin/codes.ts');
 
   const { registerChurch } = await import('../../src/server/platform/churches.ts');
+  const {
+    listChurchJoinCodes,
+    revokeChurchJoinCode,
+    rotateChurchJoinCode,
+  } = await import('../../src/server/super-admin/church-join-codes.ts');
 
   // Hard safety rail: a disposable platform DB has no churches. Refuse to
   // erase credentials if this looks like a live/shared database.
@@ -286,6 +291,29 @@ test('Super Admin & Church Creation Authorization System', { skip: skipPlatform 
     assert.equal(church.creationCodeId, generatedCode.id);
     assert.equal(church.creatorName, 'Servant Mina');
     assert.equal(church.creatorEmail, `mina.${slug}@example.com`);
+
+    await t.test('church join codes can be listed, rotated, and revoked without affecting creation codes', async () => {
+      const [oldJoinCode] = await platformQuery(
+        `SELECT "code" FROM "church_codes"
+         WHERE "churchId" = $1 AND "revoked" = false LIMIT 1`,
+        [result.churchId],
+      );
+      assert.ok(oldJoinCode?.code);
+
+      const replacement = await rotateChurchJoinCode(result.churchId, '127.0.0.1');
+      assert.ok(replacement);
+      assert.notEqual(replacement, oldJoinCode.code);
+
+      const listed = await listChurchJoinCodes();
+      const churchCode = listed.find((row) => row.churchId === result.churchId);
+      assert.equal(churchCode?.code, replacement);
+      assert.equal(churchCode?.churchName, `Test Saint Mary ${slug}`);
+
+      assert.equal(await revokeChurchJoinCode(result.churchId, '127.0.0.1'), true);
+      const afterRevoke = await listChurchJoinCodes();
+      assert.equal(afterRevoke.find((row) => row.churchId === result.churchId)?.code, null);
+      assert.equal(await revokeChurchJoinCode(result.churchId), false);
+    });
 
     // Verify creation code usage count incremented
     const [codeRow] = await platformQuery(

@@ -31,7 +31,9 @@ The target model is a central person/identity record keyed by a verified normali
 
 ## Current integration state
 
-The directory and join routes are built and call the allowlisted Next-to-Nest API proxy. The directory degrades gracefully. Code lookup and join submission are wired to expected API paths but will return unavailable until the Nest public endpoints and central identity/membership tables exist. The current legacy servant registration creates a tenant-local user immediately and therefore must not be used as the new pending-membership flow. Existing `/register` remains unchanged for compatibility.
+The directory and join routes call the allowlisted Next-to-Nest API proxy for directory lookup and membership requests. When no Nest API URL is configured, public code lookup uses the central `church_codes` table directly; `/api/auth/church-code` remains the registration validator. A matched code links to `/register` with the church slug; the code is passed through tab-scoped session storage, not a URL, and registration rejects a slug that does not match the centrally resolved code. A code only identifies the destination: self-registration still creates an ordinary servant account, never an administrator. The current legacy servant registration verifies email before activation but creates a tenant-local account immediately; it must not be confused with the separate pending-membership approval flow.
+
+The Super Admin dashboard has separate controls for church creation codes and church join codes. Join codes are listed per non-archived church, can be copied, rotated, or revoked, and management mutations are audited without recording the plaintext code. Revocation prevents new registrations using that code and does not alter existing users.
 
 The visitor API proxy now bounds search/body size, rejects non-JSON writes, discards upstream error bodies, and filters successful payloads to allowlisted directory, provisioning, join, and Preview fields. The join page offers the existing servant registration route after a church has been matched. These are frontend safeguards and routes only; they do not create membership.
 

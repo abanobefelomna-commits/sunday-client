@@ -44,6 +44,63 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
 
   const apiOrigin = (process.env.NEST_API_URL || process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
   if (!apiOrigin) {
+    if (request.method === "POST" && path === "church-code/lookup") {
+      const { getRequestIp, rateLimit } = await import("@/src/server/security");
+      const ip = getRequestIp(request);
+      const limit = rateLimit(`public-church-code-lookup:${ip}`, 20, 60 * 60);
+      if (!limit.allowed) {
+        return NextResponse.json(
+          { message: "محاولات كثيرة. حاول مرة أخرى بعد قليل." },
+          { status: 429, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+
+      let payload: unknown;
+      try {
+        payload = body ? JSON.parse(new TextDecoder().decode(body)) : null;
+      } catch {
+        return NextResponse.json({ code: "INVALID_REQUEST" }, { status: 400 });
+      }
+      const input = payload && typeof payload === "object" && !Array.isArray(payload)
+        ? payload as { code?: unknown; slug?: unknown }
+        : null;
+      const code = typeof input?.code === "string" ? input.code.trim() : "";
+      const slug = typeof input?.slug === "string" ? input.slug.trim().toLowerCase() : "";
+      if ((!code && !slug) || (code && slug) || code.length > 64 || (slug && !/^[a-z0-9-]{2,63}$/.test(slug))) {
+        return NextResponse.json({ code: "INVALID_REQUEST" }, { status: 400 });
+      }
+
+      const { platformQueryOne } = await import("@/src/server/platform/db");
+      const church = await platformQueryOne<{
+        slug: string;
+        name: string;
+        city: string | null;
+        verificationStatus: "verified" | "unverified" | "pending" | "rejected";
+      }>(
+        `SELECT c."slug", c."name", c."city", c."verificationStatus"
+         FROM "churches" c
+         LEFT JOIN "church_codes" cc
+           ON cc."churchId" = c."id"
+          AND cc."revoked" = false
+          AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
+         WHERE (($1::text <> '' AND upper(cc."code") = upper($1))
+                OR ($2::text <> '' AND c."slug" = $2))
+           AND c."status" = 'active'
+         LIMIT 1`,
+        [code, slug],
+      );
+      if (!church) {
+        return NextResponse.json(
+          { message: "رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية" },
+          { status: 404, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      return NextResponse.json(
+        { church: { ...church, publicDescription: null } },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     if (request.method === "POST" && path === "church-registrations") {
       const { getRequestIp, rateLimit, rateLimitedResponse } = await import("@/src/server/security");
       const { registerChurch } = await import("@/src/server/platform/churches");

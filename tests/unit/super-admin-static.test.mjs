@@ -12,10 +12,10 @@ const routeFiles = readdirSync(resolve(process.cwd(), 'app/api/super-admin'), {
   .map((entry) => resolve(entry.parentPath, entry.name));
 
 test('every privileged Super Admin route uses the dedicated guard', () => {
-  // `setup`, `login`, and `status` are intentionally unauthenticated. `logout`
-  // is idempotent session teardown: it only revokes the tokens the caller
-  // presents and is CSRF-protected with requireSameOrigin.
-  const publicRoutes = new Set(['setup', 'login', 'status', 'logout']);
+  // `setup`, `login`, `status`, and `logout` are intentionally unauthenticated.
+  // `provision` uses a timing-safe bearer-token guard (PROVISIONING_CRON_SECRET)
+  // instead of a session, so it can be called by Vercel Cron without a cookie.
+  const publicRoutes = new Set(['setup', 'login', 'status', 'logout', 'provision']);
   assert.ok(routeFiles.length >= 8, 'expected all Super Admin route handlers');
 
   for (const file of routeFiles) {
