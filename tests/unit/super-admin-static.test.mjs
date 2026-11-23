@@ -127,8 +127,17 @@ test('church registration consumes the code atomically and records the creator',
   assert.match(source, /"creationCodeId", "creatorName", "creatorEmail"/);
   assert.match(source, /created\.length === 0/);
 
-  assert.match(registrationRoute, /registerChurch\(\{ \.\.\.payload, ip \}\)/);
+  assert.match(registrationRoute, /registerChurch\(\{\s*\.\.\./);
+  assert.match(registrationRoute, /ChurchRegistrationInput/);
   assert.match(registrationRoute, /rateLimit\(`church-registrations:\$\{ip\}`/);
+});
+
+test('provisioning status requires the opaque provisioning token', () => {
+  const source = read('app/api/public/[...segments]/route.ts');
+
+  assert.match(source, /PROVISIONING_TOKEN_REQUIRED/);
+  assert.match(source, /x-provisioning-token/);
+  assert.match(source, /"provisioningTokenHash" = \$2/);
 });
 
 test('assistant composer auto-resizes and preserves keyboard sending', () => {

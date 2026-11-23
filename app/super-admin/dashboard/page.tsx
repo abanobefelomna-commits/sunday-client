@@ -104,8 +104,9 @@ export default function SuperAdminDashboardPage() {
   useEffect(() => {
     // The loader awaits every fetch before touching state, so this is not a
     // synchronous setState inside an effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleLogout() {
