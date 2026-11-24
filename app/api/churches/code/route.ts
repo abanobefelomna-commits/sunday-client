@@ -24,7 +24,7 @@ async function GETHandler(req: Request) {
     }>(
       `SELECT "code", "revoked", "expiresAt", "createdAt"
        FROM "church_codes"
-       WHERE "churchId" = $1 AND "revoked" = false
+       WHERE "churchId" = $1 AND "purpose" = 'join' AND "revoked" = false
        ORDER BY "createdAt" DESC
        LIMIT 1`,
       [churchId],
@@ -73,13 +73,13 @@ async function POSTHandler(req: Request) {
       {
         text: `UPDATE "church_codes"
                SET "revoked" = true, "updatedAt" = now()
-               WHERE "churchId" = $1 AND "revoked" = false`,
+               WHERE "churchId" = $1 AND "purpose" = 'join' AND "revoked" = false`,
         params: [churchId],
       },
       {
         text: `INSERT INTO "church_codes"
-                 ("id", "churchId", "code", "revoked", "createdAt", "updatedAt")
-               VALUES (uuid_generate_v4(), $1, $2, false, now(), now())`,
+                 ("id", "churchId", "code", "purpose", "revoked", "createdAt", "updatedAt")
+               VALUES (uuid_generate_v4(), $1, $2, 'join', false, now(), now())`,
         params: [churchId, newCode],
       },
     ]);

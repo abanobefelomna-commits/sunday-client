@@ -34,6 +34,7 @@ export async function POST(req: Request) {
      FROM "church_codes" cc
      JOIN "churches" c ON c."id" = cc."churchId"
      WHERE upper(cc."code") = upper($1)
+       AND cc."purpose" = 'join'
        AND cc."revoked" = false
        AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
        AND c."status" = 'active'

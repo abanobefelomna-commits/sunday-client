@@ -106,21 +106,27 @@ test('servant attendance API enforces church scope and class-leader authority', 
   assert.match(attendanceRoute, /withTenant/);
 });
 
-test('registration resolves an invitation code centrally and still forces the servant role', () => {
+test('registration resolves join codes and requires per-church codes for privileged roles', () => {
   assert.match(registerRoute, /platformQueryOne/);
   assert.match(registerRoute, /FROM "church_codes" cc/);
   assert.match(registerRoute, /explicitSlug = codeRow\.slug/);
   assert.match(registerRoute, /ignoreCookie: Boolean\(rawChurchCode\)/);
-  assert.match(registerRoute, /'servant', \$5, \$6::users_grades_enum\[\]/);
-  assert.match(registerRoute, /body\.servantRole === 'class_leader' \? 'class_leader' : 'servant'/);
-  assert.doesNotMatch(registerRoute, /body\.servantRole === 'admin'/);
-  assert.doesNotMatch(registerRoute, /body\.role/);
+  assert.match(registerRoute, /cc\."purpose" = 'join'/);
+  assert.match(registerRoute, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
+  assert.match(registerRoute, /rawServantRole === 'class_leader'/);
+  assert.match(registerRoute, /rawServantRole === 'admin'/);
+  assert.match(registerRoute, /rawServantRole === 'priest'/);
+  assert.match(registerRoute, /"purpose" = \$2/);
+  assert.match(registerRoute, /requiresEmailVerification: false/);
+  assert.match(registerRoute, /issueRefreshToken/);
+  assert.doesNotMatch(registerRoute, /sendVerificationEmail|createOtp/);
+  assert.doesNotMatch(registerRoute, /body\.role(?:\s|=)/);
 });
 
 test('church code administration is privileged and regenerating revokes previous codes', () => {
   assert.match(churchCodeAdminRoute, /if \(!access\.privileged\)/);
   assert.match(churchCodeAdminRoute, /SET "revoked" = true/);
-  assert.match(churchCodeAdminRoute, /WHERE "churchId" = \$1 AND "revoked" = false/);
+  assert.match(churchCodeAdminRoute, /WHERE "churchId" = \$1 AND "purpose" = 'join' AND "revoked" = false/);
   assert.match(churchCodeAdminRoute, /INSERT INTO "church_codes"/);
   assert.match(churchCodeAdminRoute, /requireTenantContext\(\)/);
 });

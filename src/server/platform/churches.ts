@@ -202,6 +202,8 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
   const churchId = randomUUID();
   const idempotencyKey = randomUUID();
   const churchCode = generateChurchCode();
+  const adminRegistrationCode = generateChurchCode();
+  const priestRegistrationCode = generateChurchCode();
 
   try {
     // Single atomic statement: the code is consumed only if the church row is
@@ -240,11 +242,13 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
          FROM new_church
          RETURNING "id"
        ),
-       new_code AS (
+       new_codes AS (
          INSERT INTO "church_codes"
-           ("id", "churchId", "code", "revoked", "createdAt", "updatedAt")
-         SELECT uuid_generate_v4(), "id", $19, false, now(), now()
+           ("id", "churchId", "code", "purpose", "revoked", "createdAt", "updatedAt")
+         SELECT uuid_generate_v4(), new_church."id", code_values."code", code_values."purpose", false, now(), now()
          FROM new_church
+         CROSS JOIN (VALUES ($19::text, 'join'), ($21::text, 'admin'), ($22::text, 'priest'))
+           AS code_values("code", "purpose")
          RETURNING "id"
        )
        SELECT "id" FROM new_church`,
@@ -275,6 +279,8 @@ export async function registerChurch(input: ChurchRegistrationInput): Promise<Re
         }),
         churchCode,
         validCode.id,
+        adminRegistrationCode,
+        priestRegistrationCode,
       ],
     );
 

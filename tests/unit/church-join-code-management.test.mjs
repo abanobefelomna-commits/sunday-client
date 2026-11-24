@@ -26,6 +26,8 @@ test('join-code management reuses church_codes and never audits plaintext codes'
   assert.match(service, /FOR UPDATE/);
   assert.match(service, /church_join_code\.rotated/);
   assert.match(service, /church_join_code\.revoked/);
+  assert.match(service, /'join'.*'admin'.*'priest'/s);
+  assert.match(service, /"purpose" = \$2/);
   assert.doesNotMatch(service, /after:\s*\{[^}]*code\s*[,}]/);
   assert.match(service, /WHERE c\."status" <> 'archived'/);
 });
@@ -34,13 +36,15 @@ test('dashboard distinguishes church join codes from church creation codes', () 
   const dashboard = read('app/super-admin/dashboard/page.tsx');
 
   assert.match(dashboard, /رموز إنشاء الكنائس/);
-  assert.match(dashboard, /رموز انضمام الكنائس/);
+  assert.match(dashboard, /رموز الكنائس لكل دور/);
+  assert.match(dashboard, /رمز تسجيل للمسؤول/);
+  assert.match(dashboard, /رمز تسجيل للأب الكاهن/);
   assert.match(dashboard, /\/api\/super-admin\/church-join-codes/);
-  assert.match(dashboard, /نسخ رمز الانضمام/);
-  assert.match(dashboard, /لن يؤثر ذلك على الحسابات التي أُنشئت سابقاً/);
+  assert.match(dashboard, /church\.purpose/);
+  assert.match(dashboard, /لن يؤثر ذلك على الحسابات الحالية/);
 });
 
-test('a join code is checked centrally, must match a requested church, and cannot assign admin roles', () => {
+test('join and role codes are checked centrally and privileged roles have no grade assignment', () => {
   const registration = read('app/api/auth/register/route.ts');
   const codeLookup = read('app/api/auth/church-code/route.ts');
   const publicProxy = read('app/api/public/[...segments]/route.ts');
@@ -48,11 +52,16 @@ test('a join code is checked centrally, must match a requested church, and canno
   const registerPage = read('app/register/page.tsx');
 
   assert.match(codeLookup, /cc\."revoked" = false/);
+  assert.match(codeLookup, /cc\."purpose" = 'join'/);
   assert.match(codeLookup, /c\."status" = 'active'/);
   assert.match(publicProxy, /c\."slug" = \$2/);
   assert.match(registration, /explicitSlug !== codeRow\.slug/);
-  assert.match(registration, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, false, \$3, \$4, 'servant'/);
-  assert.doesNotMatch(registration, /body\.role/);
+  assert.match(registration, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
+  assert.match(registration, /accountRole = 'admin'/);
+  assert.match(registration, /accountRole = 'priest'/);
+  assert.match(registration, /const assignedGrades: string\[\] = isPrivileged \? \[\]/);
+  assert.match(registration, /"purpose" = \$2/);
+  assert.doesNotMatch(registration, /body\.role(?:\s|=)/);
   assert.match(joinFlow, /\/register\?church=/);
   assert.match(joinFlow, /sessionStorage\.setItem\("churchJoinCode"/);
   assert.match(joinFlow, /router\.push\(`\/register\?church=/);
@@ -60,5 +69,7 @@ test('a join code is checked centrally, must match a requested church, and canno
   assert.doesNotMatch(joinFlow, /register\?church=[^`]*code=/);
   assert.match(registerPage, /sessionStorage\.removeItem\("churchJoinCode"\)/);
   assert.match(registerPage, /churchSlug: churchSlug \|\| requestedChurchSlug/);
+  assert.match(registerPage, /router\.push\("\/dashboard"\)/);
+  assert.doesNotMatch(registerPage, /verify-email\?email=/);
 });
 

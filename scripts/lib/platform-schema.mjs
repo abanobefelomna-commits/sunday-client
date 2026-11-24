@@ -62,7 +62,7 @@ export const REQUIRED_PLATFORM_COLUMNS = {  churches: [
     'databaseName',
     'databaseHost',
   ],
-  church_codes: ['id', 'churchId', 'code', 'revoked', 'createdAt', 'updatedAt'],
+  church_codes: ['id', 'churchId', 'code', 'purpose', 'revoked', 'expiresAt', 'createdAt', 'updatedAt'],
   church_creation_codes: ['id', 'codeHash', 'codePrefix', 'status', 'createdAt'],
   super_admin_auth_attempts: ['id', 'ipHash', 'action', 'success', 'createdAt'],
   super_admin_credentials: ['id', 'isSingleton', 'passwordHash', 'setupCompletedAt'],

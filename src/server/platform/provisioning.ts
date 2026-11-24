@@ -379,7 +379,7 @@ export async function provisionChurch(jobId: string, actor?: {
     try {
       const activeCode = await platformQueryOne<{ code: string }>(
         `SELECT "code" FROM "church_codes"
-         WHERE "churchId" = $1 AND "revoked" = false
+         WHERE "churchId" = $1 AND "purpose" = 'join' AND "revoked" = false
          ORDER BY "createdAt" DESC LIMIT 1`,
         [job.churchId],
       );

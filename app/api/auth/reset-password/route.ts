@@ -50,7 +50,7 @@ async function POSTHandler(req: Request) {
     const hashedPassword = await hashPassword(newPassword);
 
     await query(
-      `UPDATE "users" SET "password" = $1, "updatedAt" = now() WHERE "id" = $2`,
+      `UPDATE "users" SET "password" = $1, "emailVerified" = true, "updatedAt" = now() WHERE "id" = $2`,
       [hashedPassword, user.id],
     );
 

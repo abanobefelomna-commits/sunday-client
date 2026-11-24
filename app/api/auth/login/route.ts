@@ -60,12 +60,11 @@ export async function POST(req: Request) {
         avatar: string | null;
         password: string;
         isActive: boolean;
-        emailVerified: boolean;
       }>(
         isEmail
-          ? `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive", "emailVerified"
+          ? `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive"
              FROM "users" WHERE lower("email") = $1 LIMIT 1`
-          : `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive", "emailVerified"
+          : `SELECT "id", "name", "email", "phone", "role", "grades", "avatar", "password", "isActive"
              FROM "users" WHERE "phone" = $1 LIMIT 1`,
         [identifier],
       );
@@ -79,25 +78,11 @@ export async function POST(req: Request) {
         return unauthorized('بيانات الدخول غير صحيحة');
       }
 
-      // Only an unverified email gets the verification prompt. Deactivated
-      // accounts keep the generic credential error to avoid account probing.
-      if (!user.emailVerified) {
-        return NextResponse.json(
-          {
-            error: 'EMAIL_NOT_VERIFIED',
-            email: user.email,
-            requiresEmailVerification: true,
-            message: 'يرجى تأكيد البريد الإلكتروني أولاً لتفعيل الحساب.',
-          },
-          { status: 403 },
-        );
-      }
-
       if (!user.isActive) {
         return unauthorized('بيانات الدخول غير صحيحة');
       }
 
-      const { password: _pw, isActive: _active, emailVerified: _ev, ...safeUser } = user;
+      const { password: _pw, isActive: _active, ...safeUser } = user;
 
       const payload = {
         sub: user.id,

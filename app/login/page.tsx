@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { loginUser, ApiError } from "../lib/api";
+import { loginUser } from "../lib/api";
 import { safeNextPath } from "../lib/safe-next";
 import { toast } from "sonner";
 import { useI18n } from "../lib/app-i18n";
@@ -44,15 +44,6 @@ function LoginForm() {
       toast.success(t("login.welcome", { name }));
       window.location.href = nextDestination(searchParams.get("next"));
     } catch (err: unknown) {
-      if (err instanceof ApiError && err.code === "EMAIL_NOT_VERIFIED") {
-        const email =
-          typeof err.data.email === "string"
-            ? err.data.email
-            : identifier.trim().toLowerCase();
-        toast.error(t("login.verifyRequired"));
-        window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
-        return;
-      }
       const msg = err instanceof Error ? err.message : t("login.failed");
       setError(msg);
       toast.error(msg);

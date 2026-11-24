@@ -365,6 +365,8 @@ export interface RegistrationResult {
   requiresEmailVerification: boolean;
   email: string;
   message: string;
+  accessToken?: string;
+  user?: AuthUser;
   church?: { id: string; slug: string; name: string };
 }
 
@@ -374,17 +376,23 @@ export async function registerUser(payload: {
   phone: string;
   password: string;
   servantRole?: string;
+  roleCode?: string;
   classIds?: string[];
   grades?: string[];
   churchCode?: string;
   churchSlug?: string;
 }): Promise<RegistrationResult> {
-  // Registration returns no tokens: the account stays inactive until the
-  // emailed verification code is confirmed through `/api/auth/verify-email`.
-  return request<RegistrationResult>('/api/auth/register', {
+  const result = await request<RegistrationResult>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+  // If the server issued tokens (immediate activation), store them.
+  if (result.accessToken && result.user) {
+    setStoredAuth(result.accessToken, result.user);
+  }
+
+  return result;
 }
 
 export async function verifyEmail(

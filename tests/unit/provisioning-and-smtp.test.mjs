@@ -49,15 +49,13 @@ test('new church registration starts provisioning immediately and keeps the cron
   assert.match(read('app/api/super-admin/provision/route.ts'), /process\.env\.CRON_SECRET/);
 });
 
-test('register route rolls back the user record on SMTP failure in production', () => {
+test('register route activates the account without sending email verification', () => {
   const route = read('app/api/auth/register/route.ts');
 
-  // The fix: DELETE the user when email sending fails so email/phone remains available
-  assert.match(route, /DELETE FROM "users" WHERE "id" = \$1 AND "isActive" = false AND "emailVerified" = false/);
-  // Must import query for the delete
-  assert.match(route, /import \{ query, queryOne \}/);
-  // Still returns a server error after rollback
-  assert.match(route, /تعذر إرسال رمز التحقق/);
+  assert.match(route, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
+  assert.match(route, /requiresEmailVerification: false/);
+  assert.match(route, /issueRefreshToken/);
+  assert.doesNotMatch(route, /sendVerificationEmail|createOtp|DELETE FROM "users"/);
 });
 
 test('register route validates church code length before DB query', () => {

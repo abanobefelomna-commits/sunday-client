@@ -3,12 +3,15 @@ import { query, queryOne } from '@/src/server/db';
 import { platformQueryOne } from '@/src/server/platform/db';
 import {
   hashPassword,
+  issueRefreshToken,
   normalizeEmail,
+  refreshCookie,
+  sessionCookie,
+  signAccessToken,
   validatePasswordStrength,
 } from '@/src/server/auth';
-import { createOtp } from '@/src/server/otp';
-import { sendVerificationEmail } from '@/src/server/email';
-import { badRequest, conflict, serverError } from '@/src/server/middleware';
+import { badRequest, conflict, serverError, getAccessContext } from '@/src/server/middleware';
+import { syncServantFromUser } from '@/src/server/servants';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
 import {
   getRequestIp,
@@ -22,10 +25,11 @@ const VALID_GRADES = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'g
 /**
  * Member self-registration.
  *
- * This endpoint can never grant an administrative role: the account role is
- * always `servant`, and the only accepted service labels are `servant` and
- * `class_leader`. Administrators and priests are appointed by an existing
- * church administrator through the tenant dashboard.
+ * Regular accounts (servant / class_leader) are created and activated immediately
+ * without email verification — email verification is only used for password reset.
+ *
+ * Privileged roles (admin / priest) require a purpose-specific code issued for
+ * the resolved church and managed by the Super Admin.
  */
 export async function POST(req: Request) {
   const originError = requireSameOrigin(req);
@@ -37,6 +41,7 @@ export async function POST(req: Request) {
     phone?: string;
     password?: string;
     servantRole?: string;
+    roleCode?: string;
     grades?: unknown;
     church?: string;
     churchSlug?: string;
@@ -71,7 +76,7 @@ export async function POST(req: Request) {
       `SELECT c."slug"
        FROM "church_codes" cc
        JOIN "churches" c ON c."id" = cc."churchId"
-       WHERE upper(cc."code") = upper($1)
+       WHERE upper(cc."code") = upper($1) AND cc."purpose" = 'join'
          AND cc."revoked" = false
          AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
          AND c."status" = 'active'
@@ -96,6 +101,8 @@ export async function POST(req: Request) {
       const email = normalizeEmail(String(body.email || ''));
       const phone = String(body.phone || '').trim();
       const password = typeof body.password === 'string' ? body.password : '';
+      const rawServantRole = typeof body.servantRole === 'string' ? body.servantRole.trim() : 'servant';
+      const suppliedRoleCode = typeof body.roleCode === 'string' ? body.roleCode.trim() : '';
       const grades = body.grades === undefined ? [] : body.grades;
 
       if (!name || !email || !phone || !password) {
@@ -106,16 +113,57 @@ export async function POST(req: Request) {
       const passwordError = validatePasswordStrength(password);
       if (passwordError) return badRequest(passwordError);
 
+      // -----------------------------------------------------------------------
+      // Role resolution
+      // -----------------------------------------------------------------------
+      // Privileged roles (admin / priest) require a valid role code.
+      // All other requested roles are silently normalised to servant/class_leader.
+      let accountRole: 'servant' | 'admin' | 'priest' = 'servant';
+      let servantRole: string = 'servant';
+
+      if (rawServantRole === 'priest') {
+        accountRole = 'priest';
+        servantRole = 'priest';
+      } else if (rawServantRole === 'admin') {
+        accountRole = 'admin';
+        servantRole = 'admin';
+      } else if (rawServantRole === 'class_leader') {
+        servantRole = 'class_leader';
+      }
+      // else: servant (default)
+
+      // Grade validation — privileged roles don't need a grade
+      const isPrivileged = accountRole === 'admin' || accountRole === 'priest';
+      const assignedGrades: string[] = isPrivileged ? [] : (Array.isArray(grades) ? grades as string[] : []);
+
+      if (isPrivileged) {
+        if (!suppliedRoleCode || suppliedRoleCode.length > 64) {
+          return badRequest('رمز الدور مطلوب');
+        }
+        const roleCode = await platformQueryOne<{ id: string }>(
+          `SELECT "id"
+           FROM "church_codes"
+           WHERE "churchId" = $1
+             AND "purpose" = $2
+             AND upper("code") = upper($3)
+             AND "revoked" = false
+             AND ("expiresAt" IS NULL OR "expiresAt" > now())
+           LIMIT 1`,
+          [tenant.churchId, accountRole, suppliedRoleCode],
+        );
+        if (!roleCode) {
+          return badRequest('رمز الدور غير صالح أو لا يخص الكنيسة المحددة');
+        }
+      }
+
       if (
-        !Array.isArray(grades) ||
-        grades.some((grade: unknown) => typeof grade !== 'string' || !VALID_GRADES.includes(grade))
+        !isPrivileged && (
+          !Array.isArray(grades) ||
+          (grades as unknown[]).some((grade: unknown) => typeof grade !== 'string' || !VALID_GRADES.includes(grade))
+        )
       ) {
         return badRequest('الفصل أو القسم المختار غير صالح');
       }
-
-      // Never trust the requested role. Administrative labels are ignored.
-      const servantRole = body.servantRole === 'class_leader' ? 'class_leader' : 'servant';
-      const assignedGrades = grades;
 
       const existing = await queryOne<{ id: string }>(
         `SELECT "id" FROM "users"
@@ -124,51 +172,82 @@ export async function POST(req: Request) {
       );
 
       if (existing) {
-        // Generic message that avoids revealing whether email or phone already exists
         return conflict('إذا كان لديك حساب بالفعل، يرجى تسجيل الدخول أو استعادة كلمة المرور');
       }
 
       const hashedPassword = await hashPassword(password);
 
-      // Create inactive, unverified user with chosen servantRole preserved
+      // Activate immediately but keep emailVerified=false until the user proves
+      // mailbox access through the password-reset code flow.
       const user = await queryOne<{
         id: string;
         name: string;
         email: string;
+        phone: string;
+        role: string;
+        servantRole: string | null;
+        grades: string[];
+        avatar: string | null;
       }>(
         `INSERT INTO "users"
            ("id", "name", "email", "emailVerified", "isActive", "phone", "password", "role", "servantRole", "grades", "createdAt", "updatedAt")
-         VALUES (uuid_generate_v4(), $1, $2, false, false, $3, $4, 'servant', $5, $6::users_grades_enum[], now(), now())
-         RETURNING "id", "name", "email"`,
-        [name, email, phone, hashedPassword, servantRole, assignedGrades],
+         VALUES (uuid_generate_v4(), $1, $2, false, true, $3, $4, $5, $6, $7::users_grades_enum[], now(), now())
+         RETURNING "id", "name", "email", "phone", "role", "servantRole", "grades", "avatar"`,
+        [name, email, phone, hashedPassword, accountRole, servantRole, assignedGrades],
       );
 
       if (!user) {
         return serverError('فشل إنشاء الحساب');
       }
 
-      // Generate verification code and attempt to send email.
-      // If delivery fails in production we roll back the user record so the
-      // visitor can try again (email/phone not yet claimed in the DB).
-      const { code } = await createOtp(user.id, 'email_verification');
-      const sent = await sendVerificationEmail(user.email, code);
-
-      if (!sent && process.env.NODE_ENV === 'production') {
-        // Rollback: delete the just-created inactive user so their email/phone
-        // remains available for a future registration attempt.
-        await query(
-          `DELETE FROM "users" WHERE "id" = $1 AND "isActive" = false AND "emailVerified" = false`,
-          [user.id],
-        );
-        return serverError('تعذر إرسال رمز التحقق إلى بريدك الإلكتروني، يرجى المحاولة لاحقاً');
+      // Sync servant record immediately so the user appears in the servants directory.
+      try {
+        await syncServantFromUser({
+          userId: user.id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          role: user.role,
+          servantRole: user.servantRole || undefined,
+          avatar: user.avatar,
+          grades: user.grades,
+        });
+      } catch (syncErr) {
+        console.error('[register] servant sync error:', syncErr);
       }
 
-      const res = NextResponse.json({
-        requiresEmailVerification: true,
+      // Issue tokens and log the user in immediately.
+      const payload = {
+        sub: user.id,
+        role: user.role,
+        name: user.name,
         email: user.email,
-        message: 'تم إنشاء الحساب بنجاح. يرجى إدخال رمز التحقق المرسل إلى بريدك الإلكتروني لتفعيل الحساب.',
+        tid: tenant.churchId,
+      };
+
+      const access = await getAccessContext(payload);
+      const accessToken = await signAccessToken(payload);
+      const refreshToken = await issueRefreshToken(user.id);
+
+      const res = NextResponse.json({
+        accessToken,
+        requiresEmailVerification: false,
+        email: user.email,
+        message: 'تم إنشاء الحساب بنجاح وتسجيل الدخول.',
+        user: {
+          ...user,
+          servantRole: access.servantRole,
+          classIds: access.classIds,
+          permissions: access.permissions,
+        },
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },
       });
+
+      const [refreshName, refreshVal, refreshOpts] = refreshCookie(refreshToken.token, refreshToken.expiresAt);
+      res.cookies.set(refreshName, refreshVal, refreshOpts);
+
+      const [sessionName, sessionValue, sessionOptions] = sessionCookie(refreshToken.expiresAt);
+      res.cookies.set(sessionName, sessionValue, sessionOptions);
 
       return applyTenantCookie(res, tenant.slug);
     } catch (error: unknown) {
@@ -176,9 +255,6 @@ export async function POST(req: Request) {
       return serverError('حدث خطأ أثناء إنشاء الحساب');
     }
     },
-    // A valid invitation code must win over a stale church cookie so a
-    // visitor can register with a different church's code from the central
-    // domain. Host-based resolution still rejects cross-church attempts.
     { ignoreCookie: Boolean(rawChurchCode) },
   );
 }

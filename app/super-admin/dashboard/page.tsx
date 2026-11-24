@@ -50,10 +50,17 @@ interface ChurchJoinCode {
   churchName: string;
   churchSlug: string;
   churchStatus: string;
+  purpose: "join" | "admin" | "priest";
   code: string | null;
   expiresAt: string | null;
   createdAt: string | null;
   isExpired: boolean;
+}
+
+function churchCodePurposeLabel(purpose: ChurchJoinCode["purpose"]): string {
+  if (purpose === "admin") return "مسؤول";
+  if (purpose === "priest") return "أب كاهن";
+  return "انضمام خدام";
 }
 
 export default function SuperAdminDashboardPage() {
@@ -79,6 +86,7 @@ export default function SuperAdminDashboardPage() {
   } | null>(null);
   const [revealedJoinCode, setRevealedJoinCode] = useState<{
     churchName: string;
+    purpose: ChurchJoinCode["purpose"];
     code: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -115,7 +123,7 @@ export default function SuperAdminDashboardPage() {
         const joinCodesData = await joinCodesRes.json();
         setChurchJoinCodes(joinCodesData.data || []);
       } else {
-        throw new Error("تعذر تحميل رموز انضمام الكنائس");
+        throw new Error("تعذر تحميل رموز الكنائس");
       }
     } catch (err) {
       console.error("Dashboard data load error:", err);
@@ -236,7 +244,8 @@ export default function SuperAdminDashboardPage() {
   }
 
   async function handleRotateJoinCode(church: ChurchJoinCode) {
-    if (!window.confirm(`سيتم إلغاء الرمز الحالي لكنيسة "${church.churchName}" فوراً وإصدار رمز جديد. أي شخص يستخدم الرمز القديم لن يستطيع بدء تسجيل جديد. هل تريد المتابعة؟`)) {
+    const purposeLabel = churchCodePurposeLabel(church.purpose);
+    if (!window.confirm(`سيتم إلغاء رمز ${purposeLabel} الحالي لكنيسة "${church.churchName}" فوراً وإصدار رمز جديد. هل تريد المتابعة؟`)) {
       return;
     }
 
@@ -244,37 +253,38 @@ export default function SuperAdminDashboardPage() {
       const res = await fetch(`/api/super-admin/church-join-codes/${church.churchId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "rotate" }),
+        body: JSON.stringify({ action: "rotate", purpose: church.purpose }),
       });
       const data = await res.json() as { code?: unknown; message?: string };
       if (!res.ok || typeof data.code !== "string") {
-        throw new Error(data.message || "تعذر تدوير رمز الانضمام");
+        throw new Error(data.message || "تعذر تدوير الرمز");
       }
 
-      setRevealedJoinCode({ churchName: church.churchName, code: data.code });
-      toast.success(`تم تدوير رمز الانضمام لكنيسة ${church.churchName}`);
+      setRevealedJoinCode({ churchName: church.churchName, purpose: church.purpose, code: data.code });
+      toast.success(`تم تدوير رمز ${purposeLabel} لكنيسة ${church.churchName}`);
       await loadData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "تعذر تدوير رمز الانضمام");
+      toast.error(err instanceof Error ? err.message : "تعذر تدوير الرمز");
     }
   }
 
   async function handleRevokeJoinCode(church: ChurchJoinCode) {
-    if (!window.confirm(`إلغاء الرمز سيمنع بدء تسجيلات جديدة لكنيسة "${church.churchName}" باستخدامه. لن يؤثر ذلك على الحسابات التي أُنشئت سابقاً. هل تريد المتابعة؟`)) {
+    const purposeLabel = churchCodePurposeLabel(church.purpose);
+    if (!window.confirm(`إلغاء رمز ${purposeLabel} سيمنع استخدامه في تسجيلات جديدة بكنيسة "${church.churchName}". لن يؤثر ذلك على الحسابات الحالية. هل تريد المتابعة؟`)) {
       return;
     }
 
     try {
-      const res = await fetch(`/api/super-admin/church-join-codes/${church.churchId}`, {
+      const res = await fetch(`/api/super-admin/church-join-codes/${church.churchId}?purpose=${church.purpose}`, {
         method: "DELETE",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "تعذر إلغاء رمز الانضمام");
+      if (!res.ok) throw new Error(data.message || "تعذر إلغاء الرمز");
 
-      toast.success(`تم إلغاء رمز الانضمام لكنيسة ${church.churchName}`);
+      toast.success(`تم إلغاء رمز ${purposeLabel} لكنيسة ${church.churchName}`);
       await loadData();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "تعذر إلغاء رمز الانضمام");
+      toast.error(err instanceof Error ? err.message : "تعذر إلغاء الرمز");
     }
   }
 
@@ -481,7 +491,7 @@ export default function SuperAdminDashboardPage() {
             }`}
           >
             <KeyRound className="w-4 h-4" />
-            <span>رموز انضمام الكنائس ({churchJoinCodes.length})</span>
+            <span>رموز الكنائس لكل دور ({churchJoinCodes.length})</span>
           </button>
         </div>
 
@@ -721,7 +731,7 @@ export default function SuperAdminDashboardPage() {
         {activeTab === "join-codes" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-6 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-              هذه رموز انضمام للخدام إلى كنيسة موجودة، وليست رموز إنشاء كنيسة جديدة. إلغاء الرمز يمنع التسجيلات الجديدة به ولا يغيّر حسابات المستخدمين الحاليين. رمز الانضمام لا يمنح صلاحية إدارية.
+              لكل كنيسة رمز انضمام للخدام، ورمز تسجيل للمسؤول، ورمز تسجيل للأب الكاهن. احتفظ برمزي المسؤول والكاهن داخل السوبر أدمن وشاركهُما مع الأشخاص المخولين فقط. تدوير أو إلغاء أي رمز يمنع استخدامه في تسجيلات جديدة ولا يغيّر الحسابات الحالية.
             </div>
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
@@ -729,7 +739,8 @@ export default function SuperAdminDashboardPage() {
                   <thead className="bg-slate-50/75 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400">
                     <tr>
                       <th className="py-3.5 px-4 text-start font-bold">الكنيسة</th>
-                      <th className="py-3.5 px-4 text-start font-bold">رمز الانضمام</th>
+                      <th className="py-3.5 px-4 text-start font-bold">نوع الرمز</th>
+                      <th className="py-3.5 px-4 text-start font-bold">الرمز</th>
                       <th className="py-3.5 px-4 text-start font-bold">حالة الكنيسة</th>
                       <th className="py-3.5 px-4 text-start font-bold">الصلاحية</th>
                       <th className="py-3.5 px-4 text-end font-bold">الإجراءات</th>
@@ -738,15 +749,18 @@ export default function SuperAdminDashboardPage() {
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                     {churchJoinCodes.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-10 text-center text-slate-400">
+                        <td colSpan={6} className="py-10 text-center text-slate-400">
                           لا توجد كنائس مسجلة
                         </td>
                       </tr>
                     ) : churchJoinCodes.map((church) => (
-                      <tr key={church.churchId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <tr key={`${church.churchId}-${church.purpose}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                         <td className="py-3.5 px-4">
                           <div className="font-bold text-slate-900 dark:text-slate-100">{church.churchName}</div>
                           <div className="font-mono text-[11px] text-slate-500" dir="ltr">{church.churchSlug}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {churchCodePurposeLabel(church.purpose)}
                         </td>
                         <td className="py-3.5 px-4">
                           {church.code ? (
@@ -758,8 +772,8 @@ export default function SuperAdminDashboardPage() {
                                 onClick={() => {
                                   if (church.code) void copyToClipboard(church.code);
                                 }}
-                                title="نسخ رمز الانضمام"
-                                aria-label={`نسخ رمز انضمام ${church.churchName}`}
+                                title={`نسخ رمز ${churchCodePurposeLabel(church.purpose)}`}
+                                aria-label={`نسخ رمز ${churchCodePurposeLabel(church.purpose)} لكنيسة ${church.churchName}`}
                                 className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                               >
                                 <Copy className="w-3.5 h-3.5" />
@@ -777,7 +791,7 @@ export default function SuperAdminDashboardPage() {
                               type="button"
                               onClick={() => void handleRotateJoinCode(church)}
                               title="إلغاء الرمز الحالي وإصدار بديل"
-                              aria-label={`تدوير رمز انضمام ${church.churchName}`}
+                              aria-label={`تدوير رمز ${churchCodePurposeLabel(church.purpose)} لكنيسة ${church.churchName}`}
                               className="p-1.5 rounded-lg text-slate-600 hover:text-indigo-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
@@ -786,8 +800,8 @@ export default function SuperAdminDashboardPage() {
                               <button
                                 type="button"
                                 onClick={() => void handleRevokeJoinCode(church)}
-                                title="إلغاء رمز الانضمام"
-                                aria-label={`إلغاء رمز انضمام ${church.churchName}`}
+                                title={`إلغاء رمز ${churchCodePurposeLabel(church.purpose)}`}
+                                aria-label={`إلغاء رمز ${churchCodePurposeLabel(church.purpose)} لكنيسة ${church.churchName}`}
                                 className="p-1.5 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:bg-red-950/40"
                               >
                                 <Ban className="w-3.5 h-3.5" />
@@ -899,8 +913,8 @@ export default function SuperAdminDashboardPage() {
         <div className="fixed bottom-5 left-5 right-5 sm:left-auto sm:right-8 z-40 max-w-xl rounded-2xl border border-emerald-500/30 bg-white p-4 shadow-2xl dark:bg-slate-900">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="font-bold text-emerald-700 dark:text-emerald-400">رمز انضمام جديد — {revealedJoinCode.churchName}</p>
-              <p className="text-[11px] text-slate-500">أصبح الرمز السابق غير صالح؛ شارك الرمز الجديد مع الخدام.</p>
+              <p className="font-bold text-emerald-700 dark:text-emerald-400">رمز {churchCodePurposeLabel(revealedJoinCode.purpose)} جديد — {revealedJoinCode.churchName}</p>
+              <p className="text-[11px] text-slate-500">أصبح الرمز السابق غير صالح. شارك الرمز مع المخولين باستخدامه فقط.</p>
             </div>
             <div className="flex items-center gap-2">
               <code className="font-mono font-black tracking-wider" dir="ltr">{revealedJoinCode.code}</code>

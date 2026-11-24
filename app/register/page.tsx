@@ -9,7 +9,7 @@ import {
   passwordPolicyMessageKey,
 } from "../lib/password-policy";
 import { toast } from "sonner";
-import { User, Mail, Phone, Lock, Languages, ArrowLeft, ArrowRight } from "lucide-react";
+import { User, Mail, Phone, Lock, Languages, ArrowLeft, ArrowRight, KeyRound } from "lucide-react";
 import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 import { FloatingLabelInput } from "../components/ui/FloatingInput";
 import { MotionInView } from "../components/motion";
@@ -24,11 +24,17 @@ const GRADE_OPTIONS: Array<{ value: string; key: AppMessageKey }> = [
   { value: "general", key: "grade.general" },
 ];
 
+/** Roles that require a secret code from the super admin */
+const PRIVILEGED_ROLES = new Set(["admin", "priest"]);
+/** Roles that don't get assigned to a specific class/grade */
+const GRADELESS_ROLES = new Set(["admin", "priest"]);
+
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("first");
   const [servantRole, setServantRole] = useState("servant");
+  const [roleCode, setRoleCode] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -42,6 +48,9 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { t, locale, setLocale, direction } = useI18n();
+
+  const isPrivilegedRole = PRIVILEGED_ROLES.has(servantRole);
+  const needsGrade = !GRADELESS_ROLES.has(servantRole);
 
   // Query parameters bootstrap the central join flow after hydration.
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -136,6 +145,12 @@ export default function RegisterPage() {
       return;
     }
 
+    if (isPrivilegedRole && !roleCode.trim()) {
+      setError(t("register.roleCodeRequired"));
+      toast.error(t("register.roleCodeRequired"));
+      return;
+    }
+
     const policyIssue = passwordPolicyIssue(password);
     if (policyIssue) {
       const message = t(passwordPolicyMessageKey(policyIssue) as AppMessageKey);
@@ -154,27 +169,29 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      // Registration intentionally creates an inactive account and returns no
-      // tokens. The account becomes usable only after the emailed code is
-      // confirmed on /verify-email, which is also why no avatar is uploaded
-      // here: there is no authenticated session yet.
       const result = await registerUser({
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password,
-        servantRole: servantRole === "class_leader" ? "class_leader" : "servant",
-        grades: [grade],
+        servantRole: (() => {
+          if (servantRole === "class_leader") return "class_leader";
+          if (servantRole === "admin") return "admin";
+          if (servantRole === "priest") return "priest";
+          return "servant";
+        })(),
+        roleCode: isPrivilegedRole ? roleCode.trim() : undefined,
+        grades: needsGrade ? [grade] : [],
         churchCode: churchCode.trim() || undefined,
         churchSlug: churchSlug || requestedChurchSlug || undefined,
       });
 
-      const destination = result.email || email.trim().toLowerCase();
-      toast.success(t("register.welcome", { name: name.trim() }), {
-        description: t("register.welcomeHint", { email: destination }),
-      });
+      if (!result.accessToken || !result.user) {
+        throw new Error(t("register.sessionFailed"));
+      }
 
-      router.push(`/verify-email?email=${encodeURIComponent(destination)}`);
+      toast.success(t("register.welcome", { name: name.trim() }));
+      router.push("/dashboard");
     } catch (err: unknown) {
       const msg =
         err instanceof ApiError
@@ -235,7 +252,7 @@ export default function RegisterPage() {
                 htmlFor="churchCode"
                 className="text-xs font-semibold text-slate-600 dark:text-slate-300"
               >
-                {t("register.churchCode")}
+              {t("register.churchCode")}
               </label>
               <div className="flex gap-2">
                 <input
@@ -301,34 +318,62 @@ export default function RegisterPage() {
                 <select
                   id="servantRole"
                   value={servantRole}
-                  onChange={(e) => setServantRole(e.target.value)}
+                  onChange={(e) => {
+                    setServantRole(e.target.value);
+                    setRoleCode("");
+                  }}
                   disabled={loading}
                   className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60"
                 >
                   <option value="servant">{t("register.roleServant")}</option>
                   <option value="class_leader">{t("register.roleClassLeader")}</option>
+                  <option value="admin">{t("register.roleAdmin")}</option>
+                  <option value="priest">{t("register.rolePriest")}</option>
                 </select>
               </div>
 
-              <div className="fld">
-                <label htmlFor="grade" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-                  {t("register.grade")}
-                </label>
-                <select
-                  id="grade"
-                  value={grade}
-                  onChange={(e) => setGrade(e.target.value)}
-                  disabled={loading}
-                  className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60"
-                >
-                  {GRADE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {t(option.key)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {needsGrade && (
+                <div className="fld">
+                  <label htmlFor="grade" className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    {t("register.grade")}
+                  </label>
+                  <select
+                    id="grade"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    disabled={loading}
+                    className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60"
+                  >
+                    {GRADE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {t(option.key)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {/* Role code for privileged roles */}
+            {isPrivilegedRole && (
+              <div className="rounded-2xl border border-amber-200 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-900/20 p-4 space-y-2">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  {t(servantRole === "priest" ? "register.priestCodeHint" : "register.adminCodeHint")}
+                </p>
+                <FloatingLabelInput
+                  id="roleCode"
+                  label={t(servantRole === "priest" ? "register.priestCodeLabel" : "register.adminCodeLabel")}
+                  type="password"
+                  required={isPrivilegedRole}
+                  autoComplete="off"
+                  value={roleCode}
+                  onChange={(e) => setRoleCode(e.target.value)}
+                  disabled={loading}
+                  showPasswordToggle
+                  startIcon={<KeyRound className="h-4 w-4 text-amber-600" />}
+                />
+              </div>
+            )}
 
             <FloatingLabelInput
               id="email"

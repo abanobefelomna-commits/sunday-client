@@ -85,6 +85,7 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
          FROM "churches" c
          LEFT JOIN "church_codes" cc
            ON cc."churchId" = c."id"
+          AND cc."purpose" = 'join'
           AND cc."revoked" = false
           AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
          WHERE (($1::text <> '' AND upper(cc."code") = upper($1))
@@ -170,7 +171,7 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
       const church = await platformQueryOne<{ code: string }>(
         `SELECT cc."code" FROM "church_codes" cc
          JOIN "provisioning_jobs" pj ON pj."churchId" = cc."churchId"
-         WHERE pj."id" = $1 AND cc."revoked" = false LIMIT 1`,
+         WHERE pj."id" = $1 AND cc."purpose" = 'join' AND cc."revoked" = false LIMIT 1`,
         [jobId],
       );
       return NextResponse.json({
