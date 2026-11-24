@@ -82,4 +82,6 @@ test('provisioning never activates church without tenant identity verification',
   // Concurrency: claimJob uses an atomic UPDATE with a WHERE predicate
   assert.match(provisioning, /status.*IN.*'queued'.*'failed'/s);
   assert.match(provisioning, /lockedAt.*now\(\) - interval '15 minutes'/s);
+  // The cron selector also reclaims jobs stuck in `running` after a timeout.
+  assert.match(provisioning, /OR \("status" = 'running'/);
 });

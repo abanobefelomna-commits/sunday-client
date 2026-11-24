@@ -534,9 +534,14 @@ export async function getProvisioningStatus(jobId: string, token?: string | null
 export async function processPendingProvisioningJobs(limit = 5): Promise<ProvisionResult[]> {
   const jobs = await platformQuery<{ id: string }>(
     `SELECT "id" FROM "provisioning_jobs"
-     WHERE "status" IN ('queued', 'failed')
-       AND "attempts" < "maxAttempts"
-       AND "nextAttemptAt" <= now()
+     WHERE (
+       ("status" IN ('queued', 'failed')
+        AND "attempts" < "maxAttempts"
+        AND "nextAttemptAt" <= now())
+       OR ("status" = 'running'
+        AND "lockedAt" < now() - interval '15 minutes'
+        AND "attempts" < "maxAttempts")
+     )
      ORDER BY "createdAt" ASC
      LIMIT $1`,
     [Math.max(1, Math.min(limit, 50))],
