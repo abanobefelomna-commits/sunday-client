@@ -44,9 +44,9 @@ export default function JoinChurchFlow() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(input),
       });
-      const body = await response.json() as { church?: MatchedChurch; message?: string };
-      if (!response.ok || !body.church?.slug || !body.church.name) {
-        throw new Error(body.message || flow.lookupError);
+      const body = await response.json().catch(() => null) as { church?: MatchedChurch; message?: string } | null;
+      if (!response.ok || !body?.church?.slug || !body.church.name) {
+        throw new Error(body?.message || flow.lookupError);
       }
 
       // A valid join code takes the servant straight to that church's

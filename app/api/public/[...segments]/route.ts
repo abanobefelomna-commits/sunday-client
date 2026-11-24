@@ -75,25 +75,37 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
       }
 
       const { platformQueryOne } = await import("@/src/server/platform/db");
-      const church = await platformQueryOne<{
+      let church: {
         slug: string;
         name: string;
         city: string | null;
         verificationStatus: "verified" | "unverified" | "pending" | "rejected";
-      }>(
-        `SELECT c."slug", c."name", c."city", c."verificationStatus"
-         FROM "churches" c
-         LEFT JOIN "church_codes" cc
-           ON cc."churchId" = c."id"
-          AND cc."purpose" = 'join'
-          AND cc."revoked" = false
-          AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
-         WHERE (($1::text <> '' AND upper(cc."code") = upper($1))
-                OR ($2::text <> '' AND c."slug" = $2))
-           AND c."status" = 'active'
-         LIMIT 1`,
-        [code, slug],
-      );
+      } | null;
+      try {
+        church = await platformQueryOne(
+          `SELECT c."slug", c."name", c."city", c."verificationStatus"
+           FROM "churches" c
+           LEFT JOIN "church_codes" cc
+             ON cc."churchId" = c."id"
+            AND cc."purpose" = 'join'
+            AND cc."revoked" = false
+            AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
+           WHERE (($1::text <> '' AND upper(cc."code") = upper($1))
+                  OR ($2::text <> '' AND c."slug" = $2))
+             AND c."status" = 'active'
+           LIMIT 1`,
+          [code, slug],
+        );
+      } catch (error) {
+        console.error(
+          "[PublicChurchCodeLookup] database query failed:",
+          error instanceof Error ? error.name : "UnknownError",
+        );
+        return NextResponse.json(
+          { code: "PUBLIC_LOOKUP_UNAVAILABLE", message: "تعذر البحث عن الكنيسة الآن. حاول مرة أخرى لاحقًا." },
+          { status: 503, headers: { "Cache-Control": "no-store" } },
+        );
+      }
       if (!church) {
         return NextResponse.json(
           { message: "رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية" },
