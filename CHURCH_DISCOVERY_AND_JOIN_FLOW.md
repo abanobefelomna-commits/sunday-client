@@ -8,22 +8,25 @@ The current `/churches` route renders no sample listings. It queries `/api/publi
 
 ## Church registration and code lifecycle
 
-The `/register/church` form gathers church identity, optional city publication consent, and initial administrator details. It sends the request through the Next public API proxy. The canonical API must validate and deduplicate the request, hash the administrator password with the existing Argon2 implementation, create a pending central church/provisioning job, and avoid returning an active tenant before successful provisioning.
+The `/register/church` form gathers church identity, optional city publication consent, and initial administrator details. It sends the request through the Next public API proxy. The canonical API validates and deduplicates the request, hashes the administrator password with the existing Argon2 implementation, creates a pending central church/provisioning job, and returns only a job ID plus an opaque provisioning token. The church never becomes active before successful provisioning.
 
-After successful provisioning, the API should generate a random non-guessable code. Store a verifier/hash rather than plaintext where possible; reveal the code only to the authorized initial administrator after the provisioning token is checked. Codes identify a church for a join request; they are not passwords, login factors, or authorization credentials. Add rotation/revocation with audit actor and timestamp. Never publish the code in the directory, public URLs, logs, or analytics.
+The church join code is generated atomically with the church record and its provisioning job. It lives in `church_codes` as a shareable, non-sensitive code (one active code per church, enforced by a partial unique index). Church **creation** codes are different: they are stored only as SHA-256 hashes and are consumed when a new church is registered. Never publish either code in the directory, public URLs, logs, or analytics.
 
-The UI stores the short-lived provisioning token in `sessionStorage`, not in the URL. It polls status with an `X-Provisioning-Token` header and renders a church code only after a successful status response. The Nest endpoint and actual code generation are not implemented yet, so the complete onboarding path is pending.
+After provisioning succeeds, the join code is delivered to the church's privileged users. Super Admin can list every church's active join code, copy it, rotate it, or revoke it. Rotations and revocations are audited without recording the plaintext code.
 
-## Join request and membership rules
+The UI stores the short-lived provisioning token in `sessionStorage`, not in the URL. It polls status with an `X-Provisioning-Token` header and renders a church code only after a successful status response. Provisioning starts immediately after registration through `after()` and is retried by the daily `/api/super-admin/provision` cron, which is guarded by `PROVISIONING_CRON_SECRET`/`CRON_SECRET`.
 
-1. A servant finds an opted-in directory entry or enters a private code.
-2. The server returns the church's public identity so the requester can confirm the destination.
-3. A signed-in, verified identity submits a request. The server resolves the identity from the verified session, not from a user ID or church ID supplied by the browser.
-4. The server records a pending request with target church, requester identity, creation time and audit data. The requester receives a pending status.
-5. A church administrator authenticated in the target tenant reviews and approves/rejects. Record decision actor, time and reason. Reject self-approval and role changes supplied by the requester.
-6. Only after approval may a tenant-local account/membership and the administrator-assigned permissions become active.
+## Join code and registration rules
 
-Entering a code or selecting a directory card must never create a membership or grant tenant access. Platform administrators are not church administrators by default.
+1. A servant receives a church join code from the Super Admin or a church administrator.
+2. The servant opens `/join` and enters the code.
+3. The server validates the code against the central `church_codes` table and resolves the active church.
+4. The browser stores the code in tab-scoped `sessionStorage` and redirects to `/register?church=<slug>`.
+5. The registration page re-validates the code, confirms it belongs to the requested church, and shows the church name.
+6. Registration creates an ordinary `servant` account inside that church. The role is fixed by the server; the browser cannot request an administrator role.
+7. Administrators and priests are appointed later by an existing church administrator through the tenant dashboard.
+
+Entering a code or selecting a directory card must never grant tenant access, membership approval, or an administrative role by itself. Platform administrators are not church administrators by default.
 
 ## Identity model decision
 
@@ -35,6 +38,8 @@ The directory and join routes call the allowlisted Next-to-Nest API proxy for di
 
 The Super Admin dashboard has separate controls for church creation codes and church join codes. Join codes are listed per non-archived church, can be copied, rotated, or revoked, and management mutations are audited without recording the plaintext code. Revocation prevents new registrations using that code and does not alter existing users.
 
-The visitor API proxy now bounds search/body size, rejects non-JSON writes, discards upstream error bodies, and filters successful payloads to allowlisted directory, provisioning, join, and Preview fields. The join page offers the existing servant registration route after a church has been matched. These are frontend safeguards and routes only; they do not create membership.
+The visitor API proxy now bounds search/body size, rejects non-JSON writes, discards upstream error bodies, and filters successful payloads to allowlisted directory, provisioning, code-lookup, and Preview fields. The join page validates the code and redirects directly to the church's servant registration page; there is no separate membership-request approval step in the current legacy flow.
 
-The implementation is not complete until the Nest API, tenant provisioning, membership approval UI/API, tenant-bound authorization, notifications, and isolation tests are implemented and run. The real backend path is not yet available.
+The Super Admin dashboard has separate controls for church creation codes and church join codes. Join codes are listed per non-archived church, can be copied, rotated, or revoked, and management mutations are audited without recording the plaintext code. Revocation prevents new registrations using that code and does not alter existing users.
+
+Church provisioning is implemented in `src/server/platform/provisioning.ts`. New registrations trigger it immediately after the HTTP response, and a guarded daily cron retries queued or failed jobs. A church becomes `active` only after its tenant database, migrations, identity row, initial administrator, entitlements, and tenant connection are all verified. The remaining production blocker for servant self-registration is outbound email: SMTP must be configured before verification messages can be delivered.

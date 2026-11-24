@@ -1,7 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sanitizePublicSuccess } from "@/src/server/public-response";
 
 import type { ChurchRegistrationInput } from "@/src/server/platform/churches";
+
+// Provisioning runs after the registration response is sent, so the route
+// needs room for tenant migrations and seeding.
+export const maxDuration = 300;
 
 type RouteContext = { params: Promise<{ segments: string[] }> };
 
@@ -10,7 +14,7 @@ function allowedPath(method: string, path: string): boolean {
     return path === "churches" || path === "preview" || /^church-registrations\/[0-9a-f-]{36}\/status$/i.test(path);
   }
   if (method === "POST") {
-    return path === "church-registrations" || path === "church-code/lookup" || path === "join-requests";
+    return path === "church-registrations" || path === "church-code/lookup";
   }
   return false;
 }
@@ -121,6 +125,22 @@ async function proxy(request: Request, context: RouteContext): Promise<Response>
       }
       try {
         const result = await registerChurch({ ...(payload as unknown as ChurchRegistrationInput), ip });
+
+        // Start provisioning immediately after the response instead of making
+        // the new church wait for the daily retry cron. The job is already
+        // durably queued, so a failure here is safe: the cron retries it.
+        after(async () => {
+          try {
+            const { provisionChurch } = await import("@/src/server/platform/provisioning");
+            await provisionChurch(result.jobId, { type: "public", ip });
+          } catch (error: unknown) {
+            console.error(
+              "[Provisioning] background start failed:",
+              error instanceof Error ? error.name : "UnknownError",
+            );
+          }
+        });
+
         return NextResponse.json({ jobId: result.jobId, provisioningToken: result.provisioningToken });
       } catch (err: unknown) {
         const status = (err as { status?: number }).status || 400;

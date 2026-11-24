@@ -55,6 +55,8 @@ test('a join code is checked centrally, must match a requested church, and canno
   assert.doesNotMatch(registration, /body\.role/);
   assert.match(joinFlow, /\/register\?church=/);
   assert.match(joinFlow, /sessionStorage\.setItem\("churchJoinCode"/);
+  assert.match(joinFlow, /router\.push\(`\/register\?church=/);
+  assert.doesNotMatch(joinFlow, /join-requests/);
   assert.doesNotMatch(joinFlow, /register\?church=[^`]*code=/);
   assert.match(registerPage, /sessionStorage\.removeItem\("churchJoinCode"\)/);
   assert.match(registerPage, /churchSlug: churchSlug \|\| requestedChurchSlug/);

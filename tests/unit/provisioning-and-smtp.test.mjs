@@ -38,6 +38,17 @@ test('vercel.json registers a cron for the provisioning endpoint', () => {
   assert.ok(typeof cronEntry.schedule === 'string', 'schedule must be a string');
 });
 
+test('new church registration starts provisioning immediately and keeps the cron as a fallback', () => {
+  const route = read('app/api/public/[...segments]/route.ts');
+
+  assert.match(route, /import \{ NextResponse, after \} from "next\/server"/);
+  assert.match(route, /after\(async \(\) => \{/);
+  assert.match(route, /provisionChurch\(result\.jobId/);
+  assert.match(route, /type: "public"/);
+  assert.match(route, /export const maxDuration = 300/);
+  assert.match(read('app/api/super-admin/provision/route.ts'), /process\.env\.CRON_SECRET/);
+});
+
 test('register route rolls back the user record on SMTP failure in production', () => {
   const route = read('app/api/auth/register/route.ts');
 

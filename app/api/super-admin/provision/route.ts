@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const secret = (process.env.PROVISIONING_CRON_SECRET || '').trim();
+  const secret = (process.env.PROVISIONING_CRON_SECRET || process.env.CRON_SECRET || '').trim();
   const authHeader = req.headers.get('authorization') || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
 
