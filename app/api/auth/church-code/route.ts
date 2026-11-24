@@ -29,18 +29,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'رمز دعوة الكنيسة مطلوب' }, { status: 400 });
   }
 
-  const row = await platformQueryOne<{ id: string; slug: string; name: string }>(
-    `SELECT c."id", c."slug", c."name"
-     FROM "church_codes" cc
-     JOIN "churches" c ON c."id" = cc."churchId"
-     WHERE upper(cc."code") = upper($1)
-       AND cc."purpose" = 'join'
-       AND cc."revoked" = false
-       AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
-       AND c."status" = 'active'
-     LIMIT 1`,
-    [code],
-  );
+  let row: { id: string; slug: string; name: string } | null;
+  try {
+    row = await platformQueryOne(
+      `SELECT c."id", c."slug", c."name"
+       FROM "church_codes" cc
+       JOIN "churches" c ON c."id" = cc."churchId"
+       WHERE upper(cc."code") = upper($1)
+         AND cc."purpose" = 'join'
+         AND cc."revoked" = false
+         AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
+         AND c."status" = 'active'
+       LIMIT 1`,
+      [code],
+    );
+  } catch (error) {
+    console.error(
+      '[ChurchCodeLookup] platform query failed:',
+      error instanceof Error ? error.name : 'UnknownError',
+    );
+    return NextResponse.json(
+      { message: 'تعذر التحقق من رمز الكنيسة الآن. حاول مرة أخرى لاحقًا.', code: 'CHURCH_CODE_LOOKUP_UNAVAILABLE' },
+      { status: 503 },
+    );
+  }
 
   if (!row) {
     return NextResponse.json(

@@ -72,17 +72,26 @@ export async function POST(req: Request) {
     if (rawChurchCode.length > 64) {
       return badRequest('رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية');
     }
-    const codeRow = await platformQueryOne<{ slug: string }>(
-      `SELECT c."slug"
-       FROM "church_codes" cc
-       JOIN "churches" c ON c."id" = cc."churchId"
-       WHERE upper(cc."code") = upper($1) AND cc."purpose" = 'join'
-         AND cc."revoked" = false
-         AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
-         AND c."status" = 'active'
-       LIMIT 1`,
-      [rawChurchCode],
-    );
+    let codeRow: { slug: string } | null;
+    try {
+      codeRow = await platformQueryOne(
+        `SELECT c."slug"
+         FROM "church_codes" cc
+         JOIN "churches" c ON c."id" = cc."churchId"
+         WHERE upper(cc."code") = upper($1) AND cc."purpose" = 'join'
+           AND cc."revoked" = false
+           AND (cc."expiresAt" IS NULL OR cc."expiresAt" > now())
+           AND c."status" = 'active'
+         LIMIT 1`,
+        [rawChurchCode],
+      );
+    } catch (error) {
+      console.error(
+        '[register] church code lookup failed:',
+        error instanceof Error ? error.name : 'UnknownError',
+      );
+      return serverError('تعذر التحقق من رمز الكنيسة الآن. حاول مرة أخرى لاحقًا.');
+    }
     if (!codeRow) {
       return badRequest('رمز دعوة الكنيسة غير صالح أو منتهي الصلاحية');
     }

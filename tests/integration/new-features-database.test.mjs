@@ -126,16 +126,20 @@ test('the Virgin Mary church and its data survive with an active invitation code
   assert.equal(church.isLifetimeFree, true);
 
   const [codes] = await platform.query(
-    `SELECT count(*)::int AS c FROM "church_codes"
+    `SELECT array_agg("purpose" ORDER BY "purpose") AS purposes FROM "church_codes"
      WHERE "churchId" = $1 AND "revoked" = false`,
     [EXISTING_CHURCH_ID],
   );
-  assert.equal(codes.c, 1, 'exactly one active invitation code must exist for the church');
+  assert.deepEqual(
+    codes.purposes,
+    ['admin', 'join', 'priest'],
+    'the church must have one active code for joining, admin registration, and priest registration',
+  );
 
   const duplicates = await platform.query(
-    `SELECT "churchId" FROM "church_codes"
+    `SELECT "churchId", "purpose" FROM "church_codes"
      WHERE "revoked" = false
-     GROUP BY "churchId" HAVING count(*) > 1`,
+     GROUP BY "churchId", "purpose" HAVING count(*) > 1`,
   );
-  assert.equal(duplicates.length, 0, 'no church may have two active invitation codes');
+  assert.equal(duplicates.length, 0, 'no church may have two active codes with the same purpose');
 });
