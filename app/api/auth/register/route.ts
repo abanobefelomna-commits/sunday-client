@@ -14,6 +14,7 @@ import { badRequest, conflict, serverError, getAccessContext } from '@/src/serve
 import { claimClassLeadership, syncServantFromUser } from '@/src/server/servants';
 import { ensureDefaultClasses } from '@/src/server/classes';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
+import { hostIdentifiesTenant } from '@/src/server/tenant/resolve';
 import {
   getRequestIp,
   rateLimit,
@@ -102,6 +103,21 @@ export async function POST(req: Request) {
     explicitSlug = codeRow.slug;
   }
 
+  // Without an invitation code the church must be identified by the request
+  // Host itself. A bare slug, a stale cookie or the default tenant must never
+  // be enough to join a church.
+  if (!rawChurchCode) {
+    let hostOk = false;
+    try {
+      hostOk = await hostIdentifiesTenant(req);
+    } catch {
+      hostOk = false;
+    }
+    if (!hostOk) {
+      return badRequest('أدخل رمز دعوة الكنيسة لإنشاء حساب');
+    }
+  }
+
   return withResolvedTenant(
     req,
     explicitSlug,
@@ -130,6 +146,7 @@ export async function POST(req: Request) {
       // All other requested roles are silently normalised to servant/class_leader.
       let accountRole: 'servant' | 'admin' | 'priest' = 'servant';
       let servantRole: string = 'servant';
+      let roleCodeId: string | null = null;
 
       if (rawServantRole === 'priest') {
         accountRole = 'priest';
@@ -164,6 +181,7 @@ export async function POST(req: Request) {
         if (!roleCode) {
           return badRequest('رمز الدور غير صالح أو لا يخص الكنيسة المحددة');
         }
+        roleCodeId = roleCode.id;
       }
 
       if (
@@ -220,6 +238,20 @@ export async function POST(req: Request) {
 
       const hashedPassword = await hashPassword(password);
 
+      // Role codes are single-use: consume atomically so two requests cannot
+      // both redeem the same code.
+      if (roleCodeId) {
+        const consumed = await platformQueryOne<{ id: string }>(
+          `UPDATE "church_codes" SET "revoked" = true, "updatedAt" = now()
+           WHERE "id" = $1 AND "revoked" = false
+           RETURNING "id"`,
+          [roleCodeId],
+        );
+        if (!consumed) {
+          return badRequest('رمز الدور غير صالح أو تم استخدامه من قبل');
+        }
+      }
+
       // Activate immediately but keep emailVerified=false until the user proves
       // mailbox access through the password-reset code flow.
       const user = await queryOne<{
@@ -240,6 +272,12 @@ export async function POST(req: Request) {
       );
 
       if (!user) {
+        if (roleCodeId) {
+          await platformQueryOne(
+            `UPDATE "church_codes" SET "revoked" = false, "updatedAt" = now() WHERE "id" = $1 RETURNING "id"`,
+            [roleCodeId],
+          ).catch(() => null);
+        }
         return serverError('فشل إنشاء الحساب');
       }
 

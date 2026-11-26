@@ -227,6 +227,21 @@ export async function resolveTenantRequest(
   };
 }
 
+/**
+ * True only when the request Host itself identifies an active church (custom
+ * domain or subdomain). Cookies, body slugs and the default tenant do not
+ * count, so it is safe to use for "no invitation code needed" decisions.
+ */
+export async function hostIdentifiesTenant(request: Request): Promise<boolean> {
+  const host =
+    normalizeHost(request.headers.get('x-forwarded-host')) ||
+    normalizeHost(request.headers.get('host'));
+  if (!host) return false;
+  const hostSlug = hostToTenantSlug(host);
+  const tenant = (await loadByHost(host)) || (hostSlug ? await loadBySlug(hostSlug) : null);
+  return Boolean(tenant);
+}
+
 export async function getTenantBySlug(slug: string): Promise<TenantContext | null> {
   return loadBySlug(slug);
 }

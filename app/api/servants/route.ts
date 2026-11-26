@@ -14,11 +14,13 @@ import {
 } from '@/src/server/middleware';
 import {
   claimClassLeadership,
+  isPrivilegedServantRole,
   normalizeServantRole,
   reconcileServantLeadership,
   servantRoleLabel,
 } from '@/src/server/servants';
 import { isUuid } from '@/src/server/validation';
+import { canManagePrivilegedServants } from '@/src/server/access';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -208,6 +210,10 @@ async function POSTHandler(req: Request) {
       return forbidden('غير مسموح بتعيين هذه الصفة');
     }
     const roleLabel = servantRoleLabel(roleCode);
+
+    if (isPrivilegedServantRole(roleCode) && !canManagePrivilegedServants(access)) {
+      return forbidden('إضافة مسؤول أو أب كاهن متاحة للمسؤول والكاهن فقط');
+    }
 
     await ensureDefaultClasses();
     let assignedClassIds: string[] = [];

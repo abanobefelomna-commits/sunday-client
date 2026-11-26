@@ -18,6 +18,7 @@ import {
 import {
   claimClassLeadership,
   loadServantAccessRecord,
+  isPrivilegedServantRole,
   normalizeServantRole,
   reconcileServantLeadership,
   servantRoleLabel,
@@ -25,6 +26,7 @@ import {
 import { revokeAllUserRefreshTokens } from '@/src/server/auth';
 import { recordAudit, requestIp } from '@/src/server/audit';
 import { isUuid } from '@/src/server/validation';
+import { canManagePrivilegedServants } from '@/src/server/access';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -124,6 +126,15 @@ async function PATCHHandler(
         return forbidden('غير مسموح بتعيين هذه الصفة');
       }
       canonicalRole = servantRoleLabel(code);
+    }
+
+    // Only administrators/priests (or roles.manage) may touch or create a
+    // privileged servant, so servants.write alone cannot escalate privileges.
+    if (
+      (isPrivilegedServantRole(record.role) || isPrivilegedServantRole(canonicalRole)) &&
+      !canManagePrivilegedServants(access)
+    ) {
+      return forbidden('تعديل بيانات المسؤول أو الأب الكاهن متاح للمسؤول والكاهن فقط');
     }
 
     const finalRole = canonicalRole ?? record.role;
@@ -256,6 +267,9 @@ async function DELETEHandler(
     if (!record) return notFound('الخادم غير موجود');
     if (!canManageServantRecord(access, record)) {
       return forbidden('غير مسموح بحذف هذا الخادم');
+    }
+    if (isPrivilegedServantRole(record.role) && !canManagePrivilegedServants(access)) {
+      return forbidden('حذف المسؤول أو الأب الكاهن متاح للمسؤول والكاهن فقط');
     }
 
     // A linked privileged account can never be removed through the servant
