@@ -186,15 +186,10 @@ export async function resolveTenantRequest(
     const cookieSlug = readCookie(request, 'tenant_slug');
     if (cookieSlug && /^[a-z0-9-]{2,63}$/.test(cookieSlug)) {
       const tenant = await loadBySlug(cookieSlug);
-      if (tenant) {
-        if (explicitSlug && explicitSlug !== tenant.slug) {
-          return {
-            ok: false,
-            status: 403,
-            code: 'TENANT_MISMATCH',
-            message: 'The selected church does not match the current session.',
-          };
-        }
+      // The cookie is only a hint. A church the user explicitly selected (or
+      // entered a code for) always wins over a stale cookie from an earlier
+      // session; the Host check above still rejects a conflicting selection.
+      if (tenant && (!explicitSlug || explicitSlug === tenant.slug)) {
         return { ok: true, tenant };
       }
     }

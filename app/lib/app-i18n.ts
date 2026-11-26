@@ -91,6 +91,8 @@ const ar = {
   "login.welcome": "أهلاً بك يا {name}! تم تسجيل الدخول بنجاح ✝",
   "login.failed": "بيانات الدخول غير صحيحة، حاول مجدداً",
   "login.defaultUser": "خادم المسيح",
+  "login.churchCode": "رمز الكنيسة (اختياري)",
+  "login.churchCodeHint": "اتركه فارغًا إذا كنت تدخل من رابط كنيستك. اكتبه لو حسابك في كنيسة أخرى.",
 
   "password.tooShort": "كلمة السر يجب ألا تقل عن ١٠ أحرف",
   "password.tooLong": "كلمة السر طويلة جداً (الحد الأقصى ١٢٨ حرفاً)",
@@ -1299,6 +1301,8 @@ const en: Record<AppMessageKey, string> = {
   "login.welcome": "Welcome, {name}! You are signed in ✝",
   "login.failed": "Incorrect sign-in details, please try again",
   "login.defaultUser": "Servant of Christ",
+  "login.churchCode": "Church code (optional)",
+  "login.churchCodeHint": "Leave empty if you use your church's own link. Enter it if your account is in another church.",
 
   "password.tooShort": "The password must be at least 10 characters",
   "password.tooLong": "The password is too long (128 characters maximum)",
