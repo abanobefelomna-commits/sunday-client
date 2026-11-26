@@ -2,12 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  canReadClass,
+  canAssignServantRole,
   canManageClassStructure,
   canManagePromotions,
+  canManageServantRecord,
+  canManageServantsInClass,
+  canReadClass,
   canViewPrivateNotes,
   canWriteClass,
+  effectiveClassIds,
+  hasBroadClassRead,
+  isClassLeaderAccess,
   isPrivilegedRole,
+  readScopeClassIds,
 } from '../../src/server/access.ts';
 
 const scoped = {
@@ -95,6 +102,77 @@ test('isPrivilegedRole recognizes English and Arabic leadership roles', () => {
   assert.equal(isPrivilegedRole('servant', 'أب كاهن'), true);
   assert.equal(isPrivilegedRole('servant', 'خادم'), false);
   assert.equal(isPrivilegedRole(null, null), false);
+});
+
+const classLeader = {
+  ...scoped,
+  servantRole: 'قائد فصل',
+  classIds: ['class-a', 'class-b'],
+  ledClassIds: ['class-a'],
+};
+
+test('a class leader is scoped to led classes even in legacy broad-read churches', () => {
+  const legacyLeader = { ...classLeader, readAllClasses: true };
+
+  assert.equal(isClassLeaderAccess(classLeader), true);
+  assert.equal(isClassLeaderAccess({ ...scoped, ledClassIds: ['class-a'] }), true);
+  assert.equal(isClassLeaderAccess(scoped), false);
+
+  assert.deepEqual(effectiveClassIds(classLeader), ['class-a']);
+  assert.deepEqual(readScopeClassIds(classLeader), ['class-a']);
+  assert.deepEqual(readScopeClassIds(legacyLeader), ['class-a']);
+  assert.equal(hasBroadClassRead(legacyLeader), false);
+
+  assert.equal(canReadClass(legacyLeader, 'class-a'), true);
+  assert.equal(canReadClass(legacyLeader, 'class-b'), false);
+  assert.equal(canReadClass(legacyLeader, 'class-z'), false);
+  assert.equal(canReadClass(legacyLeader, null), false);
+  assert.equal(canWriteClass(legacyLeader, 'class-a'), true);
+  assert.equal(canWriteClass(legacyLeader, 'class-b'), false);
+});
+
+test('class leaders manage servants only in their led class', () => {
+  assert.equal(canManageServantsInClass(classLeader, 'class-a'), true);
+  assert.equal(canManageServantsInClass(classLeader, 'class-b'), false);
+  assert.equal(canManageServantsInClass(classLeader, null), false);
+
+  const manager = { ...scoped, permissions: ['servants.write'] };
+  assert.equal(canManageServantsInClass(manager, 'class-b'), true);
+  assert.equal(canManageServantsInClass(scoped, 'class-a'), false);
+});
+
+test('class leaders may only edit regular servants assigned to their own class', () => {
+  const regularInLedClass = { id: 's1', role: 'خادم', classIds: ['class-a'] };
+  const regularOtherClass = { id: 's2', role: 'خادم', classIds: ['class-b'] };
+  const anotherLeader = { id: 's3', role: 'قائد فصل', classIds: ['class-a'] };
+  const adminInLedClass = { id: 's4', role: 'مسؤول', classIds: ['class-a'] };
+
+  assert.equal(canManageServantRecord(classLeader, regularInLedClass), true);
+  assert.equal(canManageServantRecord(classLeader, regularOtherClass), false);
+  assert.equal(canManageServantRecord(classLeader, anotherLeader), false);
+  assert.equal(canManageServantRecord(classLeader, adminInLedClass), false);
+
+  assert.equal(canAssignServantRole(classLeader, 'خادم'), true);
+  assert.equal(canAssignServantRole(classLeader, null), true);
+  assert.equal(canAssignServantRole(classLeader, 'قائد فصل'), false);
+  assert.equal(canAssignServantRole(classLeader, 'مسؤول'), false);
+  assert.equal(canAssignServantRole(classLeader, 'أب كاهن'), false);
+
+  const manager = { ...scoped, permissions: ['servants.write'] };
+  assert.equal(canManageServantRecord(manager, regularOtherClass), true);
+  assert.equal(canAssignServantRole(manager, 'مسؤول'), true);
+});
+
+test('class leaders cannot manage class structure or promotions even with a stale grant', () => {
+  const leaderWithGrant = { ...classLeader, permissions: ['classes.write'] };
+
+  assert.equal(canManageClassStructure(leaderWithGrant), false);
+  assert.equal(canManagePromotions(leaderWithGrant), false);
+  assert.equal(canManageServantRecord(leaderWithGrant, {
+    id: 's1',
+    role: 'خادم',
+    classIds: ['class-a'],
+  }), true);
 });
 
 test('cross-tenant token isolation: access token must match resolved tenant context', () => {

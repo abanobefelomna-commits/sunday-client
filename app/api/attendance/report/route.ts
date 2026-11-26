@@ -4,7 +4,7 @@ import {
   getAuthUser,
   getAccessContext,
   canReadClass,
-  hasBroadClassRead,
+  readScopeClassIds,
   jsonResponse,
   forbidden,
   unauthorized,
@@ -23,7 +23,8 @@ async function GETHandler(req: Request) {
     const range = parseDateRange(searchParams, { defaultDays: 90, maxDays: 366 });
 
     if (classId && !canReadClass(access, classId)) return forbidden();
-    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
+    const scopeIds = readScopeClassIds(access);
+    if (scopeIds !== null && scopeIds.length === 0) {
       return jsonResponse({
         range,
         totals: { total: 0, present: 0, absent: 0, late: 0, excused: 0, rate: null, students: 0 },
@@ -33,7 +34,6 @@ async function GETHandler(req: Request) {
       });
     }
 
-    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
     const baseParams = [range.from, range.to, classId, scopeIds];
 
     const totals = await query<{

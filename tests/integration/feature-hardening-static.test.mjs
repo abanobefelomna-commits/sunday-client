@@ -98,8 +98,8 @@ test('class detail returns the assigned leader first and validates leader change
 test('servant attendance API enforces church scope and class-leader authority', () => {
   assert.match(attendanceRoute, /WHERE c\."churchId" = \$1/);
   assert.match(attendanceRoute, /canManageServantAttendance/);
-  assert.match(attendanceRoute, /c\."leadServantId" = \$2/);
-  assert.match(attendanceRoute, /s\."role" = 'قائد فصل'/);
+  assert.match(attendanceRoute, /access\.ledClassIds/);
+  assert.match(attendanceRoute, /a\."classId" = ANY\(\$8::uuid\[\]\)/);
   assert.match(attendanceRoute, /ON CONFLICT \("servantId", "date"\) DO NOTHING/);
   assert.match(attendanceRoute, /byServant/);
   assert.match(attendanceRoute, /غير معيّن لهذا الفصل/);

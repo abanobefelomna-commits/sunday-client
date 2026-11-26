@@ -1,6 +1,6 @@
 import { query } from './db';
 import type { AccessContext } from './middleware';
-import { hasBroadClassRead } from './middleware';
+import { readScopeClassIds } from './middleware';
 
 export interface AnalyticsFilters {
   from: string;
@@ -18,7 +18,8 @@ function rate(present: number, late: number, total: number): number | null {
  * caller's class scope + date range.
  */
 export async function getAnalyticsOverview(access: AccessContext, filters: AnalyticsFilters) {
-  if (!hasBroadClassRead(access) && access.classIds.length === 0 && !filters.classId) {
+  const scopeIds = readScopeClassIds(access);
+  if (scopeIds !== null && scopeIds.length === 0 && !filters.classId) {
     return {
       range: { from: filters.from, to: filters.to },
       totals: {
@@ -39,7 +40,6 @@ export async function getAnalyticsOverview(access: AccessContext, filters: Analy
     };
   }
 
-  const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
   const params = [filters.from, filters.to, filters.classId, scopeIds];
 
   const totalsRows = await query<{

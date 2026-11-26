@@ -3,6 +3,8 @@ import { verifyAccessToken, type JwtUserPayload } from './auth';
 import type { NextRequest } from 'next/server';
 import { query, queryOne } from './db';
 import {
+  canReadClass,
+  isClassLeaderAccess,
   isPrivilegedRole,
   readAllClassesEnabled,
   type AccessContext,
@@ -11,11 +13,17 @@ import { requireTenantContext } from './tenant/context';
 import { findServantForUser } from './servants';
 
 export {
+  canAssignServantRole,
+  canManageServantRecord,
+  canManageServantsInClass,
   canReadClass,
   canWriteClass,
   canViewPrivateNotes,
+  effectiveClassIds,
   hasBroadClassRead,
+  isClassLeaderAccess,
   readAllClassesEnabled,
+  readScopeClassIds,
 } from './access';
 export type { AccessContext } from './access';
 
@@ -82,6 +90,13 @@ export async function getAccessContext(user: JwtUserPayload): Promise<TenantAcce
     [servant?.id ?? null, account?.grades ?? []],
   );
 
+  const led = servant
+    ? await query<{ id: string }>(
+        `SELECT "id" FROM "classes" WHERE "leadServantId" = $1`,
+        [servant.id],
+      )
+    : [];
+
   // Missing setting means this is a legacy tenant that kept broad reads.
   // Provisioning writes an explicit `false` for every new church.
   let readAllClasses = true;
@@ -97,6 +112,7 @@ export async function getAccessContext(user: JwtUserPayload): Promise<TenantAcce
   return {
     privileged,
     classIds: [...new Set(scoped.map((row) => row.id))],
+    ledClassIds: [...new Set(led.map((row) => row.id))],
     userId: user.sub,
     role: account?.role || user.role,
     servantId: servant?.id ?? null,
@@ -106,9 +122,18 @@ export async function getAccessContext(user: JwtUserPayload): Promise<TenantAcce
   };
 }
 
+/**
+ * Broad capability gate used by routes that then apply per-record scope.
+ * Class leaders pass this gate only because their actual access is narrowed
+ * through `canManageServantsInClass` / `canManageServantRecord`.
+ */
 export async function canManageServants(user: JwtUserPayload): Promise<boolean> {
   const access = await getAccessContext(user);
-  return access.privileged || access.permissions?.includes('servants.write') === true;
+  return (
+    access.privileged ||
+    access.permissions?.includes('servants.write') === true ||
+    isClassLeaderAccess(access)
+  );
 }
 
 export async function authorizeClass(
@@ -117,7 +142,8 @@ export async function authorizeClass(
   allowPrivileged = true,
 ) {
   const access = await getAccessContext(user);
-  return (allowPrivileged && access.privileged) || (!!classId && access.classIds.includes(classId));
+  if (allowPrivileged && access.privileged) return true;
+  return canReadClass(access, classId);
 }
 
 /**

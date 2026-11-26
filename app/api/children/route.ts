@@ -5,7 +5,7 @@ import {
   getAccessContext,
   canReadClass,
   canWriteClass,
-  hasBroadClassRead,
+  readScopeClassIds,
   jsonResponse,
   badRequest,
   forbidden,
@@ -34,8 +34,9 @@ async function GETHandler(req: Request) {
     const offset = (page - 1) * limit;
 
     // The unfiltered directory stays scoped to the servant's own classes unless
-    // the church has enabled broad reads.
-    if (!hasBroadClassRead(access) && access.classIds.length === 0 && !classId) {
+    // the church has enabled broad reads. Class leaders are always scoped.
+    const scopeIds = readScopeClassIds(access);
+    if (scopeIds !== null && scopeIds.length === 0 && !classId) {
       return jsonResponse({
         data: [],
         total: 0,
@@ -44,7 +45,7 @@ async function GETHandler(req: Request) {
     }
     if (classId && !canReadClass(access, classId)) return forbidden();
 
-    const scopeIds = hasBroadClassRead(access) || classId ? null : access.classIds;
+    const queryScopeIds = classId ? null : scopeIds;
 
     const rows = await query<{
       id: string;
@@ -98,7 +99,7 @@ async function GETHandler(req: Request) {
          AND ($7::uuid[] IS NULL OR c."classId" = ANY($7::uuid[]))
        ORDER BY c."createdAt" DESC
        LIMIT $8 OFFSET $9`,
-      [search, gender, classId, grade, minAge, maxAge, scopeIds, limit, offset],
+      [search, gender, classId, grade, minAge, maxAge, queryScopeIds, limit, offset],
     );
 
     const countRow = await queryOne<{ total: number }>(
@@ -115,7 +116,7 @@ async function GETHandler(req: Request) {
          AND ($5::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) >= $5)
          AND ($6::int IS NULL OR EXTRACT(YEAR FROM AGE(CURRENT_DATE, c."birthDate")) <= $6)
          AND ($7::uuid[] IS NULL OR c."classId" = ANY($7::uuid[]))`,
-      [search, gender, classId, grade, minAge, maxAge, scopeIds],
+      [search, gender, classId, grade, minAge, maxAge, queryScopeIds],
     );
 
     const total = countRow?.total || 0;

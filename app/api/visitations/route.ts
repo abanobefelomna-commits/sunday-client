@@ -5,7 +5,7 @@ import {
   getAccessContext,
   canManageServants,
   canReadClass,
-  hasBroadClassRead,
+  readScopeClassIds,
   jsonResponse,
   badRequest,
   serverError,
@@ -34,7 +34,8 @@ async function GETHandler(req: Request) {
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20', 10)));
     const offset = (page - 1) * limit;
 
-    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
+    const scopeIds = readScopeClassIds(access);
+    if (scopeIds !== null && scopeIds.length === 0) {
       return jsonResponse({ data: [], total: 0, meta: { total: 0, page, limit, totalPages: 0 } });
     }
     if (childId) {
@@ -45,8 +46,6 @@ async function GETHandler(req: Request) {
       if (!child) return jsonResponse({ data: [], total: 0, meta: { total: 0, page, limit, totalPages: 0 } });
       if (!canReadClass(access, child.classId)) return forbidden();
     }
-
-    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
 
     const rows = await query<{
       id: string;

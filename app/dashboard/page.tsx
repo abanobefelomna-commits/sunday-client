@@ -32,6 +32,8 @@ import {
   getFollowUps,
   getNews,
   getStoredUser,
+  isClassLeaderUser,
+  isPrivilegedUser,
   type AnalyticsOverview,
   type AuthUser,
   type ClassItem,
@@ -42,6 +44,7 @@ import {
 import {
   followUpTone,
   priorityTone,
+  SERVICE_ROLE_KEYS,
   shiftIso,
   todayIso,
 } from "../lib/format";
@@ -129,6 +132,17 @@ export default function DashboardPage() {
   const students = analytics?.totals.students ?? 0;
   const displayName = user?.name?.replace(/^أ\.\s*/, "") || t("dashboard.defaultUser");
 
+  const isLeader = isClassLeaderUser(user);
+  const leadershipRoleKey = user?.servantRole ? SERVICE_ROLE_KEYS[user.servantRole] : undefined;
+  const displayRole = leadershipRoleKey
+    ? t(leadershipRoleKey as AppMessageKey)
+    : user?.role || "";
+  const leaderClasses = useMemo(() => {
+    if (!isClassLeaderUser(user)) return [];
+    const led = new Set(user?.ledClassIds ?? []);
+    return led.size > 0 ? classes.filter((item) => led.has(item.id)) : classes;
+  }, [classes, user]);
+
   return (
     <div className="min-h-screen pb-32">
       <AppHeader />
@@ -159,6 +173,85 @@ export default function DashboardPage() {
             </>
           }
         />
+
+        {user ? (
+          <div className="flex flex-wrap items-center gap-2" aria-label={t("dashboard.roleBadge")}>
+            <Badge tone={isLeader ? "warn" : isPrivilegedUser(user) ? "ok" : "default"} dot>
+              {t("dashboard.roleBadge")}: {displayRole}
+            </Badge>
+            {isLeader ? <Badge tone="muted">{t("dashboard.leaderScopeBadge")}</Badge> : null}
+          </div>
+        ) : null}
+
+        {isLeader ? (
+          <MotionInView
+            as="section"
+            className="surface surface-pad"
+            ariaLabel={t("dashboard.leaderWorkspace")}
+            delay={0.02}
+          >
+            <div className="surface-head">
+              <div>
+                <h2>{t("dashboard.leaderWorkspace")}</h2>
+                <p>{t("dashboard.leaderWorkspaceHint")}</p>
+              </div>
+              <Badge tone="warn" dot>
+                {displayRole}
+              </Badge>
+            </div>
+            {loading ? (
+              <SkeletonRows rows={1} height={72} />
+            ) : leaderClasses.length > 0 ? (
+              <div className="stack-sm">
+                {leaderClasses.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-900/50 dark:bg-amber-950/20"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <b className="block text-slate-900 dark:text-slate-100">{item.name}</b>
+                        <small className="text-slate-500 dark:text-slate-400">
+                          {t("dashboard.leaderClassMeta", {
+                            students: number(item.childrenCount ?? item.children?.length ?? 0),
+                            servants: number(item.servantsCount ?? item.servants?.length ?? 0),
+                          })}
+                        </small>
+                      </div>
+                      <Badge tone="warn">{t("dashboard.leaderScopeBadge")}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link href={`/classes/${item.id}`} className="btn sm">
+                        {t("dashboard.leaderOpenClass")}
+                      </Link>
+                      <Link href={`/children?classId=${item.id}`} className="btn ghost sm">
+                        <Baby className="h-4 w-4" aria-hidden="true" />
+                        {t("dashboard.leaderChildren")}
+                      </Link>
+                      <Link href={`/servants?classId=${item.id}`} className="btn ghost sm">
+                        <Users className="h-4 w-4" aria-hidden="true" />
+                        {t("dashboard.leaderServants")}
+                      </Link>
+                      <Link href={`/attendance?classId=${item.id}`} className="btn ghost sm">
+                        <CalendarCheck className="h-4 w-4" aria-hidden="true" />
+                        {t("dashboard.leaderAttendance")}
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {t("dashboard.leaderScopeNote")}
+                </p>
+              </div>
+            ) : (
+              <EmptyState
+                icon="🏫"
+                title={t("dashboard.leaderNoClass")}
+                description={t("dashboard.leaderNoClassBody")}
+              />
+            )}
+          </MotionInView>
+        ) : null}
 
         <MotionInView as="section" className="hero-inner-card" ariaLabel={t("dashboard.summaryAria")}>
           <span className="eyebrow" style={{ color: "rgba(255,255,255,.82)" }}>

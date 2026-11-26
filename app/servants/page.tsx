@@ -7,6 +7,8 @@ import { Modal, PageHeader } from "../components/ui";
 import { toast } from "sonner";
 import { CalendarPlus, Plus, Search, Trash2 } from "lucide-react";
 import {
+  canManageServantRecordUI,
+  canManageServantsUI,
   getServants,
   createServant,
   deleteServant,
@@ -17,6 +19,7 @@ import {
   getStoredUser,
   getChildren,
   bookServantVisitation,
+  isClassLeaderUser,
   type AuthUser,
   type ClassItem,
   type ServantItem,
@@ -51,6 +54,7 @@ export default function ServantsPage() {
   const [servants, setServants] = useState<ServantItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [search, setSearch] = useState("");
+  const [filterClassId, setFilterClassId] = useState("");
   const [loading, setLoading] = useState(true);
 
   // Modal
@@ -80,6 +84,10 @@ export default function ServantsPage() {
 
   useEffect(() => {
     setCurrentUser(getStoredUser());
+    if (typeof window !== "undefined") {
+      const queryClass = new URLSearchParams(window.location.search).get("classId");
+      if (queryClass) setFilterClassId(queryClass);
+    }
   }, []);
 
   const isAdminOrPriest =
@@ -87,6 +95,11 @@ export default function ServantsPage() {
     currentUser?.role === "priest" ||
     currentUser?.servantRole === "مسؤول" ||
     currentUser?.servantRole === "أب كاهن";
+  const isLeader = isClassLeaderUser(currentUser);
+  const canManage = canManageServantsUI(currentUser);
+  const visibleClasses = isLeader
+    ? classes.filter((item) => (currentUser?.ledClassIds ?? []).includes(item.id))
+    : classes;
   const bookingServantName = servants.find((servant) => servant.id === bookingServantId)?.name;
 
   const roleLabel = (value: string) => {
@@ -125,7 +138,7 @@ export default function ServantsPage() {
   const fetchServants = async () => {
     try {
       setLoading(true);
-      const res = await getServants(search.trim() || undefined);
+      const res = await getServants(search.trim() || undefined, filterClassId || undefined);
       setServants(res.data);
     } catch {
       // fallback
@@ -136,18 +149,26 @@ export default function ServantsPage() {
 
   useEffect(() => {
     fetchServants();
-  }, [search]);
+  }, [search, filterClassId]);
 
   useEffect(() => {
     getClasses()
       .then((items) => {
         setClasses(items);
-        setClassId(items[0]?.id || "");
+        const stored = getStoredUser();
+        const allowed = isClassLeaderUser(stored)
+          ? items.filter((item) => (stored?.ledClassIds ?? []).includes(item.id))
+          : items;
+        const preferred =
+          filterClassId && allowed.some((item) => item.id === filterClassId)
+            ? filterClassId
+            : allowed[0]?.id || "";
+        setClassId(preferred);
       })
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : t("servants.loadClassesError"));
       });
-  }, []);
+  }, [filterClassId, t]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -163,7 +184,11 @@ export default function ServantsPage() {
     setPhone("");
     setEmail("");
     setRole("خادم");
-    setClassId(classes[0]?.id || "");
+    setClassId(
+      filterClassId && visibleClasses.some((item) => item.id === filterClassId)
+        ? filterClassId
+        : visibleClasses[0]?.id || "",
+    );
     setSelectedFile(null);
     setFilePreview(null);
     setError(null);
@@ -217,7 +242,8 @@ export default function ServantsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!isAdminOrPriest) {
+    const target = servants.find((servant) => servant.id === id) ?? null;
+    if (!canManageServantRecordUI(currentUser, target)) {
       toast.error(t("servants.cannotDelete"));
       setDeletingId(null);
       return;
@@ -243,7 +269,7 @@ export default function ServantsPage() {
           title={t("nav.servants")}
           subtitle={t("servants.subtitle")}
           actions={
-            isAdminOrPriest ? (
+            canManage ? (
               <button type="button" className="btn" onClick={openAddModal}>
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 {t("servants.add")}
@@ -263,6 +289,24 @@ export default function ServantsPage() {
           />
         </label>
 
+        {visibleClasses.length > 0 ? (
+          <div className="fld" style={{ maxWidth: 360 }}>
+            <label htmlFor="servants-class-filter">{t("servants.classLabel")}</label>
+            <select
+              id="servants-class-filter"
+              value={filterClassId}
+              onChange={(event) => setFilterClassId(event.target.value)}
+            >
+              <option value="">{t("common.all")}</option>
+              {visibleClasses.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
         {/* Servants List */}
         <div className="lst">
           {loading ? (
@@ -272,6 +316,7 @@ export default function ServantsPage() {
               const color = ROLE_COLORS[s.role] || "#3b6ff5";
               const hasAvatar = !!s.avatar;
               const featuredRole = ["قائد فصل", "مسؤول", "أب كاهن"].includes(s.role);
+              const canManageRecord = canManageServantRecordUI(currentUser, s);
 
               return (
                 <article
@@ -361,7 +406,7 @@ export default function ServantsPage() {
                         <span>{t("servants.book")}</span>
                       </button>
                     )}
-                    {hasAvatar && isAdminOrPriest && (
+                    {hasAvatar && canManageRecord && (
                       <button
                         type="button"
                         className="ib hover:text-orange-500 hover:border-orange-500"
@@ -372,7 +417,7 @@ export default function ServantsPage() {
                         🖼
                       </button>
                     )}
-                    {isAdminOrPriest && (
+                    {canManageRecord && (
                       <button
                         type="button"
                         className="ib hover:text-red-500 hover:border-red-500"
@@ -396,7 +441,7 @@ export default function ServantsPage() {
               <p className="text-slate-500 text-sm mt-1 mb-4">
                 {search ? t("servants.emptySearch") : t("servants.emptyHint")}
               </p>
-              {isAdminOrPriest ? (
+              {canManage ? (
                 <button type="button" className="btn" onClick={openAddModal}>
                   {t("servants.add")}
                 </button>
@@ -530,7 +575,9 @@ export default function ServantsPage() {
                 onChange={(e) => setRole(e.target.value)}
                 disabled={saving}
               >
-                {SERVICE_ROLES.map((value) => (
+                {SERVICE_ROLES.filter(
+                  (value) => !isLeader || value === "خادم",
+                ).map((value) => (
                   <option key={value} value={value}>
                     {roleLabel(value)}
                   </option>
@@ -545,10 +592,10 @@ export default function ServantsPage() {
                   id="s_class"
                   value={classId}
                   onChange={(e) => setClassId(e.target.value)}
-                  disabled={saving || classes.length === 0}
+                  disabled={saving || visibleClasses.length === 0}
                   required
                 >
-                  {classes.map((classItem) => (
+                  {visibleClasses.map((classItem) => (
                     <option key={classItem.id} value={classItem.id}>
                       {classItem.name}
                     </option>

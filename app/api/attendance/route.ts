@@ -4,7 +4,7 @@ import {
   getAuthUser,
   getAccessContext,
   canReadClass,
-  hasBroadClassRead,
+  readScopeClassIds,
   jsonResponse,
   forbidden,
   unauthorized,
@@ -17,7 +17,8 @@ async function GETHandler(req: Request) {
     const auth = await getAuthUser(req);
     if (!auth) return unauthorized();
     const access = await getAccessContext(auth);
-    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
+    const scopeIds = readScopeClassIds(access);
+    if (scopeIds !== null && scopeIds.length === 0) {
       return jsonResponse({ data: [], total: 0, meta: { total: 0, page: 1, limit: 50, totalPages: 0 } });
     }
 
@@ -33,7 +34,6 @@ async function GETHandler(req: Request) {
     const offset = (page - 1) * limit;
 
     if (classId && !canReadClass(access, classId)) return forbidden();
-    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
 
     const rows = await query<{
       id: string;

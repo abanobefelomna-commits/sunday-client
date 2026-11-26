@@ -1,21 +1,41 @@
 import { withTenant } from '@/src/server/tenant/route';
-import { query, queryOne } from '@/src/server/db';
-import { getAuthUser, canManageServants, jsonResponse, notFound, badRequest, serverError, unauthorized, forbidden } from '@/src/server/middleware';
+import { query } from '@/src/server/db';
+import {
+  getAuthUser,
+  getAccessContext,
+  canManageServantRecord,
+  jsonResponse,
+  notFound,
+  badRequest,
+  serverError,
+  unauthorized,
+  forbidden,
+} from '@/src/server/middleware';
+import { loadServantAccessRecord } from '@/src/server/servants';
 import { processUploadedImage, UploadValidationError } from '@/src/server/upload';
+import { isUuid } from '@/src/server/validation';
+
+async function loadManagedServant(req: Request, id: string) {
+  const auth = await getAuthUser(req);
+  if (!auth) return { ok: false as const, response: unauthorized() };
+  const access = await getAccessContext(auth);
+  const record = await loadServantAccessRecord(id);
+  if (!record) return { ok: false as const, response: notFound('الخادم غير موجود') };
+  if (!canManageServantRecord(access, record)) {
+    return { ok: false as const, response: forbidden('غير مسموح بإدارة صورة هذا الخادم') };
+  }
+  return { ok: true as const, record };
+}
 
 async function PATCHHandler(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const auth = await getAuthUser(req);
-    if (!auth) return unauthorized();
-    if (!await canManageServants(auth)) return forbidden('إدارة صور الخدام متاحة للمسؤول والكاهن فقط');
     const { id } = await params;
-    const servant = await queryOne(`SELECT "id" FROM "servants" WHERE "id" = $1 LIMIT 1`, [id]);
-    if (!servant) {
-      return notFound('الخادم غير موجود');
-    }
+    if (!isUuid(id)) return badRequest('معرّف الخادم غير صالح');
+    const managed = await loadManagedServant(req, id);
+    if (!managed.ok) return managed.response;
 
     const formData = await req.formData();
     const file = formData.get('avatar') as File | null;
@@ -48,14 +68,10 @@ async function DELETEHandler(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const auth = await getAuthUser(req);
-    if (!auth) return unauthorized();
-    if (!await canManageServants(auth)) return forbidden('إدارة صور الخدام متاحة للمسؤول والكاهن فقط');
     const { id } = await params;
-    const servant = await queryOne(`SELECT "id" FROM "servants" WHERE "id" = $1 LIMIT 1`, [id]);
-    if (!servant) {
-      return notFound('الخادم غير موجود');
-    }
+    if (!isUuid(id)) return badRequest('معرّف الخادم غير صالح');
+    const managed = await loadManagedServant(req, id);
+    if (!managed.ok) return managed.response;
 
     await query(
       `UPDATE "servants" SET "avatar" = NULL, "updatedAt" = now() WHERE "id" = $1`,
