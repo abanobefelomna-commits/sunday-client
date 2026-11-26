@@ -26,27 +26,7 @@ async function canManageServantAttendance(
   classId: string,
 ): Promise<boolean> {
   if (access.privileged) return true;
-  if (!access.servantId) return false;
-
-  const row = await queryOne<{ id: string }>(
-    `SELECT c."id"
-     FROM "classes" c
-     WHERE c."id" = $1
-       AND (
-         c."leadServantId" = $2
-         OR EXISTS (
-           SELECT 1
-           FROM "servants" s
-           JOIN "servants_classes" sc ON sc."servantsId" = s."id"
-           WHERE s."id" = $2
-             AND sc."classesId" = c."id"
-             AND s."role" = 'قائد فصل'
-         )
-       )
-     LIMIT 1`,
-    [classId, access.servantId],
-  );
-  return !!row;
+  return (access.ledClassIds ?? []).includes(classId);
 }
 
 async function servantBelongsToClass(servantId: string, classId: string): Promise<boolean> {
@@ -91,30 +71,8 @@ async function GETHandler(req: Request) {
     }
 
     // Non-privileged users only see attendance for classes they lead.
-    let scopeIds: string[] | null = null;
-    if (!access.privileged) {
-      const ledClasses = access.servantId
-        ? await query<{ id: string }>(
-            `SELECT c."id"
-             FROM "classes" c
-             WHERE c."churchId" = $1 AND c."deletedAt" IS NULL
-               AND (
-                 c."leadServantId" = $2
-                 OR EXISTS (
-                   SELECT 1
-                   FROM "servants" s
-                   JOIN "servants_classes" sc ON sc."servantsId" = s."id"
-                   WHERE s."id" = $2
-                     AND sc."classesId" = c."id"
-                     AND s."role" = 'قائد فصل'
-                 )
-               )`,
-            [tenantId, access.servantId],
-          )
-        : [];
-      scopeIds = ledClasses.map((row) => row.id);
-      if (scopeIds.length === 0) return emptyResponse();
-    }
+    const scopeIds: string[] | null = access.privileged ? null : (access.ledClassIds ?? []);
+    if (scopeIds !== null && scopeIds.length === 0) return emptyResponse();
 
     const filters = [tenantId, classId, servantId, date, dateFrom, dateTo, status, scopeIds];
 

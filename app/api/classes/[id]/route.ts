@@ -7,6 +7,7 @@ import {
   getAuthUser,
   getAccessContext,
   canReadClass,
+  effectiveClassIds,
   hasBroadClassRead,
   jsonResponse,
   notFound,
@@ -99,7 +100,7 @@ async function GETHandler(
       // legacy behaviour.
       if (!access.privileged && !hasBroadClassRead(access)) {
         childrenQuery += ` AND "classId" = ANY($1::uuid[])`;
-        childrenParams.push(access.classIds);
+        childrenParams.push(effectiveClassIds(access));
       }
     } else {
       childrenQuery += ` AND "classId" = $1`;
@@ -187,8 +188,12 @@ async function PATCHHandler(
       }
       leadServantId = typeof body.leadServantId === 'string' ? body.leadServantId : null;
       if (leadServantId) {
-        const member = await queryOne<{ id: string }>(
-          `SELECT s."id"
+        const member = await queryOne<{ id: string; role: string; otherLeadClassId: string | null }>(
+          `SELECT s."id",
+                  s."role"::text AS "role",
+                  (SELECT c2."id" FROM "classes" c2
+                   WHERE c2."leadServantId" = s."id" AND c2."id" <> $2
+                   LIMIT 1) AS "otherLeadClassId"
            FROM "servants" s
            JOIN "servants_classes" sc ON sc."servantsId" = s."id"
            WHERE s."id" = $1 AND sc."classesId" = $2
@@ -196,6 +201,12 @@ async function PATCHHandler(
           [leadServantId, id],
         );
         if (!member) return badRequest('قائد الفصل يجب أن يكون خادمًا معيّنًا لهذا الفصل');
+        if (['مسؤول', 'أب كاهن'].includes(member.role)) {
+          return badRequest('لا يمكن تعيين مسؤول أو كاهن قائدًا لفصل');
+        }
+        if (member.otherLeadClassId) {
+          return conflict('هذا الخادم قائد لفصل آخر بالفعل');
+        }
       }
     }
 
@@ -244,6 +255,24 @@ async function PATCHHandler(
         leadServantId,
       ],
     );
+    if (!updated) return notFound('الفصل غير موجود');
+
+    if (hasLeadServantId) {
+      if (before.leadServantId && before.leadServantId !== leadServantId) {
+        await query(
+          `UPDATE "servants" SET "role" = 'خادم', "updatedAt" = now()
+           WHERE "id" = $1 AND "role"::text = 'قائد فصل'
+             AND NOT EXISTS (SELECT 1 FROM "classes" WHERE "leadServantId" = $1)`,
+          [before.leadServantId],
+        );
+      }
+      if (leadServantId) {
+        await query(
+          `UPDATE "servants" SET "role" = 'قائد فصل', "updatedAt" = now() WHERE "id" = $1`,
+          [leadServantId],
+        );
+      }
+    }
     await recordAudit({
       actorId: user.sub,
       action: 'class.update',

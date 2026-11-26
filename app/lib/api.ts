@@ -33,13 +33,16 @@ export interface AuthUser {
   role: string;
   grades?: string[];
   servantRole?: string;
+  servantId?: string | null;
   classIds?: string[];
+  ledClassIds?: string[];
   avatar?: string | null;
   permissions?: string[];
 }
 
 const PRIVILEGED_USER_ROLES = new Set(["admin", "priest"]);
 const PRIVILEGED_SERVANT_ROLES = new Set(["مسؤول", "أب كاهن"]);
+export const CLASS_LEADER_ROLE = "قائد فصل";
 
 /** True for the roles that may administer every class. */
 export function isPrivilegedUser(user: AuthUser | null | undefined): boolean {
@@ -50,6 +53,24 @@ export function isPrivilegedUser(user: AuthUser | null | undefined): boolean {
   );
 }
 
+/** True when the account is a class leader, even before a class is assigned. */
+export function isClassLeaderUser(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  return (
+    user.servantRole === CLASS_LEADER_ROLE ||
+    (Array.isArray(user.ledClassIds) && user.ledClassIds.length > 0)
+  );
+}
+
+/** Classes that define the user's visible scope. */
+export function effectiveClassIds(user: AuthUser | null | undefined): string[] {
+  if (!user) return [];
+  if (Array.isArray(user.ledClassIds) && user.ledClassIds.length > 0) {
+    return [...new Set(user.ledClassIds)];
+  }
+  return Array.isArray(user.classIds) ? [...new Set(user.classIds)] : [];
+}
+
 /** True when the user is allowed to publish or manage news. */
 export function canWriteNews(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
@@ -57,16 +78,48 @@ export function canWriteNews(user: AuthUser | null | undefined): boolean {
 }
 
 /**
- * True when the user may modify this class. Every servant may *view* any
- * class, but writes remain limited to the classes assigned to them.
+ * True when the user may modify this class. Class leaders are strictly
+ * limited to the classes they lead; other servants keep their assigned-class
+ * write scope.
  */
 export function canManageClass(
   user: AuthUser | null | undefined,
   classId: string | null | undefined,
 ): boolean {
-  if (!user) return false;
+  if (!user || !classId) return false;
   if (isPrivilegedUser(user)) return true;
-  return !!classId && Array.isArray(user.classIds) && user.classIds.includes(classId);
+  if (isClassLeaderUser(user)) {
+    return Array.isArray(user.ledClassIds) && user.ledClassIds.includes(classId);
+  }
+  return Array.isArray(user.classIds) && user.classIds.includes(classId);
+}
+
+/** True when the user may create/manage servants in at least one class. */
+export function canManageServantsUI(user: AuthUser | null | undefined): boolean {
+  if (!user) return false;
+  return (
+    isPrivilegedUser(user) ||
+    user.permissions?.includes('servants.write') === true ||
+    (isClassLeaderUser(user) && (user.ledClassIds?.length ?? 0) > 0)
+  );
+}
+
+/** True when the user may manage this specific servant record. */
+export function canManageServantRecordUI(
+  user: AuthUser | null | undefined,
+  servant: { role?: string | null; classes?: Array<{ id: string }> } | null | undefined,
+): boolean {
+  if (!user || !servant) return false;
+  if (isPrivilegedUser(user)) return true;
+  if (isClassLeaderUser(user)) {
+    if (servant.role !== "خادم") return false;
+    const led = user.ledClassIds ?? [];
+    return (
+      led.length > 0 &&
+      (servant.classes ?? []).some((item) => led.includes(item.id))
+    );
+  }
+  return user.permissions?.includes('servants.write') === true;
 }
 
 export interface ClassItem {
@@ -593,7 +646,13 @@ export async function createClass(data: {
 
 export async function updateClass(
   id: string,
-  data: Partial<{ name: string; description: string | null; isActive: boolean; sortOrder: number }>,
+  data: Partial<{
+    name: string;
+    description: string | null;
+    isActive: boolean;
+    sortOrder: number;
+    leadServantId: string | null;
+  }>,
 ): Promise<ClassItem> {
   return request(`/api/classes/${id}`, {
     method: 'PATCH',
@@ -710,9 +769,13 @@ export async function deleteChild(id: string): Promise<void> {
 
 // ======================== SERVANTS ========================
 
-export async function getServants(search?: string): Promise<{ data: ServantItem[]; total: number }> {
+export async function getServants(
+  search?: string,
+  classId?: string,
+): Promise<{ data: ServantItem[]; total: number }> {
   const params = new URLSearchParams();
   if (search && search.trim()) params.append('search', search.trim());
+  if (classId) params.append('classId', classId);
   const res = await request<{ data: ServantItem[]; total: number } | ServantItem[]>(
     `/api/servants?${params.toString()}`,
     { cache: 'no-store' },

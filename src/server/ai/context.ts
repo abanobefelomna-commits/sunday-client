@@ -1,5 +1,5 @@
 import { query, queryOne } from '../db.ts';
-import { hasBroadClassRead, type AccessContext } from '../access.ts';
+import { readScopeClassIds, type AccessContext } from '../access.ts';
 
 interface ClassRow {
   id: string;
@@ -69,8 +69,9 @@ async function readChurchName(): Promise<string> {
  * aggregate attendance.
  */
 export async function buildAiDataContext(access: AccessContext): Promise<string> {
-  const broad = hasBroadClassRead(access);
-  const classIds = broad ? [] : access.classIds;
+  const scope = readScopeClassIds(access);
+  const broad = scope === null;
+  const classIds = scope ?? [];
   const churchName = await readChurchName();
 
   if (!broad && classIds.length === 0) {

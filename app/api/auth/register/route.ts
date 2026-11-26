@@ -11,7 +11,8 @@ import {
   validatePasswordStrength,
 } from '@/src/server/auth';
 import { badRequest, conflict, serverError, getAccessContext } from '@/src/server/middleware';
-import { syncServantFromUser } from '@/src/server/servants';
+import { claimClassLeadership, syncServantFromUser } from '@/src/server/servants';
+import { ensureDefaultClasses } from '@/src/server/classes';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
 import {
   getRequestIp,
@@ -174,6 +175,39 @@ export async function POST(req: Request) {
         return badRequest('الفصل أو القسم المختار غير صالح');
       }
 
+      // A class leader owns exactly one class. Resolve the class from the
+      // selected grade before creating any account so ambiguity or an
+      // occupied leadership slot cannot leave a half-provisioned user.
+      let classLeaderTarget: { id: string; name: string } | null = null;
+      if (servantRole === 'class_leader') {
+        if (assignedGrades.length !== 1) {
+          return badRequest('اختر فصلًا واحدًا لقيادته');
+        }
+        await ensureDefaultClasses();
+        const candidates = await query<{
+          id: string;
+          name: string;
+          leadServantId: string | null;
+        }>(
+          `SELECT "id", "name", "leadServantId"
+           FROM "classes"
+           WHERE "grade"::text = $1
+           ORDER BY "createdAt" ASC, "id" ASC
+           LIMIT 2`,
+          [assignedGrades[0]],
+        );
+        if (candidates.length === 0) {
+          return badRequest('لا يوجد فصل متاح لهذه المرحلة');
+        }
+        if (candidates.length > 1) {
+          return conflict('توجد أكثر من فئة لهذه المرحلة. تواصل مع المسؤول لتعيينك قائدًا.');
+        }
+        if (candidates[0].leadServantId) {
+          return conflict('هذا الفصل لديه قائد بالفعل');
+        }
+        classLeaderTarget = { id: candidates[0].id, name: candidates[0].name };
+      }
+
       const existing = await queryOne<{ id: string }>(
         `SELECT "id" FROM "users"
          WHERE lower("email") = $1 OR "phone" = $2 LIMIT 1`,
@@ -210,8 +244,10 @@ export async function POST(req: Request) {
       }
 
       // Sync servant record immediately so the user appears in the servants directory.
+      let servantRecord: { id: string; role: string } | null = null;
+      let syncFailed = false;
       try {
-        await syncServantFromUser({
+        servantRecord = await syncServantFromUser({
           userId: user.id,
           name: user.name,
           phone: user.phone,
@@ -222,7 +258,34 @@ export async function POST(req: Request) {
           grades: user.grades,
         });
       } catch (syncErr) {
+        syncFailed = true;
         console.error('[register] servant sync error:', syncErr);
+      }
+
+      const rollbackRegistration = async () => {
+        try {
+          await query(
+            `DELETE FROM "servants_classes"
+             WHERE "servantsId" IN (SELECT "id" FROM "servants" WHERE "userId" = $1)`,
+            [user.id],
+          );
+          await query(`DELETE FROM "servants" WHERE "userId" = $1`, [user.id]);
+          await query(`DELETE FROM "users" WHERE "id" = $1`, [user.id]);
+        } catch (rollbackError) {
+          console.error('[register] rollback error:', rollbackError);
+        }
+      };
+
+      if (classLeaderTarget) {
+        if (syncFailed || !servantRecord) {
+          await rollbackRegistration();
+          return serverError('تعذر استكمال تسجيل قائد الفصل. حاول مرة أخرى.');
+        }
+        const claimed = await claimClassLeadership(servantRecord.id, classLeaderTarget.id);
+        if (!claimed) {
+          await rollbackRegistration();
+          return conflict('تم تعيين قائد لهذا الفصل بالفعل');
+        }
       }
 
       // Issue tokens and log the user in immediately.
@@ -246,7 +309,9 @@ export async function POST(req: Request) {
         user: {
           ...user,
           servantRole: access.servantRole,
+          servantId: access.servantId,
           classIds: access.classIds,
+          ledClassIds: access.ledClassIds ?? [],
           permissions: access.permissions,
         },
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },

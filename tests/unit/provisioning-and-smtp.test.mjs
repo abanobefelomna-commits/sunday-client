@@ -55,7 +55,10 @@ test('register route activates the account without sending email verification', 
   assert.match(route, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
   assert.match(route, /requiresEmailVerification: false/);
   assert.match(route, /issueRefreshToken/);
-  assert.doesNotMatch(route, /sendVerificationEmail|createOtp|DELETE FROM "users"/);
+  assert.doesNotMatch(route, /sendVerificationEmail|createOtp/);
+  // Guards registration may roll back a half-provisioned class-leader account.
+  assert.match(route, /const rollbackRegistration = async \(\) => \{/);
+  assert.match(route, /claimClassLeadership/);
 });
 
 test('register route validates church code length before DB query', () => {

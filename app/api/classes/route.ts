@@ -4,7 +4,19 @@ import { ensureDefaultClasses } from '@/src/server/classes';
 import { canManageClassStructure } from '@/src/server/access';
 import { recordAudit, requestIp } from '@/src/server/audit';
 import { requireTenantContext } from '@/src/server/tenant/context';
-import { getAccessContext, getAuthUser, jsonResponse, serverError, unauthorized, badRequest, forbidden, conflict } from '@/src/server/middleware';
+import {
+  canReadClass,
+  effectiveClassIds,
+  getAccessContext,
+  getAuthUser,
+  isClassLeaderAccess,
+  jsonResponse,
+  serverError,
+  unauthorized,
+  badRequest,
+  forbidden,
+  conflict,
+} from '@/src/server/middleware';
 import { isUuid, requiredText } from '@/src/server/validation';
 
 type ClassRecord = {
@@ -44,6 +56,16 @@ async function GETHandler(req: Request) {
     const tenantId = requireTenantContext().churchId;
     const includeInactive = canManage && searchParams.get('includeInactive') === 'true';
 
+    // A class leader only sees the class they lead; broad readers and
+    // privileged roles keep the church-wide list.
+    const leaderScope = isClassLeaderAccess(access) ? effectiveClassIds(access) : null;
+    if (leaderScope !== null && leaderScope.length === 0) {
+      return jsonResponse({
+        data: [],
+        meta: { total: 0, page, limit, totalPages: 0 },
+      });
+    }
+
     const data = await query<ClassRecord>(
       `SELECT
          c."id",
@@ -69,6 +91,7 @@ async function GETHandler(req: Request) {
          AND ($2::text IS NULL OR c."name" ILIKE '%' || $2 || '%')
          AND ($3::text IS NULL OR c."grade"::text = $3)
          AND ($4::boolean OR c."isActive" = true)
+         AND ($7::uuid[] IS NULL OR c."id" = ANY($7::uuid[]))
        GROUP BY
          c."id",
          c."name",
@@ -82,7 +105,7 @@ async function GETHandler(req: Request) {
          c."updatedAt"
        ORDER BY c."sortOrder" ASC, c."createdAt" ASC, c."id" ASC
        LIMIT $5 OFFSET $6`,
-      [tenantId, search, grade, includeInactive, limit, offset],
+      [tenantId, search, grade, includeInactive, limit, offset, leaderScope],
     );
 
     const countRow = await queryOne<{ total: number }>(
@@ -91,8 +114,9 @@ async function GETHandler(req: Request) {
        WHERE c."churchId" = $1 AND c."deletedAt" IS NULL
          AND ($2::text IS NULL OR c."name" ILIKE '%' || $2 || '%')
          AND ($3::text IS NULL OR c."grade"::text = $3)
-         AND ($4::boolean OR c."isActive" = true)`,
-      [tenantId, search, grade, includeInactive],
+         AND ($4::boolean OR c."isActive" = true)
+         AND ($5::uuid[] IS NULL OR c."id" = ANY($5::uuid[]))`,
+      [tenantId, search, grade, includeInactive, leaderScope],
     );
 
     const total = countRow?.total || 0;

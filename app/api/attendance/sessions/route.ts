@@ -5,7 +5,7 @@ import {
   getAccessContext,
   canReadClass,
   canWriteClass,
-  hasBroadClassRead,
+  readScopeClassIds,
   jsonResponse,
   badRequest,
   forbidden,
@@ -27,10 +27,10 @@ async function GETHandler(req: Request) {
     const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '30', 10)));
 
     if (classId && !canReadClass(access, classId)) return forbidden();
-    if (!hasBroadClassRead(access) && access.classIds.length === 0) {
+    const scopeIds = readScopeClassIds(access);
+    if (scopeIds !== null && scopeIds.length === 0) {
       return jsonResponse({ data: [], meta: { total: 0 } });
     }
-    const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
 
     const rows = await query<{
       id: string;

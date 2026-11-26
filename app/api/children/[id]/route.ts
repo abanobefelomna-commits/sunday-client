@@ -227,24 +227,21 @@ async function DELETEHandler(
     const access = await getAccessContext(auth);
     if (!canWriteClass(access, child.classId)) return forbidden();
 
-    // Soft removal: attendance, visitations, progress and care history stay
-    // available for authorized historical reporting.
-    await query(
-      `UPDATE "children" SET "deletedAt" = now(), "updatedAt" = now() WHERE "id" = $1`,
-      [id],
-    );
+    // Permanent removal: dependent attendance, visitations, progress, notes,
+    // follow-ups and promotion history are removed by ON DELETE CASCADE so no
+    // child data remains reachable from any account.
+    await query(`DELETE FROM "children" WHERE "id" = $1`, [id]);
 
     await recordAudit({
       actorId: access.userId,
-      action: 'student.soft_delete',
+      action: 'student.delete',
       entityType: 'child',
       entityId: id,
-      before: { name: child.name, classId: child.classId },
-      after: { deletedAt: new Date().toISOString() },
+      before: { classId: child.classId },
       ip: requestIp(req),
     });
 
-    return jsonResponse({ message: 'تم حذف الطفل بنجاح مع الاحتفاظ بسجله التاريخي' });
+    return jsonResponse({ message: 'تم حذف الطفل وكل بياناته نهائيًا' });
   } catch (error: unknown) {
     console.error('Delete child error:', error);
     return serverError('فشل حذف الطفل');

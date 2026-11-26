@@ -101,7 +101,9 @@ export async function POST(req: Request) {
         user: {
           ...safeUser,
           servantRole: access.servantRole,
+          servantId: access.servantId,
           classIds: access.classIds,
+          ledClassIds: access.ledClassIds ?? [],
           permissions: access.permissions,
         },
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },

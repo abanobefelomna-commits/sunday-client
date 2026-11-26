@@ -10,6 +10,8 @@ import {
   canManageClass,
   getClass,
   getStoredUser,
+  isPrivilegedUser,
+  updateClass,
   type AuthUser,
   type ClassItem,
 } from "../../lib/api";
@@ -26,11 +28,16 @@ export default function ClassDetailsPage({
   const [classData, setClassData] = useState<ClassItem | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [leaderId, setLeaderId] = useState("");
+  const [savingLeader, setSavingLeader] = useState(false);
 
   useEffect(() => {
     Promise.resolve().then(() => setCurrentUser(getStoredUser()));
     getClass(id)
-      .then((data) => setClassData(data))
+      .then((data) => {
+        setClassData(data);
+        setLeaderId(data.leadServantId ?? "");
+      })
       .catch((error: unknown) => toast.error(error instanceof Error ? error.message : t("classDetail.loadError")))
       .finally(() => setLoading(false));
   }, [id, t]);
@@ -63,6 +70,28 @@ export default function ClassDetailsPage({
   const children = classData.children || [];
   const servants = classData.servants || [];
   const canManage = canManageClass(currentUser, classData.id);
+  const canAssignLeader =
+    isPrivilegedUser(currentUser) || currentUser?.permissions?.includes("classes.write") === true;
+  const leaderCandidates = servants.filter(
+    (servant) =>
+      servant.id === classData.leadServantId ||
+      !["مسؤول", "أب كاهن", "قائد فصل"].includes(servant.role),
+  );
+
+  const handleSaveLeader = async () => {
+    setSavingLeader(true);
+    try {
+      await updateClass(classData.id, { leadServantId: leaderId || null });
+      const refreshed = await getClass(classData.id);
+      setClassData(refreshed);
+      setLeaderId(refreshed.leadServantId ?? "");
+      toast.success(t("classDetail.leaderSaved"));
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("classDetail.leaderError"));
+    } finally {
+      setSavingLeader(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32">
@@ -106,6 +135,45 @@ export default function ClassDetailsPage({
             </span>
           </div>
         )}
+
+        {/* Designated class leader */}
+        {canAssignLeader ? (
+          <div className="card">
+            <div className="ch">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                {t("classDetail.leaderTitle")}
+              </h3>
+              <span className="text-xs text-slate-400">{t("classDetail.leaderHint")}</span>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="fld flex-1">
+                <label htmlFor="class-leader">{t("classDetail.leaderSelectLabel")}</label>
+                <select
+                  id="class-leader"
+                  value={leaderId}
+                  onChange={(event) => setLeaderId(event.target.value)}
+                  disabled={savingLeader}
+                >
+                  <option value="">{t("classDetail.leaderNone")}</option>
+                  {leaderCandidates.map((servant) => (
+                    <option key={servant.id} value={servant.id}>
+                      {servant.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                className="btn sm"
+                onClick={handleSaveLeader}
+                disabled={savingLeader || leaderId === (classData.leadServantId ?? "")}
+              >
+                {savingLeader ? t("classDetail.leaderSaving") : t("classDetail.leaderSave")}
+              </button>
+            </div>
+            <p className="hint mt-2">{t("classDetail.leaderNote")}</p>
+          </div>
+        ) : null}
 
         {/* Children List in this Class */}
         <div className="card">

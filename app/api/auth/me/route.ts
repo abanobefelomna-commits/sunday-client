@@ -1,7 +1,6 @@
 import { withTenant } from '@/src/server/tenant/route';
-import { query, queryOne } from '@/src/server/db';
+import { queryOne } from '@/src/server/db';
 import { getAccessContext, getAuthUser, jsonResponse, unauthorized } from '@/src/server/middleware';
-import { findServantForUser } from '@/src/server/servants';
 
 async function GETHandler(req: Request) {
   const auth = await getAuthUser(req);
@@ -31,33 +30,12 @@ async function GETHandler(req: Request) {
 
   const access = await getAccessContext(auth);
 
-  const servant = await findServantForUser({
-    userId: user.id,
-    phone: user.phone,
-    email: user.email,
-  });
-
-  let classIds: string[] = [];
-  if (servant) {
-    const sc = await query<{ classesId: string }>(
-      `SELECT "classesId" FROM "servants_classes" WHERE "servantsId" = $1`,
-      [servant.id],
-    );
-    classIds.push(...sc.map((r) => r.classesId));
-  }
-  if (user.grades && user.grades.length > 0) {
-    const gc = await query<{ id: string }>(
-      `SELECT "id" FROM "classes" WHERE "grade"::text = ANY($1::text[])`,
-      [user.grades],
-    );
-    classIds.push(...gc.map((r) => r.id));
-  }
-  classIds = [...new Set(classIds)];
-
   return jsonResponse({
     ...user,
-    servantRole: servant?.role || null,
-    classIds,
+    servantRole: access.servantRole,
+    servantId: access.servantId,
+    classIds: access.classIds,
+    ledClassIds: access.ledClassIds ?? [],
     permissions: access.permissions,
   });
 }

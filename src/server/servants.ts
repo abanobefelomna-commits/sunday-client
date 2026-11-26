@@ -223,12 +223,21 @@ export async function syncServantFromUser(data: {
     const assignedGrades =
       roleCode && PRIVILEGED_ROLE_CODES.has(roleCode) ? [] : data.grades;
 
+    // Deleting memberships fires the integrity trigger that releases
+    // leadership. Remember the led classes so a class leader who keeps their
+    // grade does not lose the class by editing their profile.
+    const previouslyLed = await query<{ id: string }>(
+      `SELECT "id" FROM "classes" WHERE "leadServantId" = $1`,
+      [servantId],
+    );
+
     if (assignedGrades.length > 0) {
       await ensureDefaultClasses();
     }
 
     await query(`DELETE FROM "servants_classes" WHERE "servantsId" = $1`, [servantId]);
 
+    const assignedClassIds: string[] = [];
     if (assignedGrades.length > 0) {
       const classes = await query<{ id: string }>(
         `SELECT DISTINCT ON ("grade"::text) "id"
@@ -239,6 +248,7 @@ export async function syncServantFromUser(data: {
       );
 
       for (const cls of classes) {
+        assignedClassIds.push(cls.id);
         await query(
           `INSERT INTO "servants_classes" ("servantsId", "classesId")
            VALUES ($1, $2)
@@ -247,9 +257,91 @@ export async function syncServantFromUser(data: {
         );
       }
     }
+
+    if (roleCode === 'class_leader') {
+      for (const cls of previouslyLed) {
+        if (assignedClassIds.includes(cls.id)) {
+          await claimClassLeadership(servantId, cls.id);
+        }
+      }
+    }
   }
 
+  await reconcileServantLeadership(servantId, storedRole);
+
   return { id: servantId, role: storedRole };
+}
+
+/**
+ * Keep class-leader assignments consistent with the stored role.
+ *
+ * Privileged servants are not tied to classes. Any other non-leader role also
+ * releases leadership. The class row is never rewritten when the servant is
+ * still a leader, and `leadServantId` is only cleared, never reassigned here.
+ */
+export async function reconcileServantLeadership(
+  servantId: string,
+  role: string | null,
+): Promise<void> {
+  const code = normalizeServantRole(role);
+  const privileged = code !== null && PRIVILEGED_ROLE_CODES.has(code);
+
+  if (privileged) {
+    await query(`DELETE FROM "servants_classes" WHERE "servantsId" = $1`, [servantId]);
+  }
+  if (privileged || code !== 'class_leader') {
+    await query(
+      `UPDATE "classes" SET "leadServantId" = NULL, "updatedAt" = now()
+       WHERE "leadServantId" = $1`,
+      [servantId],
+    );
+  }
+}
+
+export type ServantAccessRecord = {
+  id: string;
+  name: string;
+  role: string;
+  userId: string | null;
+  classIds: string[];
+};
+
+/** Load the servant record plus class memberships used for record-level scope. */
+export async function loadServantAccessRecord(
+  servantId: string,
+): Promise<ServantAccessRecord | null> {
+  const servant = await queryOne<{
+    id: string;
+    name: string;
+    role: string;
+    userId: string | null;
+  }>(
+    `SELECT "id", "name", "role", "userId" FROM "servants" WHERE "id" = $1 LIMIT 1`,
+    [servantId],
+  );
+  if (!servant) return null;
+
+  const classes = await query<{ id: string }>(
+    `SELECT "classesId" AS "id" FROM "servants_classes" WHERE "servantsId" = $1`,
+    [servantId],
+  );
+
+  return { ...servant, classIds: classes.map((row) => row.id) };
+}
+
+/** Claim an unassigned class leadership slot. Returns false when already taken. */
+export async function claimClassLeadership(
+  servantId: string,
+  classId: string,
+): Promise<boolean> {
+  const claimed = await queryOne<{ id: string }>(
+    `UPDATE "classes"
+     SET "leadServantId" = $1, "updatedAt" = now()
+     WHERE "id" = $2 AND "leadServantId" IS NULL
+     RETURNING "id"`,
+    [servantId, classId],
+  );
+  return claimed !== null;
 }
 
 export async function syncServantAvatarForUser(

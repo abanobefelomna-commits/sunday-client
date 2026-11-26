@@ -1,6 +1,6 @@
 import { query, queryOne } from './db';
 import type { AccessContext } from './middleware';
-import { canWriteClass, hasBroadClassRead } from './middleware';
+import { canReadClass, canWriteClass, readScopeClassIds } from './middleware';
 import { recordAudit } from './audit';
 import { createNotification, notifyFollowUpStakeholders } from './notifications';
 import { evaluateStudentRules, type RuleConfig } from './care-rules';
@@ -59,7 +59,8 @@ export async function listFollowUps(
   page: number,
   limit: number,
 ) {
-  if (!hasBroadClassRead(access) && access.classIds.length === 0) {
+  const scopeIds = readScopeClassIds(access);
+  if (scopeIds !== null && scopeIds.length === 0) {
     return {
       data: [],
       meta: {
@@ -72,7 +73,6 @@ export async function listFollowUps(
     };
   }
 
-  const scopeIds = hasBroadClassRead(access) ? null : access.classIds;
   const offset = (page - 1) * limit;
   const params = [
     filters.status ?? null,
@@ -186,7 +186,7 @@ export async function getFollowUpDetail(id: string, access: AccessContext) {
   );
   if (!row) return null;
 
-  if (!access.privileged && !access.classIds.includes(row.childClassId)) return 'forbidden' as const;
+  if (!canReadClass(access, row.childClassId)) return 'forbidden' as const;
 
   const activities = await query<{
     id: string;
@@ -520,8 +520,8 @@ export async function evaluateFollowUps(
     return { rules: 0, evaluatedStudents: 0, created: 0, flagged: 0, skipped: 0, alerts: [] };
   }
 
-  const scopeIds = access.privileged ? null : access.classIds;
-  if (!access.privileged && scopeIds && scopeIds.length === 0) {
+  const scopeIds = readScopeClassIds(access);
+  if (scopeIds !== null && scopeIds.length === 0) {
     return { rules: rules.length, evaluatedStudents: 0, created: 0, flagged: 0, skipped: 0, alerts: [] };
   }
 
