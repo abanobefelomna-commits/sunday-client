@@ -74,7 +74,7 @@ function PublicHeader({
           <Link href="#contact" onClick={closeMenu}>{messages.nav.contact}</Link>
           <div className={"ps-mobileActions"}>
             <Link className={"ps-loginButton"} href="/login" onClick={closeMenu}>{messages.login}</Link>
-            <Link className={"ps-primaryButton"} href="/register/church" onClick={closeMenu}>{messages.start}<ArrowUpRight size={17} /></Link>
+            <Link className={"ps-primaryButton"} href="/join" onClick={closeMenu}>{messages.start}<ArrowUpRight size={17} /></Link>
           </div>
         </nav>
 
@@ -88,7 +88,7 @@ function PublicHeader({
             <ChevronDown aria-hidden="true" size={15} />
           </label>
           <Link className={"ps-loginButton"} href="/login">{messages.login}</Link>
-          <Link className={`${"ps-primaryButton"} ${"ps-headerCta"}`} href="/register/church">{messages.start}<ArrowUpRight size={17} /></Link>
+          <Link className={`${"ps-primaryButton"} ${"ps-headerCta"}`} href="/join">{messages.start}<ArrowUpRight size={17} /></Link>
         </div>
       </div>
     </header>
@@ -197,7 +197,7 @@ export default function PublicLanding() {
               <h1>{messages.heroTitle}</h1>
               <p className={"ps-heroLead"}>{messages.heroLead}</p>
               <div className={"ps-heroActions"}>
-                <Link className={"ps-primaryButton"} href="/register/church">{messages.heroStart}<ArrowUpRight size={18} /></Link>
+                <Link className={"ps-primaryButton"} href="/join">{messages.heroStart}<ArrowUpRight size={18} /></Link>
                 <a className={"ps-secondaryButton"} href="#showcase">{messages.heroExplore}<ArrowDown size={17} /></a>
               </div>
               <p className={"ps-heroNote"}><HeartHandshake size={17} />{messages.heroNote}</p>
@@ -229,7 +229,7 @@ export default function PublicLanding() {
               <h2>{messages.showcaseTitle}</h2>
               <p>{messages.showcaseLead}</p>
               <ul className={"ps-checkList"}>{messages.showcasePoints.map((point) => <li key={point}><Check size={16} />{point}</li>)}</ul>
-              <Link className={"ps-primaryButton"} href="/register/church">{messages.start}<ArrowUpRight size={17} /></Link>
+              <Link className={"ps-primaryButton"} href="/join">{messages.start}<ArrowUpRight size={17} /></Link>
             </div>
           </div>
         </MotionInView>
