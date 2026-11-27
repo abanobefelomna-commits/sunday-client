@@ -14,6 +14,7 @@ import { badRequest, conflict, serverError, getAccessContext } from '@/src/serve
 import { claimClassLeadership, syncServantFromUser } from '@/src/server/servants';
 import { ensureDefaultClasses } from '@/src/server/classes';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
+import { hostIdentifiesTenant } from '@/src/server/tenant/resolve';
 import {
   getRequestIp,
   rateLimit,
@@ -102,6 +103,24 @@ export async function POST(req: Request) {
     explicitSlug = codeRow.slug;
   }
 
+  // Open join: a servant may register through a church link or the church
+  // directory (explicit slug) or the church's own host, with no code. The
+  // church must still be named explicitly, so a stale cookie or the default
+  // tenant never silently decides where an account lands. Open joiners get no
+  // class access until an admin or class leader assigns them (see below).
+  const openJoin = !rawChurchCode;
+  if (openJoin && !explicitSlug) {
+    let hostOk = false;
+    try {
+      hostOk = await hostIdentifiesTenant(req);
+    } catch {
+      hostOk = false;
+    }
+    if (!hostOk) {
+      return badRequest('اختر كنيستك من قائمة الكنائس أو استخدم رابط كنيستك');
+    }
+  }
+
   return withResolvedTenant(
     req,
     explicitSlug,
@@ -130,6 +149,7 @@ export async function POST(req: Request) {
       // All other requested roles are silently normalised to servant/class_leader.
       let accountRole: 'servant' | 'admin' | 'priest' = 'servant';
       let servantRole: string = 'servant';
+      let roleCodeId: string | null = null;
 
       if (rawServantRole === 'priest') {
         accountRole = 'priest';
@@ -137,14 +157,19 @@ export async function POST(req: Request) {
       } else if (rawServantRole === 'admin') {
         accountRole = 'admin';
         servantRole = 'admin';
-      } else if (rawServantRole === 'class_leader') {
+      } else if (rawServantRole === 'class_leader' && !openJoin) {
+        // Leading a class needs the church invitation code (or assignment by
+        // an admin). An open join can only ever create a plain servant.
         servantRole = 'class_leader';
       }
       // else: servant (default)
 
       // Grade validation — privileged roles don't need a grade
       const isPrivileged = accountRole === 'admin' || accountRole === 'priest';
-      const assignedGrades: string[] = isPrivileged ? [] : (Array.isArray(grades) ? grades as string[] : []);
+      // Open joiners never pick a class themselves; an admin or class leader
+      // assigns them, so a stranger cannot read any class's children.
+      const assignedGrades: string[] =
+        isPrivileged || openJoin ? [] : (Array.isArray(grades) ? grades as string[] : []);
 
       if (isPrivileged) {
         if (!suppliedRoleCode || suppliedRoleCode.length > 64) {
@@ -164,10 +189,11 @@ export async function POST(req: Request) {
         if (!roleCode) {
           return badRequest('رمز الدور غير صالح أو لا يخص الكنيسة المحددة');
         }
+        roleCodeId = roleCode.id;
       }
 
       if (
-        !isPrivileged && (
+        !isPrivileged && !openJoin && (
           !Array.isArray(grades) ||
           (grades as unknown[]).some((grade: unknown) => typeof grade !== 'string' || !VALID_GRADES.includes(grade))
         )
@@ -220,6 +246,20 @@ export async function POST(req: Request) {
 
       const hashedPassword = await hashPassword(password);
 
+      // Role codes are single-use: consume atomically so two requests cannot
+      // both redeem the same code.
+      if (roleCodeId) {
+        const consumed = await platformQueryOne<{ id: string }>(
+          `UPDATE "church_codes" SET "revoked" = true, "updatedAt" = now()
+           WHERE "id" = $1 AND "revoked" = false
+           RETURNING "id"`,
+          [roleCodeId],
+        );
+        if (!consumed) {
+          return badRequest('رمز الدور غير صالح أو تم استخدامه من قبل');
+        }
+      }
+
       // Activate immediately but keep emailVerified=false until the user proves
       // mailbox access through the password-reset code flow.
       const user = await queryOne<{
@@ -240,6 +280,12 @@ export async function POST(req: Request) {
       );
 
       if (!user) {
+        if (roleCodeId) {
+          await platformQueryOne(
+            `UPDATE "church_codes" SET "revoked" = false, "updatedAt" = now() WHERE "id" = $1 RETURNING "id"`,
+            [roleCodeId],
+          ).catch(() => null);
+        }
         return serverError('فشل إنشاء الحساب');
       }
 
@@ -315,6 +361,7 @@ export async function POST(req: Request) {
           permissions: access.permissions,
         },
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },
+        pendingAssignment: !isPrivileged && access.classIds.length === 0,
       });
 
       const [refreshName, refreshVal, refreshOpts] = refreshCookie(refreshToken.token, refreshToken.expiresAt);

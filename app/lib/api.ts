@@ -396,11 +396,14 @@ async function request<T>(
 export async function loginUser(
   identifier: string,
   password: string,
+  churchCode?: string,
 ): Promise<{ accessToken: string; user: AuthUser }> {
   const isEmail = identifier.includes('@');
-  const payload = isEmail
-    ? { email: identifier, password }
-    : { phone: identifier, password };
+  const payload = {
+    ...(isEmail ? { email: identifier } : { phone: identifier }),
+    password,
+    ...(churchCode?.trim() ? { churchCode: churchCode.trim() } : {}),
+  };
 
   const data = await request<{ accessToken: string; user: AuthUser }>(
     '/api/auth/login',

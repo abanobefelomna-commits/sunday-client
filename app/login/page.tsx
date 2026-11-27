@@ -8,7 +8,7 @@ import { safeNextPath } from "../lib/safe-next";
 import { toast } from "sonner";
 import { useI18n } from "../lib/app-i18n";
 import { FloatingLabelInput } from "../components/ui/FloatingInput";
-import { Languages, Lock, User, ArrowLeft, ArrowRight } from "lucide-react";
+import { Languages, Lock, User, KeyRound, ArrowLeft, ArrowRight } from "lucide-react";
 import { MotionInView } from "../components/motion";
 
 function nextDestination(value: string | null): string {
@@ -22,6 +22,7 @@ function nextDestination(value: string | null): string {
 function LoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [churchCode, setChurchCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
@@ -39,7 +40,7 @@ function LoginForm() {
     setError(null);
 
     try {
-      const res = await loginUser(identifier.trim(), password);
+      const res = await loginUser(identifier.trim(), password, churchCode);
       const name = res.user.name || t("login.defaultUser");
       toast.success(t("login.welcome", { name }));
       window.location.href = nextDestination(searchParams.get("next"));
@@ -124,6 +125,21 @@ function LoginForm() {
               showPasswordToggle={true}
               startIcon={<Lock className="h-4 w-4" />}
             />
+
+            <FloatingLabelInput
+              id="churchCode"
+              label={t("login.churchCode")}
+              type="text"
+              autoComplete="off"
+              dir="ltr"
+              value={churchCode}
+              onChange={(e) => setChurchCode(e.target.value)}
+              disabled={loading}
+              startIcon={<KeyRound className="h-4 w-4" />}
+            />
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-1 px-1">
+              {t("login.churchCodeHint")}
+            </p>
 
             <div className="pt-1 text-end">
               <Link

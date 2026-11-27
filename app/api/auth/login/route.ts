@@ -10,6 +10,7 @@ import {
 } from '@/src/server/auth';
 import { badRequest, unauthorized, serverError, getAccessContext } from '@/src/server/middleware';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
+import { resolveJoinCode } from '@/src/server/church-join-code';
 import {
   getRequestIp,
   rateLimit,
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     password?: string;
     church?: string;
     churchSlug?: string;
+    churchCode?: string;
   };
   try {
     body = await req.json();
@@ -37,10 +39,24 @@ export async function POST(req: Request) {
   const rawIdentifier = String(body.email || body.phone || '').trim();
   const identifier = body.email ? normalizeEmail(rawIdentifier) : rawIdentifier;
   const password = typeof body.password === 'string' ? body.password : '';
-  const explicitSlug = (body.church || body.churchSlug || '').trim().toLowerCase() || null;
+  let explicitSlug = (body.church || body.churchSlug || '').trim().toLowerCase() || null;
+  const rawChurchCode = typeof body.churchCode === 'string' ? body.churchCode.trim() : '';
 
   if (!identifier || !password) {
     return badRequest('البريد الإلكتروني أو رقم الهاتف وكلمة المرور مطلوبة');
+  }
+
+  if (rawChurchCode) {
+    const resolved = await resolveJoinCode(rawChurchCode);
+    if (!resolved.ok) {
+      return resolved.reason === 'unavailable'
+        ? serverError('تعذر التحقق من رمز الكنيسة الآن. حاول مرة أخرى لاحقًا.')
+        : badRequest('رمز الكنيسة غير صالح أو منتهي الصلاحية');
+    }
+    if (explicitSlug && explicitSlug !== resolved.slug) {
+      return badRequest('رمز الكنيسة لا يخص الكنيسة المحددة');
+    }
+    explicitSlug = resolved.slug;
   }
 
   const ip = getRequestIp(req);
@@ -123,5 +139,5 @@ export async function POST(req: Request) {
       console.error('Login error:', error);
       return serverError('حدث خطأ أثناء تسجيل الدخول');
     }
-  });
+  }, { ignoreCookie: Boolean(rawChurchCode) });
 }

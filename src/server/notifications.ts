@@ -113,7 +113,7 @@ async function userIdForServant(servantId: string | null | undefined): Promise<s
   const row = await queryOne<{ id: string }>(
     `SELECT u."id"
      FROM "servants" s
-     JOIN "users" u ON u."phone" = s."phone" OR (s."email" IS NOT NULL AND u."email" = s."email")
+     JOIN "users" u ON u."id" = s."userId"
      WHERE s."id" = $1
      LIMIT 1`,
     [servantId],
@@ -134,7 +134,7 @@ export async function classUserIds(classId: string | null | undefined): Promise<
     `SELECT DISTINCT u."id"
      FROM "servants_classes" sc
      JOIN "servants" s ON s."id" = sc."servantsId"
-     JOIN "users" u ON u."phone" = s."phone" OR (s."email" IS NOT NULL AND u."email" = s."email")
+     JOIN "users" u ON u."id" = s."userId"
      WHERE sc."classesId" = $1
      UNION
      SELECT "id" FROM "users" WHERE "role" IN ('admin', 'priest')`,

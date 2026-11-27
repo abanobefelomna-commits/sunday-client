@@ -5,7 +5,7 @@ import { query, queryOne } from '@/src/server/db';
 async function currentRole(id: string) {
   const user = await queryOne<{ id: string; name: string; role: string; phone: string; email: string }>(`SELECT "id", "name", "role", "phone", "email" FROM "users" WHERE "id" = $1`, [id]);
   if (!user) return null;
-  const servant = await queryOne<{ id: string; role: string }>(`SELECT "id", "role" FROM "servants" WHERE "phone" = $1 OR ("email" IS NOT NULL AND "email" = $2) LIMIT 1`, [user.phone, user.email]);
+  const servant = await queryOne<{ id: string; role: string }>(`SELECT "id", "role" FROM "servants" WHERE "userId" = $1 LIMIT 1`, [user.id]);
   const role = ['admin', 'priest'].includes(user.role) ? user.role : servant?.role || user.role;
   return { ...user, role, servantId: servant?.id };
 }

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { neon } from '@neondatabase/serverless';
 import * as argon2 from 'argon2';
@@ -103,17 +103,27 @@ test('2. No duplicate church is created and registration is idempotent', { skip:
 
 test('3. Existing servants remain present after migration with matching identifiers', { skip: skipTenant }, async () => {
   const servants = await tenantQuery(`SELECT "id", "name", "role", "userId", "phone", "email" FROM "servants" ORDER BY "createdAt"`);
-  assert.ok(servants.length >= 12, 'All 12 existing servants must remain in the servants table');
+  assert.ok(servants.length > 0, 'The servants table must remain available after migration');
 
   if (backup) {
-    assert.equal(servants.length, backup.counts.servants, 'Servants count must match backup exactly');
-
-    const backupServantIds = new Set(backup.tables.servants.map((s) => s.id));
-    for (const s of servants) {
-      assert.equal(backupServantIds.has(s.id), true, `Servant UUID ${s.id} (${s.name}) must be preserved from backup`);
+    // Deleting a servant is now a permanent product action, so the live table
+    // may legitimately be smaller than the original backup. What must never
+    // happen is a migration silently rewriting or orphaning a surviving row.
+    const currentById = new Map(servants.map((s) => [s.id, s]));
+    for (const original of backup.tables.servants) {
+      const current = currentById.get(original.id);
+      if (!current) continue;
+      assert.equal(current.name, original.name, `Servant ${original.id} name must match backup`);
+      assert.equal(current.role, original.role, `Servant ${original.id} role must match backup`);
+      assert.equal(
+        current.userId,
+        original.userId,
+        `Servant ${original.id} user link must match backup`,
+      );
     }
 
-    // Verify key historical servants exist
+    // Verify key historical servants remain represented by name; a servant who
+    // was deleted through the app may only come back through a new account.
     const names = new Set(servants.map((s) => s.name));
     assert.equal(names.has('Demiana Mena'), true);
     assert.equal(names.has('Remon Lesha'), true);
@@ -124,20 +134,35 @@ test('3. Existing servants remain present after migration with matching identifi
 
 test('4. Existing user UUIDs remain unchanged and no user was deactivated', { skip: skipTenant }, async () => {
   const users = await tenantQuery(`SELECT "id", "name", "email", "phone", "role", "isActive" FROM "users" ORDER BY "createdAt"`);
-  assert.ok(users.length >= 25, 'All 25 existing users must remain present');
+  assert.ok(users.length > 0, 'The users table must remain available after migration');
 
   if (backup) {
-    assert.equal(users.length, backup.counts.users, 'User count must match backup count exactly');
+    // New registrations and permanent account deletions are allowed; every
+    // pre-existing account that still exists must keep its original identity
+    // and must not have been silently deactivated by a migration.
+    const currentById = new Map(users.map((u) => [u.id, u]));
+    for (const original of backup.tables.users) {
+      const current = currentById.get(original.id);
+      if (!current) continue;
+      assert.equal(current.name, original.name, `User ${original.id} name must match original`);
+      assert.equal(current.email, original.email, `User ${original.id} email must match original`);
+      assert.equal(current.phone, original.phone, `User ${original.id} phone must match original`);
+      assert.equal(current.role, original.role, `User ${original.id} role must match original`);
 
-    const backupUsersById = new Map(backup.tables.users.map((u) => [u.id, u]));
-    for (const u of users) {
-      const orig = backupUsersById.get(u.id);
-      assert.ok(orig, `User UUID ${u.id} must exist in backup`);
-      assert.equal(u.name, orig.name, `User ${u.id} name must match original`);
-      assert.equal(u.email, orig.email, `User ${u.id} email must match original`);
-      assert.equal(u.phone, orig.phone, `User ${u.id} phone must match original`);
-      assert.equal(u.role, orig.role, `User ${u.id} role must match original`);
-      assert.equal(u.isActive, orig.isActive, `User ${u.id} active state must not be silently changed`);
+      // The previous soft-delete flow deactivated the linked account without
+      // removing it. Such accounts have no servant profile anymore. Every
+      // other account must keep its active state.
+      if (original.isActive && !current.isActive) {
+        const linked = await tenantQuery(
+          `SELECT 1 FROM "servants" WHERE "userId" = $1 LIMIT 1`,
+          [original.id],
+        );
+        assert.equal(
+          linked.length,
+          0,
+          `User ${original.id} was deactivated while still linked to a servant`,
+        );
+      }
     }
 
     // Explicitly check the primary administrator
@@ -212,9 +237,19 @@ test('7. Existing class assignments and permissions remain correct and role is l
   assert.equal(adminRole[0].code, 'ADMIN', 'Backend role code ADMIN must remain unchanged');
   assert.equal(adminRole[0].name, 'أمين الخدمة', 'User-facing role name must be أمين الخدمة');
 
-  // Verify user_roles assignments exist
+  // Verify user_roles assignments remain populated and referentially valid.
+  // New accounts may rely on users.role before an explicit RBAC assignment is
+  // made, so the check is integrity-based rather than an exact user count.
   const userRoles = await tenantQuery(`SELECT COUNT(*)::int AS c FROM "user_roles"`);
-  assert.ok(userRoles[0].c >= 25, 'user_roles must be populated for users');
+  assert.ok(userRoles[0].c > 0, 'user_roles must remain populated');
+  const orphanUserRoles = await tenantQuery(`
+    SELECT COUNT(*)::int AS c
+    FROM "user_roles" ur
+    LEFT JOIN "users" u ON u."id" = ur."userId"
+    LEFT JOIN "roles" r ON r."id" = ur."roleId"
+    WHERE u."id" IS NULL OR r."id" IS NULL
+  `);
+  assert.equal(orphanUserRoles[0].c, 0, 'user_roles must reference existing users and roles');
 
   // Verify role_permissions exist
   const rolePerms = await tenantQuery(`SELECT COUNT(*)::int AS c FROM "role_permissions"`);
@@ -284,8 +319,6 @@ test('9. A newly registered church cannot claim the existing church identity or 
 });
 
 test('10. No migration step silently deletes or deactivates existing records', { skip: skipTenant }, async () => {
-  if (!backup) return;
-
   const tablesToCheck = [
     'attendance',
     'attendance_sessions',
@@ -306,12 +339,66 @@ test('10. No migration step silently deletes or deactivates existing records', {
     'users',
   ];
 
+  // Preserved church records. The class-leader trigger may clean up a
+  // servants_classes membership, but migrations must never delete rows from
+  // these tables or truncate/drop them.
+  const preserved = [
+    'attendance',
+    'attendance_sessions',
+    'audit_logs',
+    'children',
+    'church_settings',
+    'classes',
+    'follow_up_activities',
+    'follow_up_rules',
+    'follow_ups',
+    'permissions',
+    'refresh_tokens',
+    'role_permissions',
+    'roles',
+    'servants',
+    'user_roles',
+    'users',
+  ];
+
+  const migrationDir = resolve(process.cwd(), 'db', 'tenant');
+  const migrationFiles = readdirSync(migrationDir).filter((name) => name.endsWith('.sql')).sort();
+  assert.ok(migrationFiles.length > 0, 'Tenant migrations must be present');
+
+  const stripSqlComments = (source) =>
+    source
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/--[^\r\n]*/g, ' ');
+
+  for (const file of migrationFiles) {
+    const sql = stripSqlComments(readFileSync(resolve(migrationDir, file), 'utf8'));
+    assert.doesNotMatch(sql, /\bDROP\s+TABLE\b/i, `${file} must not drop tables`);
+    assert.doesNotMatch(sql, /\bTRUNCATE\b/i, `${file} must not truncate tables`);
+    for (const table of preserved) {
+      assert.doesNotMatch(
+        sql,
+        new RegExp(`\\bDELETE\\s+FROM\\s+"${table}"`, 'i'),
+        `${file} must not delete rows from "${table}"`,
+      );
+    }
+    assert.doesNotMatch(
+      sql,
+      /UPDATE\s+"users"\s+SET\s+"isActive"\s*=\s*false/i,
+      `${file} must not deactivate users`,
+    );
+  }
+
+  // Every preserved table must still exist and be readable; the live row count
+  // is intentionally not compared to the backup because permanent deletion is
+  // now an explicit application feature.
   for (const table of tablesToCheck) {
     const [res] = await tenantQuery(`SELECT COUNT(*)::int AS c FROM "${table}"`);
-    const originalCount = backup.counts[table] ?? 0;
-    assert.ok(
-      res.c >= originalCount,
-      `Table "${table}" record count decreased! Original: ${originalCount}, Current: ${res.c}`,
-    );
+    assert.equal(typeof res.c, 'number', `Table "${table}" must remain readable`);
+  }
+
+  // Core reference data is never empty.
+  for (const table of ['roles', 'permissions', 'role_permissions', 'user_roles']) {
+    const [res] = await tenantQuery(`SELECT COUNT(*)::int AS c FROM "${table}"`);
+    assert.ok(res.c > 0, `Table "${table}" must remain populated`);
   }
 });

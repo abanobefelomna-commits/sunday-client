@@ -4,6 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, Copy } from "lucide-react";
+import { parseInteractiveReply } from "../../lib/ai-interaction";
 
 function CodeBlock({ children }: { children?: ReactNode }) {
   const preRef = useRef<HTMLPreElement>(null);
@@ -33,6 +34,9 @@ function CodeBlock({ children }: { children?: ReactNode }) {
 
 interface MarkdownMessageProps {
   content: string;
+  /** Set only on the latest finished reply so chips are tappable. */
+  onChoose?: (text: string) => void;
+  streaming?: boolean;
 }
 
 /**
@@ -40,7 +44,18 @@ interface MarkdownMessageProps {
  * quotes, links, and fenced code blocks. RTL is inherited from the page while
  * code blocks stay LTR and each block uses `dir="auto"` for mixed language.
  */
-export default function MarkdownMessage({ content }: MarkdownMessageProps) {
+export default function MarkdownMessage({ content, onChoose, streaming = false }: MarkdownMessageProps) {
+  const parsed = parseInteractiveReply(content, streaming);
+  const chipStyle = {
+    padding: "6px 12px",
+    borderRadius: "999px",
+    border: "1px solid var(--line)",
+    background: "var(--card)",
+    color: "var(--ink)",
+    fontSize: "0.82rem",
+    cursor: onChoose ? "pointer" : "default",
+    opacity: onChoose ? 1 : 0.6,
+  } as const;
   return (
     <div className="ai-markdown">
       <ReactMarkdown
@@ -65,8 +80,43 @@ export default function MarkdownMessage({ content }: MarkdownMessageProps) {
           pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
         }}
       >
-        {content}
+        {parsed.text}
       </ReactMarkdown>
+      {parsed.ask && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 700, marginBottom: 8 }} dir="auto">
+            {parsed.ask.question}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {parsed.ask.options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                disabled={!onChoose}
+                onClick={() => onChoose?.(option)}
+                style={chipStyle}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {parsed.next.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+          {parsed.next.map((option) => (
+            <button
+              key={option}
+              type="button"
+              disabled={!onChoose}
+              onClick={() => onChoose?.(option)}
+              style={{ ...chipStyle, borderStyle: "dashed" }}
+            >
+              ➜ {option}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -186,15 +186,10 @@ export async function resolveTenantRequest(
     const cookieSlug = readCookie(request, 'tenant_slug');
     if (cookieSlug && /^[a-z0-9-]{2,63}$/.test(cookieSlug)) {
       const tenant = await loadBySlug(cookieSlug);
-      if (tenant) {
-        if (explicitSlug && explicitSlug !== tenant.slug) {
-          return {
-            ok: false,
-            status: 403,
-            code: 'TENANT_MISMATCH',
-            message: 'The selected church does not match the current session.',
-          };
-        }
+      // The cookie is only a hint. A church the user explicitly selected (or
+      // entered a code for) always wins over a stale cookie from an earlier
+      // session; the Host check above still rejects a conflicting selection.
+      if (tenant && (!explicitSlug || explicitSlug === tenant.slug)) {
         return { ok: true, tenant };
       }
     }
@@ -225,6 +220,21 @@ export async function resolveTenantRequest(
     code: 'TENANT_REQUIRED',
     message: 'Choose a church to continue.',
   };
+}
+
+/**
+ * True only when the request Host itself identifies an active church (custom
+ * domain or subdomain). Cookies, body slugs and the default tenant do not
+ * count, so it is safe to use for "no invitation code needed" decisions.
+ */
+export async function hostIdentifiesTenant(request: Request): Promise<boolean> {
+  const host =
+    normalizeHost(request.headers.get('x-forwarded-host')) ||
+    normalizeHost(request.headers.get('host'));
+  if (!host) return false;
+  const hostSlug = hostToTenantSlug(host);
+  const tenant = (await loadByHost(host)) || (hostSlug ? await loadBySlug(hostSlug) : null);
+  return Boolean(tenant);
 }
 
 export async function getTenantBySlug(slug: string): Promise<TenantContext | null> {

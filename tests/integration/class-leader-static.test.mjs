@@ -16,6 +16,7 @@ const dashboardPage = read('app/dashboard/page.tsx');
 const servantsPage = read('app/servants/page.tsx');
 const classDetailPage = read('app/classes/[id]/page.tsx');
 const integrityMigration = read('db/tenant/010_class_leader_integrity.sql');
+const studentNotes = read('src/server/student-notes.ts');
 
 test('access context exposes led classes and keeps leaders scoped in legacy churches', () => {
   assert.match(access, /CLASS_LEADER_SERVANT_ROLE = 'قائد فصل'/);
@@ -54,13 +55,18 @@ test('servant deletion removes the row and linked regular account from the datab
   assert.match(servantDetailRoute, /DELETE FROM "users" WHERE "id" = \$1/);
   assert.match(servantDetailRoute, /DELETE FROM "servants_classes" WHERE "servantsId" = \$1/);
   assert.match(servantDetailRoute, /UPDATE "classes" SET "leadServantId" = NULL/);
-  assert.match(servantDetailRoute, /type: 'servant\.delete'/);
+  assert.match(servantDetailRoute, /action: 'servant\.delete'/);
 });
 
 test('child deletion is permanent and relies on cascading dependent rows', () => {
   assert.match(childrenDetailRoute, /DELETE FROM "children" WHERE "id" = \$1/);
   assert.doesNotMatch(childrenDetailRoute, /SET "deletedAt" = now\(\)/);
-  assert.match(childrenDetailRoute, /type: 'student\.delete'/);
+  assert.match(childrenDetailRoute, /action: 'student\.delete'/);
+});
+
+test('note deletion removes the row from the database', () => {
+  assert.match(studentNotes, /DELETE FROM "student_notes"/);
+  assert.doesNotMatch(studentNotes, /UPDATE "student_notes" SET "deletedAt"/);
 });
 
 test('class-leader registration claims exactly one vacant class and rolls back on failure', () => {
@@ -89,7 +95,12 @@ test('migration 010 adds integrity constraints without deleting church data', ()
   assert.match(integrityMigration, /FK_attendance_recordedBy/);
   assert.match(integrityMigration, /VALIDATE CONSTRAINT/);
   assert.doesNotMatch(integrityMigration, /\b(DROP TABLE|TRUNCATE)\b/i);
-  assert.doesNotMatch(integrityMigration, /\bDELETE\s+FROM\b/i);
+  // Only servant-to-class memberships may be cleaned up by the leadership
+  // release trigger; the migration never deletes church records themselves.
+  assert.doesNotMatch(
+    integrityMigration,
+    /\bDELETE\s+FROM\s+"(children|servants|classes|users|attendance|visitations|follow_ups)"/i,
+  );
 });
 
 test('role-aware UI exposes the class-leader workspace without admin controls', () => {

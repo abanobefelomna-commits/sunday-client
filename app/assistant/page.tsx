@@ -229,7 +229,7 @@ export default function AssistantPage() {
     const frame = requestAnimationFrame(() => {
       setUser(getStoredUser());
       try {
-        const savedChat = localStorage.getItem(STORAGE_CHAT_KEY);
+        const savedChat = sessionStorage.getItem(STORAGE_CHAT_KEY);
         if (savedChat) {
           const parsed = JSON.parse(savedChat);
           if (Array.isArray(parsed)) setMessages(parsed);
@@ -268,12 +268,13 @@ export default function AssistantPage() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  // Save messages to localStorage
+  // Chat may contain children's names, so keep it for this tab session only.
+  // Save messages to sessionStorage
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(messages));
+      sessionStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(messages));
     } else {
-      localStorage.removeItem(STORAGE_CHAT_KEY);
+      sessionStorage.removeItem(STORAGE_CHAT_KEY);
     }
   }, [messages]);
 
@@ -648,7 +649,7 @@ export default function AssistantPage() {
     if (messages.length === 0) return;
     if (window.confirm(t("ai.clearConfirm"))) {
       setMessages([]);
-      localStorage.removeItem(STORAGE_CHAT_KEY);
+      sessionStorage.removeItem(STORAGE_CHAT_KEY);
     }
   };
 
@@ -1143,7 +1144,15 @@ export default function AssistantPage() {
                           isUser ? (
                             <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
                           ) : (
-                            <MarkdownMessage content={m.content} />
+                            <MarkdownMessage
+                              content={m.content}
+                              streaming={isGenerating && m === messages[messages.length - 1]}
+                              onChoose={
+                                !isGenerating && m === messages[messages.length - 1]
+                                  ? (choice) => handleSend(choice)
+                                  : undefined
+                              }
+                            />
                           )
                         ) : isGenerating && !isUser ? (
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--mute)" }}>

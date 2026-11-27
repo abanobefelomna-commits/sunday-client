@@ -97,6 +97,7 @@ export async function findServantForUser(
   const matches = await query<{ id: string; role: string }>(
     `SELECT "id", "role" FROM "servants"
      WHERE "userId" IS NULL
+       AND "role" NOT IN ('مسؤول', 'أب كاهن')
        AND (
          ($1::text IS NOT NULL AND btrim("phone") = $1)
          OR ($2::text IS NOT NULL AND lower(btrim("email")) = $2)

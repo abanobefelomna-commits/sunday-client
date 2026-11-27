@@ -42,6 +42,26 @@ function ageFromBirthDate(value: ChildRow['birthDate']): number | null {
   return age >= 0 ? age : null;
 }
 
+/** Churches can switch child names off for the assistant (ai.shareChildNames = false). */
+async function shareChildNames(): Promise<boolean> {
+  try {
+    const row = await queryOne<{ value: unknown }>(
+      `SELECT "value" FROM "church_settings" WHERE "key" = 'ai.shareChildNames' LIMIT 1`,
+    );
+    const v = row?.value;
+    if (v === false) return false;
+    if (typeof v === 'string' && v.trim().toLowerCase() === 'false') return false;
+    if (v && typeof v === 'object' && (v as { enabled?: unknown }).enabled === false) return false;
+  } catch {
+    // Setting is optional; default is to share first names only.
+  }
+  return true;
+}
+
+function firstName(full: string): string {
+  return full.trim().split(/\s+/)[0] || full;
+}
+
 async function readChurchName(): Promise<string> {
   try {
     const row = await queryOne<{ value: unknown }>(
@@ -73,6 +93,7 @@ export async function buildAiDataContext(access: AccessContext): Promise<string>
   const broad = scope === null;
   const classIds = scope ?? [];
   const churchName = await readChurchName();
+  const withNames = await shareChildNames();
 
   if (!broad && classIds.length === 0) {
     return [
@@ -162,9 +183,15 @@ export async function buildAiDataContext(access: AccessContext): Promise<string>
     }
   }
 
-  lines.push('', `### قائمة الأطفال (${children.length}${totalChildren > children.length ? ` من أصل ${totalChildren}` : ''})`);
+  if (!withNames) {
+    lines.push('', '### قائمة الأطفال', 'أسماء الأطفال غير مشاركة مع المساعد في إعدادات هذه الكنيسة. تتوفر الأعداد والإحصائيات فقط.');
+  } else {
+    lines.push('', `### قائمة الأطفال — الاسم الأول فقط (${children.length}${totalChildren > children.length ? ` من أصل ${totalChildren}` : ''})`);
+  }
 
-  if (children.length === 0) {
+  if (!withNames) {
+    // names intentionally omitted
+  } else if (children.length === 0) {
     lines.push('لا يوجد أطفال مسجلون في نطاق وصولك.');
   } else {
     let currentClass = '';
@@ -174,9 +201,9 @@ export async function buildAiDataContext(access: AccessContext): Promise<string>
         lines.push('', `#### ${currentClass}`);
       }
       const age = ageFromBirthDate(child.birthDate);
-      lines.push(`${Number(child.position)}. ${child.name}${age !== null ? ` — العمر: ${age}` : ''}`);
+      lines.push(`${Number(child.position)}. ${firstName(child.name)}${age !== null ? ` — العمر: ${age}` : ''}`);
     }
-    if (totalChildren > children.length) {
+    if (withNames && totalChildren > children.length) {
       lines.push(
         '',
         `ملاحظة: القائمة تعرض أول ${children.length} طفل فقط. اسأل عن فصل محدد للحصول على تفاصيل أدق.`,

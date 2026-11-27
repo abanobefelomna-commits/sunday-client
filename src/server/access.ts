@@ -138,6 +138,17 @@ export function isPrivilegedRole(role: string | null | undefined, servantRole: s
   );
 }
 
+/**
+ * Creating, promoting, editing or removing a privileged servant (admin/priest)
+ * must not be possible for a user who merely holds `servants.write`, otherwise
+ * a supervisor could grant themselves full control.
+ */
+export function canManagePrivilegedServants(
+  access: Pick<AccessContext, 'privileged' | 'permissions'>,
+): boolean {
+  return access.privileged || access.permissions?.includes('roles.manage') === true;
+}
+
 export function canManageClassStructure(
   access: {
     privileged: boolean;

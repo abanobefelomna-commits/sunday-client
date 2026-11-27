@@ -16,6 +16,24 @@ export class UploadValidationError extends Error {
   }
 }
 
+/**
+ * Identify the real image type from the file's leading bytes. The browser
+ * supplied MIME type and file extension are attacker-controlled, so they are
+ * never trusted to decide what gets stored and later rendered.
+ */
+export function sniffImageMime(bytes: Uint8Array): 'image/jpeg' | 'image/png' | 'image/webp' | null {
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length >= 8 && png.every((b, i) => bytes[i] === b)) return 'image/png';
+  const ascii = (start: number, text: string) =>
+    bytes.length >= start + text.length &&
+    [...text].every((ch, i) => bytes[start + i] === ch.charCodeAt(0));
+  if (ascii(0, 'RIFF') && ascii(8, 'WEBP')) return 'image/webp';
+  return null;
+}
+
 export async function processUploadedImage(
   file: File,
   _folder = 'images',
@@ -39,7 +57,10 @@ export async function processUploadedImage(
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const mime = file.type || (ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg');
+  const mime = sniffImageMime(buffer);
+  if (!mime) {
+    throw new UploadValidationError('الملف ليس صورة صالحة (JPG أو PNG أو WEBP)');
+  }
   const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
 
   return {
