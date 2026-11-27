@@ -186,6 +186,11 @@
 .ps-contactCard h2 { margin: 4px 0; font-size: 22px; }
 .ps-contactCard p, .ps-contactCard small { font-size: 12px; }
 .ps-contactCard small { display: block; margin-block-start: 4px; color: #526984; }
+.ps-contactActions { display: flex; flex-direction: column; gap: 10px; }
+.ps-contactPhone { display: inline-flex; align-items: center; gap: 7px; margin-block-start: 10px; color: var(--navy-900); font-size: 16px; font-weight: 780; letter-spacing: .01em; transition: color .18s ease; }
+.ps-contactPhone:hover { color: var(--blue-600); }
+.ps-whatsappButton { min-height: 44px; padding: 0 19px; display: inline-flex; justify-content: center; align-items: center; gap: 8px; border: 1px solid #1aa355; border-radius: 999px; color: #fff; background: linear-gradient(135deg, #2fbf5c, #128c4b); box-shadow: 0 10px 24px rgb(18 140 75 / 22%); font-size: 13px; font-weight: 750; line-height: 1.3; text-align: center; white-space: nowrap; transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease; }
+.ps-whatsappButton:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgb(18 140 75 / 30%); background: linear-gradient(135deg, #25a94f, #0d7a41); }
 
 .ps-footer { padding: 43px max(28px, calc((100vw - 1240px) / 2)) 22px; color: #dbe7f6; background: #132d53; }
 .ps-footerMain { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 30px; row-gap: 10px; }
@@ -196,7 +201,9 @@
 .ps-footerLinks { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 16px; }
 .ps-footerLinks a { color: #d2deed; font-size: 11px; transition: color .18s ease; }
 .ps-footerBottom { display: flex; justify-content: space-between; gap: 16px; margin-block-start: 28px; padding-block-start: 15px; border-top: 1px solid rgb(224 236 251 / 16%); color: #9eb2cc; font-size: 10px; }
-.ps-footerBottom span:last-child { text-align: end; }
+.ps-footerBottom > :last-child { text-align: end; }
+.ps-footerPhone { color: #cfe0f5; font-weight: 700; letter-spacing: .02em; transition: color .18s ease; }
+.ps-footerPhone:hover { color: #fff; text-decoration: underline; }
 
 @media (max-width: 1100px) {
   .ps-headerInner { width: min(100% - 38px, 1320px); gap: 15px; }
@@ -335,7 +342,9 @@
   .ps-contactIcon { width: 42px; height: 42px; border-radius: 13px; }
   .ps-contactCard h2 { font-size: 17px; }
   .ps-contactCard p, .ps-contactCard small { font-size: 10px; }
-  .ps-contactCard .ps-secondaryButton { grid-column: 1 / -1; min-height: 40px; font-size: 11px; }
+  .ps-contactActions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+  .ps-contactActions > * { flex: 1 1 150px; min-height: 40px; padding-inline: 12px; font-size: 11px; }
+  .ps-contactPhone { margin-block-start: 7px; font-size: 13px; }
 
   .ps-footer { padding: 31px 18px 18px; }
   .ps-footerMain { grid-template-columns: 1fr; gap: 11px; }

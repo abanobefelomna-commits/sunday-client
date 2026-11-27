@@ -19,6 +19,8 @@ import {
   Languages,
   LockKeyhole,
   Menu,
+  MessageCircle,
+  Phone,
   ShieldCheck,
   Sparkles,
   UsersRound,
@@ -33,6 +35,14 @@ import {
 import { sharedPublicCopy } from "./shared-copy";
 import { usePublicLocale } from "./use-public-locale";
 import { MotionInView, SessionIntro } from "../motion";
+
+const SUPPORT_COUNTRY_CODE = "20";
+
+/** Local support numbers are Egyptian; wa.me and tel: both need the full international form. */
+function supportPhoneNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^0+/, "");
+  return digits.length === 10 ? `${SUPPORT_COUNTRY_CODE}${digits}` : digits;
+}
 
 function PublicHeader({
   locale,
@@ -173,7 +183,10 @@ function PublicFooter({ messages }: { messages: LandingMessages }) {
           <Link href="/login">{messages.login}</Link>
         </nav>
       </div>
-      <div className={"ps-footerBottom"}><span>{messages.name}</span><span>{messages.contactStatus}</span></div>
+      <div className={"ps-footerBottom"}>
+        <span>{messages.name}</span>
+        <a className={"ps-footerPhone"} href={`tel:+${supportPhoneNumber(messages.contactPhone)}`} dir="ltr">{messages.contactPhone}</a>
+      </div>
     </footer>
   );
 }
@@ -310,8 +323,26 @@ export default function PublicLanding() {
         <MotionInView as="section" className={`${"ps-section"} ${"ps-contactSection"}`} id="contact">
           <div className={"ps-contactCard"}>
             <span className={"ps-contactIcon"}><Headphones size={23} /></span>
-            <div><span className={"ps-sectionEyebrow"}>{messages.contactEyebrow}</span><h2>{messages.contactTitle}</h2><p>{messages.contactText}</p><small>{messages.contactStatus}</small></div>
-            <Link className={"ps-secondaryButton"} href="#faq">{messages.nav.faq}<ArrowUpRight size={16} /></Link>
+            <div>
+              <span className={"ps-sectionEyebrow"}>{messages.contactEyebrow}</span>
+              <h2>{messages.contactTitle}</h2>
+              <p>{messages.contactText}</p>
+              <a className={"ps-contactPhone"} href={`tel:+${supportPhoneNumber(messages.contactPhone)}`} dir="ltr">
+                <Phone size={15} aria-hidden="true" />{messages.contactPhone}
+              </a>
+              <small>{messages.contactStatus}</small>
+            </div>
+            <div className={"ps-contactActions"}>
+              <a
+                className={"ps-whatsappButton"}
+                href={`https://wa.me/${supportPhoneNumber(messages.contactPhone)}?text=${encodeURIComponent(messages.contactWhatsAppMessage)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle size={17} aria-hidden="true" />{messages.contactWhatsApp}
+              </a>
+              <Link className={"ps-secondaryButton"} href="#faq">{messages.nav.faq}<ArrowUpRight size={16} /></Link>
+            </div>
           </div>
         </MotionInView>
       </main>
