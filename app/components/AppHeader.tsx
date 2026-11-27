@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  AlertTriangle,
   Bell,
   BarChart3,
   BookOpen,
@@ -37,6 +38,7 @@ const MENU_LINKS: Array<{ href: string; key: AppMessageKey; icon: typeof LayoutD
   { href: "/children", key: "nav.children", icon: Baby },
   { href: "/attendance", key: "nav.attendance", icon: CalendarCheck },
   { href: "/follow-ups", key: "nav.followUps", icon: HeartHandshake },
+  { href: "/class-problems", key: "nav.problems", icon: AlertTriangle },
   { href: "/analytics", key: "nav.analytics", icon: BarChart3 },
   { href: "/classes", key: "nav.classes", icon: BookOpen },
   { href: "/servants", key: "nav.servants", icon: Users },

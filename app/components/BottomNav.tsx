@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { MOTION } from "./motion";
 import { useI18n, type AppMessageKey } from "../lib/app-i18n";
 import {
+  AlertTriangle,
   BarChart3,
   Baby,
   Bell,
@@ -32,6 +33,7 @@ const PRIMARY: Array<{ href: string; icon: typeof Home; key: AppMessageKey }> = 
 
 const SECONDARY: Array<{ href: string; icon: typeof Home; key: AppMessageKey }> = [
   { href: "/classes", icon: BookOpen, key: "nav.classes" },
+  { href: "/class-problems", icon: AlertTriangle, key: "nav.problems" },
   { href: "/servants", icon: Users, key: "nav.servants" },
   { href: "/friday-prep", icon: ClipboardCheck, key: "nav.fridayPrep" },
   { href: "/assistant", icon: Sparkles, key: "nav.assistant" },

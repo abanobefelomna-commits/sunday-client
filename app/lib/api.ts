@@ -1483,3 +1483,83 @@ export async function updateNotificationPreferences(
     body: JSON.stringify(data),
   });
 }
+
+// ======================== CLASS PROBLEMS ========================
+
+export type ClassProblemStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
+export type ClassProblemPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type ClassProblemCategory =
+  | 'class_issue'
+  | 'missing_resource'
+  | 'student_issue'
+  | 'attendance_issue'
+  | 'technical_issue'
+  | 'support_request'
+  | 'general_request'
+  | 'other';
+
+export interface ClassProblemItem {
+  id: string;
+  classId: string;
+  category: ClassProblemCategory;
+  title: string;
+  description: string;
+  priority: ClassProblemPriority;
+  status: ClassProblemStatus;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  class: { id: string; name: string | null } | null;
+  reporter: { id: string; name: string | null } | null;
+}
+
+export interface ClassProblemListResponse {
+  data: ClassProblemItem[];
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export async function getClassProblems(paramsObj?: {
+  status?: ClassProblemStatus | 'active';
+  classId?: string;
+  priority?: ClassProblemPriority;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<ClassProblemListResponse> {
+  const params = new URLSearchParams();
+  if (paramsObj?.status) params.append('status', paramsObj.status);
+  if (paramsObj?.classId) params.append('classId', paramsObj.classId);
+  if (paramsObj?.priority) params.append('priority', paramsObj.priority);
+  if (paramsObj?.search) params.append('search', paramsObj.search);
+  if (paramsObj?.page) params.append('page', String(paramsObj.page));
+  if (paramsObj?.limit) params.append('limit', String(paramsObj.limit));
+  return request(`/api/class-problems?${params.toString()}`, { cache: 'no-store' });
+}
+
+export async function createClassProblem(data: {
+  classId: string;
+  category: ClassProblemCategory;
+  title: string;
+  description: string;
+  priority?: ClassProblemPriority;
+}): Promise<{ report: ClassProblemItem }> {
+  return request('/api/class-problems', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateClassProblem(
+  id: string,
+  data: {
+    status?: ClassProblemStatus;
+    priority?: ClassProblemPriority;
+    resolutionNote?: string | null;
+  },
+): Promise<{ report: ClassProblemItem }> {
+  return request(`/api/class-problems/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}

@@ -17,6 +17,7 @@ const PROTECTED_PREFIXES = [
   "/attendance",
   "/children",
   "/classes",
+  "/class-problems",
   "/follow-ups",
   "/friday-prep",
   "/news",
