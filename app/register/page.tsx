@@ -178,7 +178,8 @@ export default function RegisterPage() {
         phone: phone.trim(),
         password,
         servantRole: (() => {
-          if (servantRole === "class_leader" && !openJoin) return "class_leader";
+          if (openJoin) return "servant";
+          if (servantRole === "class_leader") return "class_leader";
           if (servantRole === "admin") return "admin";
           if (servantRole === "priest") return "priest";
           return "servant";
@@ -267,6 +268,8 @@ export default function RegisterPage() {
                     setChurchName(null);
                     setChurchSlug(null);
                     setChurchCodeError(null);
+                    setServantRole("servant");
+                    setRoleCode("");
                   }}
                   placeholder={t("register.churchCodePlaceholder")}
                   disabled={loading || churchCodeLoading}
@@ -341,10 +344,12 @@ export default function RegisterPage() {
                 >
                   <option value="servant">{t("register.roleServant")}</option>
                   {!openJoin && (
-                    <option value="class_leader">{t("register.roleClassLeader")}</option>
+                    <>
+                      <option value="class_leader">{t("register.roleClassLeader")}</option>
+                      <option value="admin">{t("register.roleAdmin")}</option>
+                      <option value="priest">{t("register.rolePriest")}</option>
+                    </>
                   )}
-                  <option value="admin">{t("register.roleAdmin")}</option>
-                  <option value="priest">{t("register.rolePriest")}</option>
                 </select>
               </div>
 
