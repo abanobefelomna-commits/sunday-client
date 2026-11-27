@@ -253,6 +253,20 @@ export default function DashboardPage() {
           </MotionInView>
         ) : null}
 
+        {user && !isLeader && !isPrivilegedUser(user) && (user.classIds?.length ?? 0) === 0 ? (
+          <MotionInView
+            as="section"
+            className="surface surface-pad"
+            ariaLabel={t("dashboard.pendingTitle")}
+          >
+            <EmptyState
+              icon="⏳"
+              title={t("dashboard.pendingTitle")}
+              description={t("dashboard.pendingBody")}
+            />
+          </MotionInView>
+        ) : null}
+
         <MotionInView as="section" className="hero-inner-card" ariaLabel={t("dashboard.summaryAria")}>
           <span className="eyebrow" style={{ color: "rgba(255,255,255,.82)" }}>
             {t("dashboard.heroEyebrow")}

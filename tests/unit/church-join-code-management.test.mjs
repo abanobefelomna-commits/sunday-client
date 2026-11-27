@@ -59,7 +59,7 @@ test('join and role codes are checked centrally and privileged roles have no gra
   assert.match(registration, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
   assert.match(registration, /accountRole = 'admin'/);
   assert.match(registration, /accountRole = 'priest'/);
-  assert.match(registration, /const assignedGrades: string\[\] = isPrivileged \? \[\]/);
+  assert.match(registration, /isPrivileged \|\| openJoin \? \[\]/);
   assert.match(registration, /"purpose" = \$2/);
   assert.doesNotMatch(registration, /body\.role(?:\s|=)/);
   assert.match(joinFlow, /\/register\?church=/);

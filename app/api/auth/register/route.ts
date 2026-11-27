@@ -103,10 +103,13 @@ export async function POST(req: Request) {
     explicitSlug = codeRow.slug;
   }
 
-  // Without an invitation code the church must be identified by the request
-  // Host itself. A bare slug, a stale cookie or the default tenant must never
-  // be enough to join a church.
-  if (!rawChurchCode) {
+  // Open join: a servant may register through a church link or the church
+  // directory (explicit slug) or the church's own host, with no code. The
+  // church must still be named explicitly, so a stale cookie or the default
+  // tenant never silently decides where an account lands. Open joiners get no
+  // class access until an admin or class leader assigns them (see below).
+  const openJoin = !rawChurchCode;
+  if (openJoin && !explicitSlug) {
     let hostOk = false;
     try {
       hostOk = await hostIdentifiesTenant(req);
@@ -114,7 +117,7 @@ export async function POST(req: Request) {
       hostOk = false;
     }
     if (!hostOk) {
-      return badRequest('أدخل رمز دعوة الكنيسة لإنشاء حساب');
+      return badRequest('اختر كنيستك من قائمة الكنائس أو استخدم رابط كنيستك');
     }
   }
 
@@ -154,14 +157,19 @@ export async function POST(req: Request) {
       } else if (rawServantRole === 'admin') {
         accountRole = 'admin';
         servantRole = 'admin';
-      } else if (rawServantRole === 'class_leader') {
+      } else if (rawServantRole === 'class_leader' && !openJoin) {
+        // Leading a class needs the church invitation code (or assignment by
+        // an admin). An open join can only ever create a plain servant.
         servantRole = 'class_leader';
       }
       // else: servant (default)
 
       // Grade validation — privileged roles don't need a grade
       const isPrivileged = accountRole === 'admin' || accountRole === 'priest';
-      const assignedGrades: string[] = isPrivileged ? [] : (Array.isArray(grades) ? grades as string[] : []);
+      // Open joiners never pick a class themselves; an admin or class leader
+      // assigns them, so a stranger cannot read any class's children.
+      const assignedGrades: string[] =
+        isPrivileged || openJoin ? [] : (Array.isArray(grades) ? grades as string[] : []);
 
       if (isPrivileged) {
         if (!suppliedRoleCode || suppliedRoleCode.length > 64) {
@@ -185,7 +193,7 @@ export async function POST(req: Request) {
       }
 
       if (
-        !isPrivileged && (
+        !isPrivileged && !openJoin && (
           !Array.isArray(grades) ||
           (grades as unknown[]).some((grade: unknown) => typeof grade !== 'string' || !VALID_GRADES.includes(grade))
         )
@@ -353,6 +361,7 @@ export async function POST(req: Request) {
           permissions: access.permissions,
         },
         church: { id: tenant.churchId, slug: tenant.slug, name: tenant.name },
+        pendingAssignment: !isPrivileged && access.classIds.length === 0,
       });
 
       const [refreshName, refreshVal, refreshOpts] = refreshCookie(refreshToken.token, refreshToken.expiresAt);

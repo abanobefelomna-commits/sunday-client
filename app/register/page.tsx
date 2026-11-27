@@ -50,7 +50,10 @@ export default function RegisterPage() {
   const { t, locale, setLocale, direction } = useI18n();
 
   const isPrivilegedRole = PRIVILEGED_ROLES.has(servantRole);
-  const needsGrade = !GRADELESS_ROLES.has(servantRole);
+  // Without a church invitation code the servant joins as a plain servant and
+  // an admin or class leader assigns the class later (enforced by the server).
+  const openJoin = !churchCode.trim();
+  const needsGrade = !GRADELESS_ROLES.has(servantRole) && !openJoin;
 
   // Query parameters bootstrap the central join flow after hydration.
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -175,7 +178,7 @@ export default function RegisterPage() {
         phone: phone.trim(),
         password,
         servantRole: (() => {
-          if (servantRole === "class_leader") return "class_leader";
+          if (servantRole === "class_leader" && !openJoin) return "class_leader";
           if (servantRole === "admin") return "admin";
           if (servantRole === "priest") return "priest";
           return "servant";
@@ -285,6 +288,17 @@ export default function RegisterPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t("register.churchCodeHint")}
               </p>
+              {openJoin && (
+                <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-300">
+                  {requestedChurchSlug ? (
+                    t("register.openJoinNote", { slug: requestedChurchSlug })
+                  ) : (
+                    <Link href="/churches" className="underline">
+                      {t("register.findChurch")}
+                    </Link>
+                  )}
+                </p>
+              )}
               {churchName && (
                 <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400" role="status">
                   {t("register.churchCodeSuccess", { name: churchName })}
@@ -326,7 +340,9 @@ export default function RegisterPage() {
                   className="h-12 rounded-xl border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60"
                 >
                   <option value="servant">{t("register.roleServant")}</option>
-                  <option value="class_leader">{t("register.roleClassLeader")}</option>
+                  {!openJoin && (
+                    <option value="class_leader">{t("register.roleClassLeader")}</option>
+                  )}
                   <option value="admin">{t("register.roleAdmin")}</option>
                   <option value="priest">{t("register.rolePriest")}</option>
                 </select>
