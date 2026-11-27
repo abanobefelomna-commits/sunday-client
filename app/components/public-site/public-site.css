@@ -45,7 +45,8 @@
 .ps-loginButton { color: var(--navy-700); background: #fff; border: 1px solid var(--line); }
 .ps-primaryButton { color: #fff !important; background: linear-gradient(135deg, #2865d8, #1555d5); border: 1px solid #2764de; box-shadow: 0 10px 24px rgb(37 98 214 / 24%); }
 .ps-secondaryButton { color: var(--blue-600); background: #fff; border: 1px solid #c7d7eb; }
-.ps-lightButton { color: var(--navy-900); background: #fff; border: 1px solid rgb(255 255 255 / 65%); box-shadow: 0 8px 25px rgb(9 42 93 / 15%); white-space: nowrap; }
+.ps-lightButton { color: #000; background: #fff; border: 1px solid rgb(255 255 255 / 65%); box-shadow: 0 8px 25px rgb(9 42 93 / 15%); white-space: nowrap; }
+.ps-publicSite a.ps-lightButton { color: #000; }
 .ps-primaryButton:hover, .ps-secondaryButton:hover, .ps-loginButton:hover, .ps-lightButton:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgb(25 72 144 / 17%); }
 .ps-primaryButton:hover { background: linear-gradient(135deg, #246ce8, #0e49c1); }
 .ps-menuToggle, .ps-mobileActions { display: none; }
