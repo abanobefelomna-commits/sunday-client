@@ -1,5 +1,7 @@
 # Multi-Church Preview Platform — Repository Implementation Plan
 
+> **Superseded as of 27 November 2026.** The platform described below is implemented and operational in the Next.js repository (`src/server/platform/`, `src/server/tenant/`). The central platform database and per-church tenant databases are live, churches provision through the public registration flow, and the public directory/join/code-lookup routes are served locally by the Next proxy (no Nest dependency). The NestJS API remains a deferred consolidation target only. See `README.md`, `ARCHITECTURE.md`, and `TENANT_PROVISIONING.md` for the current state.
+
 **Status:** Discovery completed; staged implementation in progress.  
 **Date:** 12 November 2026  
 **Working branch:** `feature/multi-church-preview-platform` in `sunday-client` (already checked out).  
@@ -164,7 +166,7 @@ No live schema, production database, backup, or migration execution was inspecte
 
 ### Still pending
 
-- No Nest public API endpoints have been implemented in this pass. Church registration, provisioning, code lifecycle, directory records, join requests and approval are not operational.
+- Church registration, provisioning, code lifecycle, directory records, and join requests are operational in the Next platform layer (`src/server/platform/`). No Nest public API endpoints were implemented; they are not required.
 - The existing servant registration immediately creates a tenant-local account. It must not be used for the new pending-membership journey until central identity mapping and approval semantics are implemented.
 - Landing Preview text currently reflects the requested policy but is not yet fetched from protected platform configuration.
 - The privacy and terms routes are notices that final approved owner/legal text is pending.

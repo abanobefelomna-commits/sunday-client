@@ -4,7 +4,7 @@
 
 The directory may return only an allowlisted public church name, city/area when opted in, public description when opted in, and verification status. It must exclude database IDs, connection details, church codes, private contact details, members, users, child records, operational counts, and internal status/error metadata. Only active churches with directory publication enabled should be listed. Directory data must be served from the central platform database without opening a tenant database.
 
-The current `/churches` route renders no sample listings. It queries `/api/public/churches` and shows an unavailable state if the API cannot provide a safe response. Search currently accepts a free-text query; the backend must apply bounded lengths and rate limits.
+The current `/churches` route renders real churches from the central platform database. It queries `/api/public/churches`, which is served by the Next platform layer (no Nest dependency) and returns only active, allowlisted public fields. Search accepts a free-text query; the backend applies bounded lengths and rate limits.
 
 ## Church registration and code lifecycle
 
@@ -34,7 +34,7 @@ The target model is a central person/identity record keyed by a verified normali
 
 ## Current integration state
 
-The directory and join routes call the allowlisted Next-to-Nest API proxy for directory lookup and membership requests. When no Nest API URL is configured, public code lookup uses the central `church_codes` table directly; `/api/auth/church-code` validates join codes. A matched code links to `/register` with the church slug; the code is passed through tab-scoped session storage, not a URL, and registration rejects a slug that does not match the centrally resolved code. Registration activates accounts immediately without sending email verification; the email stays unverified until a successful password-reset code proves mailbox access.
+The directory and join routes call the allowlisted Next public proxy (`/api/public/*`) for directory lookup and membership requests. The proxy serves these locally from the central platform database; the Nest API URL is optional and unused in the current deployment. Public code lookup reads the central `church_codes` table directly; `/api/auth/church-code` validates join codes. A matched code links to `/register` with the church slug; the code is passed through tab-scoped session storage, not a URL, and registration rejects a slug that does not match the centrally resolved code. Registration activates accounts immediately without sending email verification; the email stays unverified until a successful password-reset code proves mailbox access.
 
 The Super Admin dashboard has separate controls for church creation codes, join codes, administrator registration codes, and priest registration codes. Each church has one active code per purpose. The codes can be copied, rotated, or revoked, and management mutations are audited without recording the plaintext code. Revocation prevents new registrations using that code and does not alter existing users.
 

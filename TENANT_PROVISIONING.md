@@ -1,6 +1,6 @@
 # Tenant Provisioning
 
-**Status:** The public registration/provisioning screens are present; the Nest provisioning service and platform database are not operational yet.
+**Status:** Implemented and operational. Church registration, tenant database creation, migrations, role seeding, initial administrator creation, and invitation-code lifecycle all run in the Next.js platform layer (`src/server/platform/`). The companion Nest API is not required and is a deferred consolidation target only.
 
 ## Required lifecycle
 
@@ -26,4 +26,4 @@
 
 `/register/church` posts to `/api/public/church-registrations`. The UI expects a UUID `jobId` and an opaque `provisioningToken`; it stores the token in `sessionStorage` and navigates to `/register/church/provisioning?jobId=...`. The status page polls the matching allowlisted GET route and displays a church code only when the status is `succeeded`.
 
-The Next proxy validates response shapes and strips arbitrary server fields. The Nest endpoints, tenant database creation, migrations, role seeding, initial admin creation, and code lifecycle have not been implemented or tested. A form submission must not be described as a completed registration until that API work exists.
+The Next proxy validates response shapes and strips arbitrary server fields. Tenant database creation (`PostgresAdminProvider` / `NeonProjectProvider`), migrations (`runTenantMigrations`), role seeding, initial admin creation (`seedChurchAdministrator`), and the code lifecycle are implemented in `src/server/platform/provisioning.ts` and verified end-to-end against a real provisioned tenant. A form submission is a completed registration once the provisioning job reports `succeeded`.

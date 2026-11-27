@@ -234,7 +234,7 @@ export function getProvisioningProvider(): 'postgres' | 'neon-project' | 'manual
     return configured;
   }
   if (process.env.NEON_API_KEY) return 'neon-project';
-  return isProduction() ? 'manual' : 'postgres';
+  return 'postgres';
 }
 
 export function getAppBaseUrl(): string {

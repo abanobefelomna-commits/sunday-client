@@ -1,6 +1,6 @@
 # Platform Architecture
 
-**Status:** Current-state documentation for the multi-church transformation. The intended database-per-tenant architecture is not yet operational.
+**Status:** Current-state documentation. The database-per-tenant architecture is operational in the Next.js platform layer: the central platform database (`sunday_platform`) and per-church tenant databases are live, and churches are provisioned through `src/server/platform/`.
 
 ## Repositories and runtime
 
@@ -19,7 +19,7 @@ The frontend routes include the existing `/login`, `/register`, `/verify-otp`, `
 Browser → Next.js public route → allowlisted /api/public/* proxy → Nest API (planned)
 ```
 
-The proxy uses `NEST_API_URL` or the existing `NEXT_PUBLIC_API_URL` as its base. It does not query church databases. It bounds request size, accepts JSON writes only, strips upstream error bodies, and filters successful responses to public fields. The Nest endpoints and central platform database are not implemented in this pass; visitor data actions remain unavailable until they exist.
+The proxy uses `NEST_API_URL` or the existing `NEXT_PUBLIC_API_URL` as its base when one is configured; with neither set (the current deployment), it serves the allowlisted public routes directly from the central platform database. It bounds request size, accepts JSON writes only, strips upstream error bodies, and filters successful responses to public fields. The Nest public endpoints are not implemented and are not required; the Next platform layer owns directory, provisioning, and code lookup.
 
 ## Intended multi-tenant request path
 
@@ -43,4 +43,4 @@ Preserve current authentication and recovery workflows, Argon2 password hashing,
 4. Restore and test the API authentication behavior before replacing any login or refresh path.
 5. Rehearse source-to-first-tenant migration and rollback before any production change.
 
-No platform migration or production provisioning has been run.
+Platform migrations are applied (`platform_migrations` ledger) and live churches have been provisioned against real tenant databases.

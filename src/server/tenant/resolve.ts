@@ -207,7 +207,7 @@ export async function resolveTenantRequest(
   }
 
   const allowDefault =
-    process.env.ALLOW_DEFAULT_TENANT === 'true' || !isProduction();
+    !isProduction() && process.env.ALLOW_DEFAULT_TENANT === 'true';
   const defaultSlug = process.env.DEFAULT_TENANT_SLUG;
   if (allowDefault && defaultSlug) {
     const tenant = await loadBySlug(defaultSlug);
