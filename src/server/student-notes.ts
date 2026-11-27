@@ -118,9 +118,10 @@ export async function deleteStudentNote(
   if (!access.privileged && existing.authorId !== access.userId) {
     return { error: 'forbidden' as const };
   }
+  // Permanent removal: a deleted note must not survive in the database or be
+  // reachable from another account.
   await query(
-    `UPDATE "student_notes" SET "deletedAt" = now(), "updatedAt" = now()
-     WHERE "id" = $1 AND "childId" = $2`,
+    `DELETE FROM "student_notes" WHERE "id" = $1 AND "childId" = $2`,
     [noteId, childId],
   );
   return { ok: true as const };
