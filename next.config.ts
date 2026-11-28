@@ -15,7 +15,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com${
+  `connect-src 'self' https://va.vercel-scripts.com https://vitals.vercel-insights.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com${
     isProduction ? "" : " ws: wss:"
   }`,
   "worker-src 'self' blob:",
@@ -46,6 +46,14 @@ const nextConfig: NextConfig = {
   /* config options here */
   async headers() {
     return [
+      {
+        source: "/sw.js",
+        headers: [
+          ...securityHeaders,
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
       {
         source: "/:path*",
         headers: securityHeaders,

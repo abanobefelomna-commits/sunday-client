@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { loginUser } from "../lib/api";
+import { clearStoredAuthAsync, getStoredToken, getStoredUser, loginUser } from "../lib/api";
 import { safeNextPath } from "../lib/safe-next";
 import { toast } from "sonner";
 import { useI18n } from "../lib/app-i18n";
@@ -27,6 +27,14 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const { t, locale, setLocale, direction } = useI18n();
+
+  // Ensure any leftover offline cache, SW page cache, or Firebase session from
+  // a prior logged-out/expired session is wiped when landing on login unauthenticated.
+  useEffect(() => {
+    if (!getStoredToken() && !getStoredUser()) {
+      void clearStoredAuthAsync();
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -11,6 +11,9 @@ import "./globals.css";
 import "./components/public-site/public-site-global.css";
 import "./components/public-site/public-site.css";
 import BibleWidget from "./components/BibleWidget";
+import PwaRegister from "./components/PwaRegister";
+import OnlineStatusBar from "./components/OnlineStatusBar";
+import InstallPrompt from "./components/InstallPrompt";
 import { LocaleProvider } from "./components/LocaleProvider";
 import { Toaster } from "sonner";
 import {
@@ -45,6 +48,24 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#1e2a5a",
+};
+
+const PWA_METADATA: Pick<Metadata, "manifest" | "icons" | "appleWebApp" | "applicationName"> = {
+  manifest: "/manifest.webmanifest",
+  applicationName: "مدارس الأحد",
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "مدارس الأحد",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 async function requestLocale(): Promise<Locale> {
@@ -55,7 +76,7 @@ async function requestLocale(): Promise<Locale> {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await requestLocale();
   const copy = META[locale === "ar" ? "ar" : "en"];
-  return { title: copy.title, description: copy.description };
+  return { title: copy.title, description: copy.description, ...PWA_METADATA };
 }
 
 /**
@@ -84,7 +105,10 @@ export default async function RootLayout({
       </head>
       <body className="antialiased min-h-screen">
         <LocaleProvider initialLocale={locale}>
+          <OnlineStatusBar />
           {children}
+          <PwaRegister />
+          <InstallPrompt />
           <SafeAnalytics />
           <Toaster position="top-center" richColors closeButton duration={3500} />
           <BibleWidget />

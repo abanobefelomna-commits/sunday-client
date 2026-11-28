@@ -255,14 +255,104 @@ export function getStoredUser(): AuthUser | null {
 
 export function setStoredAuth(token: string, user: AuthUser): void {
   if (typeof window === 'undefined') return;
+  const previous = getStoredUser();
   localStorage.setItem('ss_token', token);
   localStorage.setItem('ss_user', JSON.stringify(user));
+
+  // If a different user logs into this browser without an explicit prior
+  // logout, immediately purge any leftover offline queue/cache from the
+  // previous user and clear SW page caches.
+  if (previous && previous.id && previous.id !== user.id) {
+    import('./offline-db')
+      .then(({ clearUserOfflineData }) => clearUserOfflineData(previous.id))
+      .catch(() => undefined);
+    import('./sync-engine').then(({ resetSyncState }) => resetSyncState()).catch(() => undefined);
+    clearServiceWorkerCaches();
+  }
+}
+
+function clearServiceWorkerCaches(): Promise<void> {
+  if (typeof window === 'undefined') return Promise.resolve();
+
+  const tasks: Promise<unknown>[] = [];
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    const controller = navigator.serviceWorker.controller;
+    tasks.push(
+      new Promise<void>((resolve) => {
+        const timer = window.setTimeout(resolve, 400);
+        try {
+          const channel = new MessageChannel();
+          channel.port1.onmessage = () => {
+            window.clearTimeout(timer);
+            resolve();
+          };
+          controller.postMessage({ type: 'CLEAR_DATA' }, [channel.port2]);
+        } catch {
+          controller.postMessage({ type: 'CLEAR_DATA' });
+          window.clearTimeout(timer);
+          resolve();
+        }
+      }),
+    );
+  }
+
+  // Belt-and-suspenders: also delete cached HTML pages directly via Cache API
+  // in case the SW controller wasn't attached yet.
+  if ('caches' in window) {
+    tasks.push(
+      window.caches
+        .keys()
+        .then((keys) =>
+          Promise.all(
+            keys
+              .filter((k) => k.startsWith('ss-pages-'))
+              .map((k) => window.caches.delete(k)),
+          ),
+        )
+        .catch(() => undefined),
+    );
+  }
+
+  return Promise.all(tasks).then(() => undefined);
+}
+
+/**
+ * Clear stored credentials, IndexedDB offline data, sync state, and SW caches.
+ * Awaiting this before navigating away on logout guarantees user isolation.
+ */
+export async function clearStoredAuthAsync(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('ss_token');
+  localStorage.removeItem('ss_user');
+
+  const cleanup = Promise.all([
+    import('./offline-db')
+      .then(({ clearOfflineData }) => clearOfflineData())
+      .catch(() => undefined),
+    import('./sync-engine')
+      .then(({ resetSyncState }) => resetSyncState())
+      .catch(() => undefined),
+    ...(isFirebaseAuthEnabled()
+      ? [
+          import('@/src/lib/firebase/auth')
+            .then(({ signOutFirebase }) => signOutFirebase())
+            .catch(() => undefined),
+        ]
+      : []),
+    clearServiceWorkerCaches(),
+  ]);
+
+  // Bound cleanup wait so logout never stalls if IndexedDB is blocked.
+  await Promise.race([
+    cleanup,
+    new Promise<void>((resolve) => window.setTimeout(resolve, 800)),
+  ]);
 }
 
 export function clearStoredAuth(): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem('ss_token');
-  localStorage.removeItem('ss_user');
+  void clearStoredAuthAsync();
 }
 
 const PUBLIC_PAGE_PATHS = new Set([
@@ -294,9 +384,10 @@ function handleExpiredSession(): void {
   if (typeof window === 'undefined' || isPublicPage()) return;
   if (expiredSessionRedirect) return;
   expiredSessionRedirect = true;
-  clearStoredAuth();
   const next = `${window.location.pathname}${window.location.search}`;
-  window.location.assign(`/logout?next=${encodeURIComponent(next)}`);
+  void clearStoredAuthAsync().finally(() => {
+    window.location.assign(`/logout?next=${encodeURIComponent(next)}`);
+  });
 }
 
 /** Prevents concurrent 401s from stacking multiple logout navigations. */
@@ -304,7 +395,7 @@ let expiredSessionRedirect = false;
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
@@ -478,7 +569,17 @@ export async function registerUser(payload: {
       payload.email,
       payload.password,
     );
-    const { password: _password, ...rest } = payload;
+    const rest = {
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone,
+      servantRole: payload.servantRole,
+      roleCode: payload.roleCode,
+      classIds: payload.classIds,
+      grades: payload.grades,
+      churchCode: payload.churchCode,
+      churchSlug: payload.churchSlug,
+    };
     try {
       const result = await request<RegistrationResult>('/api/auth/register', {
         method: 'POST',

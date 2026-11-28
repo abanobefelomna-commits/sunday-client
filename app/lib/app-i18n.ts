@@ -1223,6 +1223,31 @@ const ar = {
   "ai.saveAsDefault": "تعيين كنموذج افتراضي للكنيسة",
   "ai.activeDefault": "النموذج الافتراضي المعتمد",
   "ai.recommended": "موصى به",
+
+  // Offline / PWA
+  "offline.badge": "دون اتصال",
+  "offline.bar.offline": "لا يوجد اتصال — التغييرات محفوظة محليًا",
+  "offline.bar.pendingCount": "{count} تغييرات بانتظار المزامنة",
+  "offline.bar.syncing": "جارٍ المزامنة...",
+  "offline.bar.synced": "تمت المزامنة بنجاح ✓",
+  "offline.bar.failed": "فشلت المزامنة — اضغط للمحاولة مجددًا",
+  "offline.bar.retry": "إعادة المحاولة",
+  "offline.savedOffline": "تم الحفظ محليًا دون اتصال — بانتظار الشبكة",
+  "offline.savingLocally": "جارٍ الحفظ محليًا...",
+  "offline.pendingBadge": "معلّق",
+  "offline.failedBadge": "فشلت المزامنة",
+  "offline.queueBanner": "يوجد {count} سجل حضور محفوظ دون اتصال — سيُرفع تلقائيًا عند عودة الشبكة.",
+  "offline.failedBanner": "تعذر مزامنة {count} سجل حضور — يرجى إعادة المحاولة.",
+  "offline.syncButton": "مزامنة الآن",
+  "offline.dismissFailed": "تجاهل الفاشلة",
+  "offline.page.title": "لا يوجد اتصال بالإنترنت",
+  "offline.page.body": "هذه الصفحة لم تُحمّل من قبل، فلا يمكن فتحها الآن. الصفحات التي زرتها سابقًا تظل متاحة، ويمكنك تسجيل الحضور دون اتصال وسيُرفع تلقائيًا عند عودة الشبكة.",
+  "offline.page.openAttendance": "فتح صفحة الحضور",
+  "attendance.recordHintOffline": "أنت دون اتصال — يُحفظ الحضور محليًا ويُرفع تلقائيًا عند الاتصال.",
+  "pwa.installTitle": "تثبيت التطبيق",
+  "pwa.installBody": "ثبّت مدارس الأحد على شاشتك الرئيسية للوصول السريع وتسجيل الحضور دون اتصال.",
+  "pwa.installButton": "تثبيت",
+  "pwa.installDismiss": "لاحقًا",
 } as const;
 
 export type AppMessageKey = keyof typeof ar;
@@ -2418,6 +2443,31 @@ const en: Record<AppMessageKey, string> = {
   "ai.saveAsDefault": "Set as church default model",
   "ai.activeDefault": "Official Church Default",
   "ai.recommended": "Recommended",
+
+  // Offline / PWA
+  "offline.badge": "Offline",
+  "offline.bar.offline": "No connection — changes saved offline",
+  "offline.bar.pendingCount": "{count} changes waiting to sync",
+  "offline.bar.syncing": "Syncing...",
+  "offline.bar.synced": "Synced successfully ✓",
+  "offline.bar.failed": "Sync failed — tap to retry",
+  "offline.bar.retry": "Retry",
+  "offline.savedOffline": "Saved locally offline — pending sync",
+  "offline.savingLocally": "Saving locally...",
+  "offline.pendingBadge": "Pending sync",
+  "offline.failedBadge": "Sync failed",
+  "offline.queueBanner": "{count} attendance record(s) saved offline — will sync automatically when connection returns.",
+  "offline.failedBanner": "{count} attendance record(s) failed to sync — please retry.",
+  "offline.syncButton": "Sync Now",
+  "offline.dismissFailed": "Dismiss failed",
+  "offline.page.title": "You are offline",
+  "offline.page.body": "This page was not cached earlier, so it cannot open right now. Previously visited pages remain available, and offline attendance will sync automatically when you reconnect.",
+  "offline.page.openAttendance": "Open Attendance",
+  "attendance.recordHintOffline": "You are offline — attendance is saved locally and will sync automatically when reconnected.",
+  "pwa.installTitle": "Install App",
+  "pwa.installBody": "Install Sunday School on your home screen for quick access and offline attendance recording.",
+  "pwa.installButton": "Install",
+  "pwa.installDismiss": "Not now",
 };
 
 const TABLES: Record<"ar" | "en", Record<AppMessageKey, string>> = { ar, en };

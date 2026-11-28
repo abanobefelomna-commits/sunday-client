@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { v4 as uuidv4 } from "uuid";
 import {
+  AlertTriangle,
   BarChart3,
   CalendarCheck,
   Check,
@@ -10,6 +12,8 @@ import {
   ChevronRight,
   Clock,
   Download,
+  WifiOff,
+  RefreshCw,
 } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
@@ -25,6 +29,7 @@ import {
   getAttendanceSessions,
   getChildren,
   getClasses,
+  getStoredUser,
   recordAttendanceBulk,
   type AttendanceRecord,
   type AttendanceSession,
@@ -40,8 +45,35 @@ import {
   todayIso,
 } from "../lib/format";
 import { useI18n } from "../lib/app-i18n";
+import { useOnlineStatus } from "../lib/use-online-status";
+import {
+  enqueueAttendance,
+  supersedePendingForChild,
+  cacheClasses,
+  cacheChildren,
+  cacheAttendance,
+  getCachedClasses,
+  getCachedChildren,
+  getCachedAttendance,
+  getUnsyncedOps,
+  dismissFailedOps,
+  type AttendanceStatus,
+  type SyncState,
+} from "../lib/offline-db";
+import {
+  syncNow,
+  subscribeSyncStatus,
+  recheckPending,
+  attachNetworkListener,
+  type SyncStatus,
+} from "../lib/sync-engine";
 
-type Status = "present" | "absent" | "late" | "excused";
+type Status = AttendanceStatus;
+
+interface QueueBadgeInfo {
+  state: SyncState;
+  error?: string;
+}
 
 const STATUS_META: Array<{ value: Status; labelKey: string; color: string }> = [
   { value: "present", labelKey: "attendance.present", color: "var(--ok)" },
@@ -50,59 +82,263 @@ const STATUS_META: Array<{ value: Status; labelKey: string; color: string }> = [
   { value: "excused", labelKey: "attendance.excused", color: "var(--violet)" },
 ];
 
+function isNetworkFailure(err: unknown): boolean {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return true;
+  if (err instanceof TypeError) return true;
+  const msg = err instanceof Error ? err.message.toLowerCase() : "";
+  return msg.includes("failed to fetch") || msg.includes("networkerror") || msg.includes("load failed");
+}
+
 export default function AttendancePage() {
   const { t, locale, number } = useI18n();
+  const isOnline = useOnlineStatus();
   const today = todayIso();
   const [selectedDate, setSelectedDate] = useState(today);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [children, setChildren] = useState<ChildItem[]>([]);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, Status>>({});
+  const [pendingMap, setPendingMap] = useState<Record<string, QueueBadgeInfo>>({});
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [savingLocally, setSavingLocally] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
+  const [failedQueueCount, setFailedQueueCount] = useState(0);
+  const [failedErrorMsg, setFailedErrorMsg] = useState<string | null>(null);
+
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSyncStatusRef = useRef<SyncStatus>("idle");
 
   const showToast = useCallback((message: string) => {
     setToast(message);
-    window.setTimeout(() => setToast(null), 3200);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3200);
   }, []);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [resClasses, resChildren, resAttendance, resSessions] = await Promise.all([
-        getClasses(),
-        getChildren({
-          classId: selectedClassId !== "all" ? selectedClassId : undefined,
-          limit: 100,
-        }),
-        getAttendance(selectedClassId !== "all" ? selectedClassId : undefined, selectedDate),
-        getAttendanceSessions({
-          classId: selectedClassId !== "all" ? selectedClassId : undefined,
-          limit: 6,
-        }),
+  const currentUserId = useCallback(() => getStoredUser()?.id ?? "", []);
+
+  // ── Connectivity listener ─────────────────────────────────────────────────
+  useEffect(() => {
+    attachNetworkListener();
+    void recheckPending();
+  }, []);
+
+  // ── Overlay unsynced queue entries for selectedDate ──────────────────────
+  const refreshPendingMap = useCallback(async () => {
+    const userId = currentUserId();
+    if (!userId) {
+      setPendingMap({});
+      setOfflineQueueCount(0);
+      setFailedQueueCount(0);
+      setFailedErrorMsg(null);
+      return;
+    }
+
+    const ops = await getUnsyncedOps(userId).catch(() => []);
+    const map: Record<string, QueueBadgeInfo> = {};
+    for (const op of ops) {
+      if (op.date === selectedDate) {
+        map[op.childId] = { state: op.syncState, error: op.lastError };
+      }
+    }
+    const failedOps = ops.filter((o) => o.syncState === "failed");
+    setPendingMap(map);
+    setOfflineQueueCount(ops.length);
+    setFailedQueueCount(failedOps.length);
+    setFailedErrorMsg(failedOps[0]?.lastError ?? null);
+  }, [currentUserId, selectedDate]);
+
+  // ── Load from IndexedDB (offline mode or network fallback) ───────────────
+  const loadFromOfflineCache = useCallback(async () => {
+    const userId = currentUserId();
+    if (!userId) {
+      setClasses([]);
+      setChildren([]);
+      setAttendanceMap({});
+      setSessions([]);
+      return;
+    }
+
+    const classFilter = selectedClassId !== "all" ? selectedClassId : undefined;
+    const [cachedClasses, cachedChildrenData, cachedAttendanceData, unsyncedOps] =
+      await Promise.all([
+        getCachedClasses(userId),
+        getCachedChildren(userId, classFilter),
+        getCachedAttendance(userId, selectedDate, classFilter),
+        getUnsyncedOps(userId),
       ]);
 
-      setClasses(resClasses);
-      setChildren(resChildren.data);
-      const map: Record<string, Status> = {};
-      resAttendance.forEach((record: AttendanceRecord) => {
-        map[record.childId] = record.status;
-      });
-      setAttendanceMap(map);
-      setSessions(resSessions.data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("attendance.loadError"));
-    } finally {
-      setLoading(false);
+    setClasses(
+      cachedClasses.map((cls) => ({
+        id: cls.id,
+        name: cls.name,
+        grade: cls.grade,
+        academicYear: cls.academicYear,
+        childrenCount: cls.childrenCount,
+      })),
+    );
+
+    setChildren(
+      cachedChildrenData.map((child) => ({
+        id: child.id,
+        name: child.name,
+        classId: child.classId,
+        class: child.className ? { id: child.classId ?? "", name: child.className } : null,
+        assignedServant: child.assignedServantName
+          ? { id: "", name: child.assignedServantName }
+          : null,
+      })),
+    );
+
+    const map: Record<string, Status> = {};
+    for (const entry of cachedAttendanceData) {
+      map[entry.childId] = entry.status;
     }
-  }, [selectedClassId, selectedDate]);
+
+    // Overlay unsynced offline mutations chronologically so offline marks
+    // survive page reloads and browser restarts.
+    for (const op of unsyncedOps) {
+      if (op.date !== selectedDate) continue;
+      if (classFilter && op.classId !== classFilter) continue;
+      map[op.childId] = op.status;
+    }
+
+    setAttendanceMap(map);
+    setSessions([]);
+    setError(null);
+  }, [currentUserId, selectedClassId, selectedDate]);
+
+  // ── Load data ─────────────────────────────────────────────────────────────
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const userId = currentUserId();
+
+    if (isOnline) {
+      try {
+        const classFilter = selectedClassId !== "all" ? selectedClassId : undefined;
+        const [resClasses, resChildren, resAttendance, resSessions] = await Promise.all([
+          getClasses(),
+          getChildren({ classId: classFilter, limit: 100 }),
+          getAttendance(classFilter, selectedDate),
+          getAttendanceSessions({ classId: classFilter, limit: 6 }),
+        ]);
+
+        setClasses(resClasses);
+        setChildren(resChildren.data);
+
+        const map: Record<string, Status> = {};
+        (resAttendance as AttendanceRecord[]).forEach((record) => {
+          map[record.childId] = record.status;
+        });
+
+        // Preserve any pending local offline marks not yet synced so an
+        // immediate online reload never hides un-synced work.
+        const unsyncedOps = userId ? await getUnsyncedOps(userId).catch(() => []) : [];
+        for (const op of unsyncedOps) {
+          if (op.date !== selectedDate) continue;
+          if (classFilter && op.classId !== classFilter) continue;
+          map[op.childId] = op.status;
+        }
+
+        setAttendanceMap(map);
+        setSessions(resSessions.data);
+        setError(null);
+
+        if (userId) {
+          await Promise.all([
+            cacheClasses(
+              userId,
+              resClasses.map((cls) => ({
+                id: cls.id,
+                name: cls.name,
+                grade: cls.grade,
+                academicYear: cls.academicYear,
+                childrenCount: cls.childrenCount,
+              })),
+            ),
+            cacheChildren(
+              userId,
+              resChildren.data.map((child) => ({
+                id: child.id,
+                name: child.name,
+                classId: child.classId ?? null,
+                className: child.class?.name,
+                assignedServantName: child.assignedServant?.name ?? undefined,
+              })),
+              classFilter,
+            ),
+            cacheAttendance(
+              userId,
+              (resAttendance as AttendanceRecord[]).map((rec) => ({
+                classId: rec.classId,
+                date: rec.date,
+                childId: rec.childId,
+                status: rec.status,
+              })),
+              { date: selectedDate, classId: classFilter },
+            ),
+          ]);
+        }
+      } catch (err) {
+        if (isNetworkFailure(err)) {
+          await loadFromOfflineCache().catch(() => {
+            setError(t("attendance.loadError"));
+          });
+        } else {
+          setError(err instanceof Error ? err.message : t("attendance.loadError"));
+        }
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      try {
+        await loadFromOfflineCache();
+      } catch {
+        setError(t("attendance.loadError"));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    await refreshPendingMap();
+  }, [
+    currentUserId,
+    isOnline,
+    selectedClassId,
+    selectedDate,
+    t,
+    loadFromOfflineCache,
+    refreshPendingMap,
+  ]);
 
   useEffect(() => {
-    loadData();
+    // loadData synchronizes attendance state from server / IndexedDB on mount and filter changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData();
   }, [loadData]);
+
+  // ── Subscribe to sync engine status ───────────────────────────────────────
+  useEffect(() => {
+    const unsub = subscribeSyncStatus((status, pending, failedCount, lastError) => {
+      setOfflineQueueCount(pending);
+      setFailedQueueCount(failedCount);
+      setFailedErrorMsg(lastError);
+
+      const prev = prevSyncStatusRef.current;
+      prevSyncStatusRef.current = status;
+
+      if (prev === "syncing" && status === "synced") {
+        void refreshPendingMap();
+        void loadData();
+      } else if (status === "failed" || (prev === "syncing" && status !== "syncing")) {
+        void refreshPendingMap();
+      }
+    });
+    return unsub;
+  }, [loadData, refreshPendingMap]);
 
   const changeDate = (days: number) => {
     const next = shiftIso(selectedDate, days);
@@ -122,38 +358,101 @@ export default function AttendancePage() {
   const attended = counts.present + counts.late;
   const rate = children.length > 0 ? Math.round((attended / children.length) * 1000) / 10 : null;
 
+  // ── Helper: enqueue a single mark offline ────────────────────────────────
+  const queueOfflineMark = useCallback(
+    async (userId: string, classId: string, childId: string, status: Status) => {
+      setSavingLocally(true);
+      try {
+        await enqueueAttendance({
+          operationId: uuidv4(),
+          userId,
+          classId,
+          date: selectedDate,
+          childId,
+          status,
+        });
+        await recheckPending();
+        await refreshPendingMap();
+        showToast(t("offline.savedOffline"));
+      } finally {
+        setSavingLocally(false);
+      }
+    },
+    [selectedDate, refreshPendingMap, showToast, t],
+  );
+
+  // ── Mark attendance ───────────────────────────────────────────────────────
   const handleMark = async (child: ChildItem, status: Status) => {
     const previous = attendanceMap[child.id];
-    if (previous === status) return;
+    if (previous === status && !pendingMap[child.id]) return;
 
+    const classId = child.classId || (selectedClassId !== "all" ? selectedClassId : classes[0]?.id);
+    if (!classId) {
+      showToast(t("attendance.noClassToast"));
+      return;
+    }
+
+    const userId = currentUserId();
+    // Optimistic UI update
     setAttendanceMap((current) => ({ ...current, [child.id]: status }));
-    try {
-      setSyncing(true);
-      const classId = child.classId || (selectedClassId !== "all" ? selectedClassId : classes[0]?.id);
-      if (!classId) {
-        showToast(t("attendance.noClassToast"));
-        return;
+
+    if (isOnline) {
+      try {
+        setSyncing(true);
+        await recordAttendanceBulk({
+          classId,
+          date: selectedDate,
+          records: [{ childId: child.id, status }],
+        });
+
+        if (userId) {
+          await Promise.all([
+            supersedePendingForChild(userId, classId, selectedDate, child.id),
+            cacheAttendance(userId, [
+              {
+                classId,
+                date: selectedDate,
+                childId: child.id,
+                status,
+              },
+            ]),
+          ]);
+          await recheckPending();
+          await refreshPendingMap();
+        }
+      } catch (err) {
+        if (isNetworkFailure(err) && userId) {
+          // Network dropped mid-request: fall back to offline queue instead of losing the mark!
+          await queueOfflineMark(userId, classId, child.id, status);
+        } else {
+          setAttendanceMap((current) => {
+            const copy = { ...current };
+            if (previous) copy[child.id] = previous;
+            else delete copy[child.id];
+            return copy;
+          });
+          showToast(err instanceof Error ? err.message : t("attendance.saveError"));
+        }
+      } finally {
+        setSyncing(false);
       }
-      await recordAttendanceBulk({
-        classId,
-        date: selectedDate,
-        records: [{ childId: child.id, status }],
-      });
-    } catch (err) {
+    } else if (userId) {
+      await queueOfflineMark(userId, classId, child.id, status);
+    } else {
       setAttendanceMap((current) => {
         const copy = { ...current };
         if (previous) copy[child.id] = previous;
         else delete copy[child.id];
         return copy;
       });
-      showToast(err instanceof Error ? err.message : t("attendance.saveError"));
-    } finally {
-      setSyncing(false);
+      showToast(t("attendance.saveError"));
     }
   };
 
+  // ── Mark all present ──────────────────────────────────────────────────────
   const handleMarkAllPresent = async () => {
     if (children.length === 0) return;
+    const userId = currentUserId();
     const snapshot = { ...attendanceMap };
     const next = { ...attendanceMap };
     children.forEach((child) => {
@@ -161,34 +460,113 @@ export default function AttendancePage() {
     });
     setAttendanceMap(next);
 
-    try {
-      setSyncing(true);
-      const grouped = new Map<string, string[]>();
-      children.forEach((child) => {
-        const classId = child.classId || (selectedClassId !== "all" ? selectedClassId : classes[0]?.id);
-        if (!classId) return;
-        const list = grouped.get(classId) ?? [];
-        list.push(child.id);
-        grouped.set(classId, list);
-      });
+    const grouped = new Map<string, string[]>();
+    children.forEach((child) => {
+      const classId =
+        child.classId || (selectedClassId !== "all" ? selectedClassId : classes[0]?.id);
+      if (!classId) return;
+      const list = grouped.get(classId) ?? [];
+      list.push(child.id);
+      grouped.set(classId, list);
+    });
 
-      for (const [classId, childIds] of grouped) {
-        await recordAttendanceBulk({
-          classId,
-          date: selectedDate,
-          records: childIds.map((childId) => ({ childId, status: "present" as const })),
-        });
+    if (isOnline) {
+      try {
+        setSyncing(true);
+        for (const [classId, childIds] of grouped) {
+          await recordAttendanceBulk({
+            classId,
+            date: selectedDate,
+            records: childIds.map((childId) => ({ childId, status: "present" as const })),
+          });
+          if (userId) {
+            await Promise.all(
+              childIds.map((childId) =>
+                supersedePendingForChild(userId, classId, selectedDate, childId),
+              ),
+            );
+          }
+        }
+        await recheckPending();
+        showToast(t("attendance.markedAll"));
+        await loadData();
+      } catch (err) {
+        if (isNetworkFailure(err) && userId) {
+          setSavingLocally(true);
+          try {
+            for (const [classId, childIds] of grouped) {
+              for (const childId of childIds) {
+                await enqueueAttendance({
+                  operationId: uuidv4(),
+                  userId,
+                  classId,
+                  date: selectedDate,
+                  childId,
+                  status: "present",
+                });
+              }
+            }
+            await recheckPending();
+            await refreshPendingMap();
+            showToast(t("offline.savedOffline"));
+          } finally {
+            setSavingLocally(false);
+          }
+        } else {
+          setAttendanceMap(snapshot);
+          showToast(err instanceof Error ? err.message : t("attendance.saveError"));
+        }
+      } finally {
+        setSyncing(false);
       }
-      showToast(t("attendance.markedAll"));
-      loadData();
-    } catch (err) {
-      setAttendanceMap(snapshot);
-      showToast(err instanceof Error ? err.message : t("attendance.saveError"));
-    } finally {
-      setSyncing(false);
+    } else if (userId) {
+      setSavingLocally(true);
+      try {
+        for (const [classId, childIds] of grouped) {
+          for (const childId of childIds) {
+            await enqueueAttendance({
+              operationId: uuidv4(),
+              userId,
+              classId,
+              date: selectedDate,
+              childId,
+              status: "present",
+            });
+          }
+        }
+        await recheckPending();
+        await refreshPendingMap();
+        showToast(t("offline.savedOffline"));
+      } finally {
+        setSavingLocally(false);
+      }
     }
   };
 
+  // ── Manual sync / retry ───────────────────────────────────────────────────
+  const handleManualSync = async () => {
+    if (!isOnline) return;
+    setSyncing(true);
+    const result = await syncNow({ includeFailed: true });
+    setSyncing(false);
+    if (result.failed === 0) {
+      showToast(t("offline.bar.synced"));
+      await loadData();
+    } else {
+      showToast(t("offline.bar.failed"));
+    }
+    await refreshPendingMap();
+  };
+
+  const handleDismissFailed = async () => {
+    const userId = currentUserId();
+    if (!userId) return;
+    await dismissFailedOps(userId);
+    await recheckPending();
+    await loadData();
+  };
+
+  // ── Export ────────────────────────────────────────────────────────────────
   const handleExport = () => {
     if (children.length === 0) return;
     const rows = [
@@ -234,6 +612,36 @@ export default function AttendancePage() {
           subtitle={dateLabel}
           actions={
             <>
+              {!isOnline && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#92400e",
+                    background: "#fef3c7",
+                    border: "1px solid #fcd34d",
+                    borderRadius: 8,
+                    padding: "4px 10px",
+                  }}
+                >
+                  <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
+                  {t("offline.badge")}
+                </span>
+              )}
+              {offlineQueueCount > 0 && isOnline && (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={handleManualSync}
+                  disabled={syncing}
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} aria-hidden="true" />
+                  {failedQueueCount > 0 ? t("offline.bar.retry") : t("offline.syncButton")} ({offlineQueueCount})
+                </button>
+              )}
               <Link href="/analytics" className="btn ghost sm">
                 <BarChart3 className="h-4 w-4" aria-hidden="true" /> {t("attendance.analytics")}
               </Link>
@@ -244,13 +652,85 @@ export default function AttendancePage() {
                 type="button"
                 className="btn sm"
                 onClick={handleMarkAllPresent}
-                disabled={syncing || children.length === 0}
+                disabled={syncing || savingLocally || children.length === 0}
               >
                 <Check className="h-4 w-4" aria-hidden="true" /> {t("attendance.markAll")}
               </button>
             </>
           }
         />
+
+        {/* Failed sync banner */}
+        {failedQueueCount > 0 && (
+          <div
+            className="notice danger"
+            role="alert"
+            style={{
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>
+              <AlertTriangle className="h-4 w-4" style={{ display: "inline", marginInlineEnd: 6 }} aria-hidden="true" />
+              {t("offline.failedBanner", { count: failedQueueCount })}
+              {failedErrorMsg && failedErrorMsg !== "network error" ? ` (${failedErrorMsg})` : ""}
+            </span>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {isOnline && (
+                <button
+                  type="button"
+                  className="btn sm"
+                  onClick={handleManualSync}
+                  disabled={syncing}
+                >
+                  {t("offline.bar.retry")}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn ghost sm"
+                onClick={handleDismissFailed}
+                disabled={syncing}
+              >
+                {t("offline.dismissFailed")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pending offline queue banner */}
+        {offlineQueueCount > 0 && offlineQueueCount > failedQueueCount && (
+          <div
+            className="notice warn"
+            style={{
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>
+              <WifiOff className="h-4 w-4" style={{ display: "inline", marginInlineEnd: 6 }} aria-hidden="true" />
+              {t("offline.queueBanner", { count: offlineQueueCount - failedQueueCount })}
+            </span>
+            {isOnline && (
+              <button
+                type="button"
+                className="btn sm"
+                onClick={handleManualSync}
+                disabled={syncing}
+              >
+                {t("offline.syncButton")}
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="surface surface-pad">
           <div className="filters" style={{ justifyContent: "space-between" }}>
@@ -382,9 +862,19 @@ export default function AttendancePage() {
           <div className="surface-head">
             <div>
               <h2>{t("attendance.recordTitle")}</h2>
-              <p>{t("attendance.recordHint")}</p>
+              <p>
+                {isOnline
+                  ? t("attendance.recordHint")
+                  : t("attendance.recordHintOffline")}
+              </p>
             </div>
             {syncing ? <Badge tone="warn">{t("attendance.saving")}</Badge> : null}
+            {savingLocally ? <Badge tone="warn">{t("offline.savingLocally")}</Badge> : null}
+            {!isOnline ? (
+              <Badge tone="warn">
+                <WifiOff className="h-3 w-3" aria-hidden="true" /> {t("offline.badge")}
+              </Badge>
+            ) : null}
           </div>
 
           {error ? <div className="notice danger" style={{ marginBottom: 12 }}>{error}</div> : null}
@@ -406,6 +896,7 @@ export default function AttendancePage() {
             <div className="list-stack">
               {children.map((child) => {
                 const status = attendanceMap[child.id];
+                const queueInfo = pendingMap[child.id];
                 return (
                   <div key={child.id} className="listrow listrow-person">
                     <div className="listrow-main">
@@ -420,15 +911,37 @@ export default function AttendancePage() {
                         </small>
                       </span>
 
-                      {status ? (
-                        <Badge tone={attendanceTone(status)} dot>
-                          {t(`attendance.${status}`)}
-                        </Badge>
-                      ) : (
-                        <Badge tone="muted">
-                          <Clock className="h-3 w-3" aria-hidden="true" /> {t("attendance.notRecorded")}
-                        </Badge>
-                      )}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        {queueInfo && (
+                          <span
+                            title={queueInfo.error || t("offline.savedOffline")}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              background: queueInfo.state === "failed" ? "#fee2e2" : "#fef3c7",
+                              color: queueInfo.state === "failed" ? "#991b1b" : "#92400e",
+                              border: `1px solid ${queueInfo.state === "failed" ? "#fca5a5" : "#fcd34d"}`,
+                              borderRadius: 6,
+                              padding: "2px 6px",
+                            }}
+                          >
+                            {queueInfo.state === "failed"
+                              ? t("offline.failedBadge")
+                              : queueInfo.state === "syncing"
+                                ? t("offline.bar.syncing")
+                                : t("offline.pendingBadge")}
+                          </span>
+                        )}
+                        {status ? (
+                          <Badge tone={attendanceTone(status)} dot>
+                            {t(`attendance.${status}`)}
+                          </Badge>
+                        ) : (
+                          <Badge tone="muted">
+                            <Clock className="h-3 w-3" aria-hidden="true" /> {t("attendance.notRecorded")}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     <div className="listrow-actions" role="group" aria-label={t("attendance.childAria", { name: child.name })}>
@@ -453,57 +966,60 @@ export default function AttendancePage() {
           )}
         </section>
 
-        <section className="surface surface-pad" aria-label={t("attendance.sessionsAria")}>
-          <div className="surface-head">
-            <div>
-              <h2>{t("attendance.sessionsTitle")}</h2>
-              <p>{t("attendance.sessionsHint")}</p>
+        {/* Sessions section — hidden offline since we have no cached data for it */}
+        {isOnline && (
+          <section className="surface surface-pad" aria-label={t("attendance.sessionsAria")}>
+            <div className="surface-head">
+              <div>
+                <h2>{t("attendance.sessionsTitle")}</h2>
+                <p>{t("attendance.sessionsHint")}</p>
+              </div>
+              <Link href="/analytics" className="link-quiet">
+                {t("attendance.fullReport")} <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
             </div>
-            <Link href="/analytics" className="link-quiet">
-              {t("attendance.fullReport")} <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" />
-            </Link>
-          </div>
 
-          {sessions.length === 0 ? (
-            <EmptyState
-              icon="🗓️"
-              title={t("attendance.noSessions")}
-              description={t("attendance.noSessionsHint")}
-            />
-          ) : (
-            <div className="list-stack">
-              {sessions.map((session) => (
-                <div key={session.id} className="listrow listrow-person">
-                  <div className="listrow-main">
-                    <span className="avatar-md" aria-hidden="true">
-                      <CalendarCheck className="h-4 w-4" />
-                    </span>
-                    <span className="grow">
-                      <b>{session.className || t("attendance.sessionClassFallback")}</b>
-                      <small>
-                        {t("attendance.sessionSummary", {
-                          count: number(session.total),
-                          present: number(session.present),
-                        })}
-                        {" · "}
-                        {formatShortDateFor(session.date, locale)}
-                      </small>
-                    </span>
+            {sessions.length === 0 ? (
+              <EmptyState
+                icon="🗓️"
+                title={t("attendance.noSessions")}
+                description={t("attendance.noSessionsHint")}
+              />
+            ) : (
+              <div className="list-stack">
+                {sessions.map((session) => (
+                  <div key={session.id} className="listrow listrow-person">
+                    <div className="listrow-main">
+                      <span className="avatar-md" aria-hidden="true">
+                        <CalendarCheck className="h-4 w-4" />
+                      </span>
+                      <span className="grow">
+                        <b>{session.className || t("attendance.sessionClassFallback")}</b>
+                        <small>
+                          {t("attendance.sessionSummary", {
+                            count: number(session.total),
+                            present: number(session.present),
+                          })}
+                          {" · "}
+                          {formatShortDateFor(session.date, locale)}
+                        </small>
+                      </span>
+                    </div>
+                    <div className="listrow-actions">
+                      <Badge tone="ok">{number(session.present)}</Badge>
+                      <Badge tone="danger">{number(session.absent)}</Badge>
+                      <Badge tone="warn">{number(session.late)}</Badge>
+                      <Badge tone="violet">{number(session.excused)}</Badge>
+                      <Badge tone={session.rate == null ? "muted" : session.rate >= 85 ? "ok" : "warn"}>
+                        {percent(session.rate ?? null)}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="listrow-actions">
-                    <Badge tone="ok">{number(session.present)}</Badge>
-                    <Badge tone="danger">{number(session.absent)}</Badge>
-                    <Badge tone="warn">{number(session.late)}</Badge>
-                    <Badge tone="violet">{number(session.excused)}</Badge>
-                    <Badge tone={session.rate == null ? "muted" : session.rate >= 85 ? "ok" : "warn"}>
-                      {percent(session.rate ?? null)}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       {toast ? <div className="toast">{toast}</div> : null}

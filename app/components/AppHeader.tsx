@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import CommandPalette from "./CommandPalette";
 import {
-  clearStoredAuth,
+  clearStoredAuthAsync,
   getImageUrl,
   getNotifications,
   getStoredUser,
@@ -92,8 +92,8 @@ export default function AppHeader() {
     document.documentElement.setAttribute("data-theme", next);
   };
 
-  const handleLogout = () => {
-    clearStoredAuth();
+  const handleLogout = async () => {
+    await clearStoredAuthAsync();
     // Server route clears the httpOnly session + refresh cookies, then redirects
     // to the public landing page. This avoids a stale proxy session loop.
     window.location.assign("/logout");
