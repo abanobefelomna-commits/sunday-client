@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomBytes } from 'crypto';
 import { query, queryOne } from '@/src/server/db';
 import { platformQueryOne } from '@/src/server/platform/db';
 import {
@@ -10,7 +11,15 @@ import {
   signAccessToken,
   validatePasswordStrength,
 } from '@/src/server/auth';
-import { badRequest, conflict, serverError, getAccessContext } from '@/src/server/middleware';
+import {
+  badRequest,
+  conflict,
+  serverError,
+  unauthorized,
+  getAccessContext,
+} from '@/src/server/middleware';
+import { verifyFirebaseIdToken, type VerifiedFirebaseUser } from '@/src/server/firebase/verify';
+import { findFirebaseUserId } from '@/src/server/firebase/identities';
 import { claimClassLeadership, syncServantFromUser } from '@/src/server/servants';
 import { ensureDefaultClasses } from '@/src/server/classes';
 import { applyTenantCookie, withResolvedTenant } from '@/src/server/tenant/route';
@@ -48,6 +57,8 @@ export async function POST(req: Request) {
     church?: string;
     churchSlug?: string;
     churchCode?: string;
+    /** Firebase ID token; when present the password is managed by Firebase. */
+    idToken?: string;
   };
   try {
     body = await req.json();
@@ -130,17 +141,37 @@ export async function POST(req: Request) {
       const email = normalizeEmail(String(body.email || ''));
       const phone = String(body.phone || '').trim();
       const password = typeof body.password === 'string' ? body.password : '';
+      const rawIdToken = typeof body.idToken === 'string' ? body.idToken.trim() : '';
       const rawServantRole = typeof body.servantRole === 'string' ? body.servantRole.trim() : 'servant';
       const suppliedRoleCode = typeof body.roleCode === 'string' ? body.roleCode.trim() : '';
       const grades = body.grades === undefined ? [] : body.grades;
 
-      if (!name || !email || !phone || !password) {
+      if (!name || !email || !phone || (!password && !rawIdToken)) {
         return badRequest('الاسم، البريد الإلكتروني، رقم الهاتف، وكلمة المرور مطلوبة');
       }
       if (name.length > 160) return badRequest('الاسم أطول من الحد المسموح');
 
-      const passwordError = validatePasswordStrength(password);
-      if (passwordError) return badRequest(passwordError);
+      // Firebase mode: the credential lives in Firebase Authentication. The
+      // ID token must belong to the same email being registered, and the
+      // Firebase account may not already be linked inside this church.
+      let firebaseUser: VerifiedFirebaseUser | null = null;
+      if (rawIdToken) {
+        try {
+          firebaseUser = await verifyFirebaseIdToken(rawIdToken);
+        } catch {
+          return unauthorized('تعذر التحقق من حساب Firebase. أعد المحاولة أو سجّل الدخول.');
+        }
+        if (!firebaseUser.email || normalizeEmail(firebaseUser.email) !== email) {
+          return badRequest('حساب Firebase لا يطابق البريد الإلكتروني المُدخل');
+        }
+        const existingUserId = await findFirebaseUserId(firebaseUser.uid);
+        if (existingUserId) {
+          return conflict('هذا الحساب مرتبط بمستخدم موجود بالفعل. سجّل الدخول بدلًا من إنشاء حساب جديد.');
+        }
+      } else {
+        const passwordError = validatePasswordStrength(password);
+        if (passwordError) return badRequest(passwordError);
+      }
 
       // -----------------------------------------------------------------------
       // Role resolution
@@ -244,7 +275,12 @@ export async function POST(req: Request) {
         return conflict('إذا كان لديك حساب بالفعل، يرجى تسجيل الدخول أو استعادة كلمة المرور');
       }
 
-      const hashedPassword = await hashPassword(password);
+      // Firebase accounts never store a usable password locally: a random
+      // value is hashed so the NOT NULL column stays satisfied and password
+      // login cannot be used for that account.
+      const hashedPassword = await hashPassword(
+        firebaseUser ? randomBytes(32).toString('hex') : password,
+      );
 
       // Role codes are single-use: consume atomically so two requests cannot
       // both redeem the same code.
@@ -273,10 +309,20 @@ export async function POST(req: Request) {
         avatar: string | null;
       }>(
         `INSERT INTO "users"
-           ("id", "name", "email", "emailVerified", "isActive", "phone", "password", "role", "servantRole", "grades", "createdAt", "updatedAt")
-         VALUES (uuid_generate_v4(), $1, $2, false, true, $3, $4, $5, $6, $7::users_grades_enum[], now(), now())
+           ("id", "name", "email", "emailVerified", "isActive", "phone", "password", "role", "servantRole", "grades", "firebaseUid", "createdAt", "updatedAt")
+         VALUES (uuid_generate_v4(), $1, $2, $8, true, $3, $4, $5, $6, $7::users_grades_enum[], $9, now(), now())
          RETURNING "id", "name", "email", "phone", "role", "servantRole", "grades", "avatar"`,
-        [name, email, phone, hashedPassword, accountRole, servantRole, assignedGrades],
+        [
+          name,
+          email,
+          phone,
+          hashedPassword,
+          accountRole,
+          servantRole,
+          assignedGrades,
+          firebaseUser?.emailVerified ?? false,
+          firebaseUser?.uid ?? null,
+        ],
       );
 
       if (!user) {
@@ -347,9 +393,12 @@ export async function POST(req: Request) {
       const accessToken = await signAccessToken(payload);
       const refreshToken = await issueRefreshToken(user.id);
 
+      // The Firebase UID was stored with the user row above; no identity or
+      // role copy is kept outside the tenant database.
+
       const res = NextResponse.json({
         accessToken,
-        requiresEmailVerification: false,
+        requiresEmailVerification: firebaseUser ? !firebaseUser.emailVerified : false,
         email: user.email,
         message: 'تم إنشاء الحساب بنجاح وتسجيل الدخول.',
         user: {

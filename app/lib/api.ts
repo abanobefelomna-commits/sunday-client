@@ -1,3 +1,5 @@
+import { isFirebaseAuthEnabled } from "@/src/lib/firebase/config";
+
 export interface NewsItem {
   id: string;
   title: string | null;
@@ -399,6 +401,36 @@ export async function loginUser(
   churchCode?: string,
 ): Promise<{ accessToken: string; user: AuthUser }> {
   const isEmail = identifier.includes('@');
+
+  // Firebase Authentication is the credential store when enabled. The server
+  // still issues the application's own session cookie (see the session route).
+  if (isEmail && isFirebaseAuthEnabled()) {
+    const { signInWithFirebaseEmail, signOutFirebase } = await import(
+      '@/src/lib/firebase/auth'
+    );
+    const idToken = await signInWithFirebaseEmail(identifier, password);
+    try {
+      const data = await request<{ accessToken: string; user: AuthUser }>(
+        '/api/auth/firebase/session',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            idToken,
+            ...(churchCode?.trim() ? { churchCode: churchCode.trim() } : {}),
+          }),
+        },
+      );
+      setStoredAuth(data.accessToken, data.user);
+      return data;
+    } catch (error) {
+      // The Firebase sign-in succeeded but the app rejected the account
+      // (no local user, inactive, wrong church). Do not leave a Firebase
+      // session behind that the application does not recognise.
+      await signOutFirebase();
+      throw error;
+    }
+  }
+
   const payload = {
     ...(isEmail ? { email: identifier } : { phone: identifier }),
     password,
@@ -438,6 +470,33 @@ export async function registerUser(payload: {
   churchCode?: string;
   churchSlug?: string;
 }): Promise<RegistrationResult> {
+  if (isFirebaseAuthEnabled()) {
+    const { createFirebaseAccount, discardFirebaseAccount, sendFirebaseEmailVerification } =
+      await import('@/src/lib/firebase/auth');
+    const idToken = await createFirebaseAccount(
+      payload.name,
+      payload.email,
+      payload.password,
+    );
+    const { password: _password, ...rest } = payload;
+    try {
+      const result = await request<RegistrationResult>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ ...rest, idToken }),
+      });
+      if (result.accessToken && result.user) {
+        setStoredAuth(result.accessToken, result.user);
+      }
+      if (result.requiresEmailVerification) await sendFirebaseEmailVerification();
+      return result;
+    } catch (error) {
+      // The application refused the account (duplicate phone, invalid church
+      // code, …). Remove the orphaned Firebase account so the user can retry.
+      await discardFirebaseAccount();
+      throw error;
+    }
+  }
+
   const result = await request<RegistrationResult>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(payload),

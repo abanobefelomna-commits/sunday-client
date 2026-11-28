@@ -34,6 +34,14 @@ Secret/configuration names referenced include `JWT_SECRET`, `PLATFORM_JWT_SECRET
 
 The current Next-side Preview helper references `PLATFORM_MODE`, `PLATFORM_LAUNCH_DATE`, `PREVIEW_START_DATE`, and `PREVIEW_END_DATE`. The platform seed leaves these dates unset; a missing setting now remains explicitly unconfigured instead of falling back to the current date. Tenant provisioning stays inactive until the official launch date and matching two-year period are configured. Core Preview access remains free while the program is unconfigured. These values are not yet controlled through a verified platform-admin API. The required central configuration also includes `SUBSCRIPTIONS_ENABLED` and `PAYMENTS_ENABLED`; keep both false until a separately approved paid launch.
 
+## Firebase Authentication (supporting identity layer)
+
+Firebase is optional and only proves the email/password credential; the tenant Postgres database stays authoritative for users, roles, class scope and business data. With `NEXT_PUBLIC_FIREBASE_AUTH_ENABLED` unset or not `true`, the built-in login and registration are unchanged. No Firestore, FCM, Analytics or other Firebase product is required, so the free Spark plan is sufficient.
+
+Public Web App config for project `sunday-school-5e9b2` (safe to expose): `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`, and optionally `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` / `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`.
+
+Server-only Admin credentials, never prefixed with `NEXT_PUBLIC_`: `FIREBASE_SERVICE_ACCOUNT_JSON` (full or base64 service-account JSON) or the split `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`. Without them the server still verifies Firebase ID tokens against Google's public JWKS; with them it also checks token revocation. The identity link itself is stored in the tenant `users.firebaseUid` column (migration `012_firebase_identity`).
+
 ## Setup and validation
 
 Set only values required by the service being run, using local ignored environment files or a secret manager. Do not print or copy values when debugging. Validate production secrets at startup, enforce secure cookies, and keep provisioning credentials separate from runtime tenant credentials. The current frontend build succeeds without enabling the public platform API; the registration/directory/join actions remain unavailable until the API URL and Nest endpoints are configured.

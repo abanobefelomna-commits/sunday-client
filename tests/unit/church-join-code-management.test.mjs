@@ -56,7 +56,7 @@ test('join and role codes are checked centrally and privileged roles have no gra
   assert.match(codeLookup, /c\."status" = 'active'/);
   assert.match(publicProxy, /c\."slug" = \$2/);
   assert.match(registration, /explicitSlug !== codeRow\.slug/);
-  assert.match(registration, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
+  assert.match(registration, /VALUES \(uuid_generate_v4\(\), \$1, \$2, \$8, true/);
   assert.match(registration, /accountRole = 'admin'/);
   assert.match(registration, /accountRole = 'priest'/);
   assert.match(registration, /isPrivileged \|\| openJoin \? \[\]/);

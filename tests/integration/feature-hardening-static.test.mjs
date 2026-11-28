@@ -112,12 +112,12 @@ test('registration resolves join codes and requires per-church codes for privile
   assert.match(registerRoute, /explicitSlug = codeRow\.slug/);
   assert.match(registerRoute, /ignoreCookie: Boolean\(rawChurchCode\)/);
   assert.match(registerRoute, /cc\."purpose" = 'join'/);
-  assert.match(registerRoute, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
+  assert.match(registerRoute, /VALUES \(uuid_generate_v4\(\), \$1, \$2, \$8, true/);
   assert.match(registerRoute, /rawServantRole === 'class_leader'/);
   assert.match(registerRoute, /rawServantRole === 'admin'/);
   assert.match(registerRoute, /rawServantRole === 'priest'/);
   assert.match(registerRoute, /"purpose" = \$2/);
-  assert.match(registerRoute, /requiresEmailVerification: false/);
+  assert.match(registerRoute, /requiresEmailVerification: firebaseUser \? !firebaseUser\.emailVerified : false/);
   assert.match(registerRoute, /issueRefreshToken/);
   assert.doesNotMatch(registerRoute, /sendVerificationEmail|createOtp/);
   assert.doesNotMatch(registerRoute, /body\.role(?:\s|=)/);

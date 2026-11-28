@@ -57,8 +57,8 @@ export const privacyPolicy: Record<"ar" | "en", PolicyDoc> = {
       {
         heading: "الاحتفاظ بالبيانات والحذف",
         paragraphs: [
-          "نحتفظ بالبيانات طالما كانت الكنيسة تستخدم المنصة. عند حذف سجل، نحذفه أو نميّزه كمحذوف بحيث لا يظهر في الواجهات العادية.",
-          "يمكنك حذف حسابك من إعداداتك، ويُحذف حسابك مع بياناتك المرتبطة به وفق ما تحدده صلاحياتك.",
+          "نحتفظ بالبيانات طالما كانت الكنيسة تستخدم المنصة. عند حذف سجل من الواجهة نحذفه نهائيًا من قاعدة بيانات الكنيسة مع السجلات التابعة له، فلا يظهر في الواجهات ولا من أي حساب آخر.",
+          "يمكنك طلب حذف حسابك من مسؤول الكنيسة أو بالتواصل معنا، ويُحذف حسابك مع البيانات المرتبطة به وفق صلاحياتك.",
           "سجلات التدقيق الخاصة بأحداث الأمان تُحتفظ بها لفترة أطول لأغراض الحماية والمساءلة.",
         ],
       },
@@ -91,6 +91,39 @@ export const privacyPolicy: Record<"ar" | "en", PolicyDoc> = {
         heading: "مسؤولياتك",
         paragraphs: [
           "حافظ على سرية كلمة مرورك ولا تشاركها مع أحد، وأبلغنا فورًا إذا شككت في وصول غير مصرّح به لحسابك.",
+        ],
+      },
+      {
+        heading: "حقوقك",
+        paragraphs: [
+          "يمكنك الاطلاع على بياناتك وتصحيحها أو طلب حذفها بالتواصل مع مسؤول الكنيسة أو معنا، وسنستجيب للطلبات في حدود صلاحياتنا ومسؤولياتنا القانونية.",
+          "إذا كنت وليّ أمر وتعتقد أن بيانات طفل أُدخلت دون موافقتك، تواصل معنا أو مع مسؤول الكنيسة لمراجعة البيانات وحذفها عند اللزوم.",
+        ],
+      },
+      {
+        heading: "خصوصية الأطفال",
+        paragraphs: [
+          "بيانات الأطفال مخصّصة لخدمة الكنيسة فقط، ولا تُستخدم للتسويق ولا تُنشر في الدليل العام للمنصة.",
+          "الكنيسة مسؤولة عن الحصول على موافقة ولي الأمر أو الأساس القانوني المناسب قبل إدخال بيانات الطفل، وعن تحديد من يمكنه الاطلاع عليها.",
+        ],
+      },
+      {
+        heading: "المساعد الذكي",
+        paragraphs: [
+          "عند استخدام المساعد الذكي تُرسل الرسائل والمرفقات التي تكتبها إلى مزوّد نماذج خارجي لمعالجة طلبك. لا نحتفظ بسجل المحادثات في قاعدة بياناتنا، ولا نرسل بيانات الأطفال إلا في نطاق ما تسمح به صلاحياتك.",
+          "قد تكون إجابات المساعد غير دقيقة. راجعها قبل الاعتماد عليها، ولا تُدخل بيانات حساسة لا تحتاجها فعلاً.",
+        ],
+      },
+      {
+        heading: "نقل البيانات خارج بلدك",
+        paragraphs: [
+          "قد يعالج مزوّدو الاستضافة وقواعد البيانات والنماذج بيانات المنصة خارج بلدك، مع اتخاذ تدابير تعاقدية وتقنية مناسبة لحماية البيانات.",
+        ],
+      },
+      {
+        heading: "التغييرات على هذه السياسة",
+        paragraphs: [
+          "قد نحدّث هذه السياسة عند تغيّر المنصة أو المتطلبات القانونية، وسننشر النسخة المحدّثة هنا مع تاريخ التحديث. استمرار استخدام المنصة بعد النشر يعني قبول النسخة المحدّثة.",
         ],
       },
       {
@@ -139,8 +172,8 @@ export const privacyPolicy: Record<"ar" | "en", PolicyDoc> = {
       {
         heading: "Retention and deletion",
         paragraphs: [
-          "We keep data while the church uses the platform. When a record is deleted, it is removed or marked deleted so it no longer appears in normal views.",
-          "You can delete your account from your settings, and your account and its linked data are removed according to your permissions.",
+          "We keep data while the church uses the platform. When a record is deleted from the interface, it is permanently removed from the church database together with its dependent records, so it appears neither in the interface nor from any other account.",
+          "You can request deletion of your account through the church administrator or by contacting us, and your account is removed together with its linked data according to your permissions.",
           "Security audit records are kept longer for protection and accountability.",
         ],
       },
@@ -176,6 +209,39 @@ export const privacyPolicy: Record<"ar" | "en", PolicyDoc> = {
         ],
       },
       {
+        heading: "Your rights",
+        paragraphs: [
+          "You can review, correct, or request deletion of your data through the church administrator or by contacting us; we respond within our permissions and legal obligations.",
+          "If you are a parent or guardian and believe a child's data was entered without your consent, contact us or the church administrator so the data can be reviewed and, where appropriate, deleted.",
+        ],
+      },
+      {
+        heading: "Children's privacy",
+        paragraphs: [
+          "Children's data is used for church ministry only, never for marketing, and never published in the platform's public directory.",
+          "The church is responsible for obtaining parental consent or another lawful basis before entering a child's data, and for deciding who may access it.",
+        ],
+      },
+      {
+        heading: "AI assistant",
+        paragraphs: [
+          "When you use the AI assistant, the messages and attachments you write are sent to an external model provider to process your request. We do not keep a conversation history in our database, and we do not send children's data beyond what your permissions allow.",
+          "Assistant answers may be inaccurate. Review them before relying on them, and do not enter sensitive data you do not actually need.",
+        ],
+      },
+      {
+        heading: "International processing",
+        paragraphs: [
+          "Our hosting, database, and model providers may process platform data outside your country, under appropriate contractual and technical safeguards.",
+        ],
+      },
+      {
+        heading: "Changes to this policy",
+        paragraphs: [
+          "We may update this policy when the platform or legal requirements change, publishing the revised version here with an updated date. Continued use after publication means acceptance of the revised policy.",
+        ],
+      },
+      {
         heading: "Reporting and contact",
         paragraphs: [CONTACT_NOTE_EN],
       },
@@ -197,6 +263,19 @@ export const termsPolicy: Record<"ar" | "en", PolicyDoc> = {
         ],
       },
       {
+        heading: "الأهلية والحساب",
+        paragraphs: [
+          "يجب أن تكون أهلاً قانونيًا لاستخدام المنصة وفق قوانين بلدك، أو تستخدمها تحت إشراف مسؤول الكنيسة. أنت مسؤول عن دقة بيانات حسابك (الاسم والبريد الإلكتروني والهاتف) وعن تحديثها.",
+        ],
+      },
+      {
+        heading: "العضوية في مساحة الكنيسة",
+        paragraphs: [
+          "يتم الانضمام إلى مساحة الكنيسة عبر رابط الكنيسة أو دليل الكنائس أو رمز الدعوة. قد يمنح الانضمام المفتوح حساب خادم دون صلاحية على أي فصل حتى يعيّنك مسؤول الكنيسة أو قائد الفصل.",
+          "يحق لمسؤول الكنيسة تعديل دورك أو صلاحياتك أو إيقاف وصولك إلى مساحة الكنيسة وفق سياسات الكنيسة.",
+        ],
+      },
+      {
         heading: "الاستخدام المقبول",
         paragraphs: [
           "المنصة مخصّصة لتنظيم خدمة مدارس الأحد. استخدمها فقط للغرض الذي صُمّمت لأجله وبما يليق بالخدمة الكنسية.",
@@ -211,7 +290,7 @@ export const termsPolicy: Record<"ar" | "en", PolicyDoc> = {
       {
         heading: "مسؤوليات مسؤول الكنيسة",
         paragraphs: [
-          "مسؤول الكنيسة مسؤول عن بيانات الكنيسة ومستخدميها، وعن منح الصلاحيات للأدوار المناسبة، وعن مراجعة طلبات الانضمام قبل اعتمادها، وعن ضمان دقة بيانات الأطفال وموافقة أولياء الأمور حيثما يتطلب الأمر.",
+          "مسؤول الكنيسة مسؤول عن بيانات الكنيسة ومستخدميها، وعن إدارة من ينضم إلى مساحة الكنيسة ومنحهم الصلاحيات المناسبة، وعن ضمان دقة بيانات الأطفال وموافقة أولياء الأمور حيثما يتطلب الأمر.",
         ],
       },
       {
@@ -270,6 +349,36 @@ export const termsPolicy: Record<"ar" | "en", PolicyDoc> = {
         ],
       },
       {
+        heading: "برنامج Preview والمدفوعات",
+        paragraphs: [
+          "المنصة مجانية خلال فترة Preview المعلنة، ومدتها سنتان تبدأ من تاريخ الإطلاق الرسمي الموحّد للمنصة، دون بطاقة ائتمان أو مدفوعات. قد نغيّر الميزات أو حدود الاستخدام خلال الفترة، وسنعلن أي تغيير جوهري.",
+        ],
+      },
+      {
+        heading: "المساعد الذكي",
+        paragraphs: [
+          "قد تستخدم المنصة نماذج ذكاء اصطناعي خارجية لتشغيل المساعد. الإجابات قد تكون غير دقيقة أو غير مكتملة، وليست نصيحة رعوية أو طبية أو قانونية. أنت مسؤول عن مراجعة الإجابة قبل الاعتماد عليها، ويُحظر استخدام المساعد لإدخال محتوى مخالف أو بيانات لا تملك حق معالجتها.",
+        ],
+      },
+      {
+        heading: "الملكية الفكرية",
+        paragraphs: [
+          "الكنيسة تملك بياناتها ومحتواها. تمنحنا ترخيصًا محدودًا لاستضافة هذه البيانات ومعالجتها وتقديم الخدمة. المنصة وبرمجياتها وعلامتها مملوكة لنا، ولا يجوز نسخها أو إعادة توزيعها دون إذن.",
+        ],
+      },
+      {
+        heading: "إخلاء المسؤولية",
+        paragraphs: [
+          "تُقدَّم المنصة كما هي، ونبذل جهدًا معقولًا للحفاظ على استقرارها وأمانها، لكننا لا نضمن خلوّها من الأخطاء أو الانقطاعات. الكنيسة مسؤولة عن مراجعة بياناتها والاحتفاظ بنسخ احتياطية منها عند الحاجة.",
+        ],
+      },
+      {
+        heading: "القانون الواجب التطبيق",
+        paragraphs: [
+          "تخضع هذه الشروط لأحكام جمهورية مصر العربية. نسعى لحل أي خلاف وديًا أولًا، وإذا تعذّر ذلك تختص المحاكم المصرية.",
+        ],
+      },
+      {
         heading: "التواصل",
         paragraphs: [CONTACT_NOTE_AR],
       },
@@ -288,6 +397,19 @@ export const termsPolicy: Record<"ar" | "en", PolicyDoc> = {
         ],
       },
       {
+        heading: "Eligibility and account",
+        paragraphs: [
+          "You must be legally able to use the platform under the laws of your country, or use it under the supervision of the church administrator. You are responsible for the accuracy of your account details (name, email, phone) and for keeping them up to date.",
+        ],
+      },
+      {
+        heading: "Church workspace membership",
+        paragraphs: [
+          "You join a church workspace through the church link, the church directory, or an invitation code. Open joining may create a servant account with no class access until the church administrator or class leader assigns you.",
+          "The church administrator may change your role or permissions, or suspend your access to the church workspace, in line with the church's policies.",
+        ],
+      },
+      {
         heading: "Acceptable use",
         paragraphs: [
           "The platform is for organising Sunday School ministry. Use it only for its intended purpose and in a manner fitting church service.",
@@ -302,7 +424,7 @@ export const termsPolicy: Record<"ar" | "en", PolicyDoc> = {
       {
         heading: "Church administrator responsibilities",
         paragraphs: [
-          "The church administrator is responsible for the church's data and users, for granting permissions to the right roles, for reviewing join requests before approval, and for ensuring children's data is accurate and, where required, that parental consent is obtained.",
+          "The church administrator is responsible for the church's data and users, for managing who joins the church workspace and granting appropriate permissions, and for ensuring children's data is accurate and, where required, that parental consent is obtained.",
         ],
       },
       {
@@ -358,6 +480,36 @@ export const termsPolicy: Record<"ar" | "en", PolicyDoc> = {
         heading: "Limitation of liability",
         paragraphs: [
           "To the extent permitted by law, the platform is not liable for indirect damages or data loss arising from misuse or from management decisions inside a church.",
+        ],
+      },
+      {
+        heading: "Preview program and payments",
+        paragraphs: [
+          "The platform is free during the announced Preview period, which lasts two years from the platform's single official launch date, with no credit card or payment. We may change features or usage limits during that period and will announce any material change.",
+        ],
+      },
+      {
+        heading: "AI assistant",
+        paragraphs: [
+          "The platform may use external AI models to run the assistant. Answers may be inaccurate or incomplete and are not pastoral, medical, or legal advice. You are responsible for reviewing an answer before relying on it, and you may not use the assistant to enter unlawful content or data you have no right to process.",
+        ],
+      },
+      {
+        heading: "Intellectual property",
+        paragraphs: [
+          "The church owns its data and content. It grants us a limited licence to host and process that data and provide the service. The platform, its software, and its brand are ours and may not be copied or redistributed without permission.",
+        ],
+      },
+      {
+        heading: "Disclaimer",
+        paragraphs: [
+          "The platform is provided as is. We make reasonable efforts to keep it stable and secure but do not guarantee it will be error-free or uninterrupted. The church is responsible for reviewing its data and keeping backups where needed.",
+        ],
+      },
+      {
+        heading: "Governing law",
+        paragraphs: [
+          "These terms are governed by the laws of the Arab Republic of Egypt. We aim to resolve any dispute amicably first; otherwise the Egyptian courts have jurisdiction.",
         ],
       },
       {

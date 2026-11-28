@@ -52,8 +52,8 @@ test('new church registration starts provisioning immediately and keeps the cron
 test('register route activates the account without sending email verification', () => {
   const route = read('app/api/auth/register/route.ts');
 
-  assert.match(route, /VALUES \(uuid_generate_v4\(\), \$1, \$2, false, true/);
-  assert.match(route, /requiresEmailVerification: false/);
+  assert.match(route, /VALUES \(uuid_generate_v4\(\), \$1, \$2, \$8, true/);
+  assert.match(route, /requiresEmailVerification: firebaseUser \? !firebaseUser\.emailVerified : false/);
   assert.match(route, /issueRefreshToken/);
   assert.doesNotMatch(route, /sendVerificationEmail|createOtp/);
   // Guards registration may roll back a half-provisioned class-leader account.
